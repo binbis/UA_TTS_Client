@@ -1,0 +1,62 @@
+# Результати збірки .NET (Build outputs)
+bin/
+obj/
+Properties/
+_UpgradeReport_Files/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+out/
+
+# Налаштування Rider & JetBrains IDEs Specific (.idea folder)
+# Ігноруємо крористувацькі налаштування
+.idea/
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+.idea/**/contentModel.xml
+
+# Чутливі файли  плагінів та бази даних
+.idea/**/dataSources/
+.idea/**/dataSources.ids
+.idea/**/dataSources.local.xml
+.idea/**/sqlDataSources.xml
+.idea/**/dynamic.xml
+.idea/**/uiDesigner.xml
+.idea/**/dbnavigator.xml
+
+# Тимчасові файл Rider
+*.iws
+
+# Visual Studio / Roslyn / MSBuild
+.vs/
+.localhistory/
+.ionide/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.launchSettings.json.user
+UpgradeLog.htm
+UpgradeLog.xml
+
+# Логи та тимчасові файли
+*.log
+*.tmp
+*.bak
+
+# Кеш та пакети (NuGet)
+*.nuget.props
+*.nuget.targets
+packages/
+*.nupkg
+
+# Системні файли ОС
+
+.DS_Store
+Thumbs.db
+Desktop.ini
