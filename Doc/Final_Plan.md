@@ -42,7 +42,7 @@
 |---|---|---|
 | R1 | **Старт з вертикального зрізу «Quick TTS + міні-плеєр»** (вкладка 1) | Дає найшвидший живий результат і перевіряє весь ланцюг: буфер → API → BASS → UI |
 | R2 | **Мінімальні правки в `server.py`** дозволені | Потрібні `/api/health` та єдиний формат помилок; зворотна сумісність з браузерним розширенням (CORS) збережена |
-| R3 | **Тести — на фінальному етапі** | Спершу функціонал; тестовий проєкт створюється на Кроці 8 |
+| R3 | **Тести — на фінальному етапі** | Спершу функціонал; тестовий проєкт створюється на Кроці 9.1 (на Кроці 9 розділено: спершу документація, потім тести) |
 | R4 | **Документи оновлюються під реалію** під час роботи, не після | `Doc/` зараз розходиться з реальністю (див. `AGENTS.md`) |
 | R5 | **Кроки 0–5 — один довгий turn агента**, Кроки 6–9 — окремо з перевіркою UI/звуку користувачем | Кроки 0–5 низького ризику; кроки з UI та звуком потребують очей користувача |
 | R6 | **Жодних WPF/WinForms** | Проєкт створювався під Win11 і не працював на Linux — саме через це переписуємо |
@@ -62,7 +62,7 @@
 | 6 | ViewModels | ✅ **виконано** |
 | 7 | Views (XAML) | ✅ **виконано** |
 | 8 | Composition Root (DI) | ✅ **виконано** |
-| 9 | Тести + документація | ⬜ не розпочато |
+| 9 | Тести + документація | 🔶 **частково**: 9.2 документація ✅ · 9.1 тести ⬜ не розпочато |
 
 Уже виконано поза кроками (див. «Журнал виконання»): аналіз репозиторію, запуск і перевірка
 сервера, рефлексія API ManagedBass / SharpHook / TextCopy, створення `AGENTS.md`,
@@ -91,11 +91,17 @@
 ```
 UA_TTS_Client/
 ├── AGENTS.md                     ← створено
-├── Doc/Final_Plan.md             ← цей файл
+├── README.md                     ← перенесено з Doc/Readme.md і дописано (Крок 9.2)
+├── Doc/
+│   ├── Final_Plan.md             ← цей файл
+│   ├── API.md                    ← контракт ендпоінтів (Крок 9.2)
+│   ├── ua_tts_client_arch.md     ← виправлено під реальність (Крок 9.2)
+│   ├── Єдина кодова база linux win11.md
+│   └── Запит на архітектуру.md
 ├── UA_TTS_Client.sln             ← створено (Крок 0.6)
 ├── App.axaml / App.axaml.cs      ← Composition Root (DI)
 ├── Program.cs                    ← не змінюється (шаблон Avalonia)
-├── ViewLocator.cs                ← ВИПРАВИТИ (див. Крок 8)
+├── ViewLocator.cs                ← виправлено (Крок 8)
 ├── Core/                         ← створено
 │   ├── Enums/      PlaybackState.cs, ServerStatus.cs
 │   ├── Exceptions/ TtsApiException.cs
@@ -121,9 +127,13 @@ UA_TTS_Client/
                     ReaderView.axaml(.cs), CharacterVoiceView.axaml(.cs)
 ```
 
-> Порожні `<Folder Include=…>` з `.csproj` прибрано на Кроці 0.4. `Core/` та `Infrastructure/`
-> уже містять реальні файли; `ViewModels/`, `Views/`, `App.axaml.cs`, `ViewLocator.cs` —
-> предмет Кроків 6–8.
+> Порожні `<Folder Include=…>` з `.csproj` прибрано на Кроці 0.4. Усі каталоги вище
+> **вже містять реалізовані файли** (Кроки 1–9.2). У `UA_TTS_Client.sln` поки що лише
+> основний проєкт — тестовий (`UA_TTS_Client.Tests`) додається на Кроці 9.1.
+>
+> **Видалено на Кроці 9.2:** `Doc/implementation_roadmap.md` (посилання на неіснуючі
+> `/api/ping` і `/health`), `Doc/ua_tts_client_architecture(remove).md` (конфліктний дубль),
+> `Doc/Readme.md` (перенесено в `README.md` у корінь).
 
 ---
 
@@ -431,24 +441,46 @@ desktop.MainWindow = new MainWindow { DataContext = services.BuildServiceProvide
 
 ---
 
-### Крок 9 — Тести + документація ⬜
+### Крок 9 — Тести + документація 🔶 (9.2 ✅ · 9.1 ⬜)
 
-**9.1 Тестовий проєкт** `UA_TTS_Client.Tests` (xUnit + FluentAssertions + NSubstitute):
+**9.1 Тестовий проєкт** ⬜ **не розпочато** (за користувачем — виконувати окремо від документації):
+`UA_TTS_Client.Tests` (xUnit + FluentAssertions + NSubstitute):
 - `JsonSettingsService` — збереження/завантаження, атомарність, відсутній файл;
-- `TtsApiClient` — помилки JSON і plain text, таймаут, недоступний сервер (offline);
+  готовий другий конструктор `JsonSettingsService(logger, filePath)` із явним шляхом;
+- `TtsApiClient` — помилки JSON і plain text, таймаут, недоступний сервер (offline),
+  fallback `404 /api/health → /api/voices`;
 - ViewModel — guard-клози та скасування через `CancellationToken`.
 
 Правила: AAA, ізоляція зовнішніх залежностей через інтерфейси, іменування
 `Метод_Умови_ОчікуванийРезультат`.
 
-**9.2 Документація:**
-- `Doc/Readme.md` — дописати розділ «Як користуватися», прибрати `run_server.bat` /
-  `UA_TTS_Client_Full_Cycle`, описати реальний запуск на Linux і Windows;
-- `Doc/ua_tts_client_arch.md` — виправити опис ManagedBass під фактичний API 4.0.2;
-- `Doc/implementation_roadmap.md` — прибрати згадки `/api/ping` і `/health`;
-- `Doc/ua_tts_client_architecture(remove).md` — **видалити** (конфліктний дубль);
-- `Doc/API.md` — новий: точний контракт ендпоинтів із прикладами запитів/відповідей;
-- `AGENTS.md` і `Doc/Final_Plan.md` — оновити стан.
+**9.2 Документація** ✅ **виконано:**
+
+| # | Дія | Стан |
+|---|---|---|
+| 9.2.1 | `Doc/Readme.md` → **`README.md` у корінь**: розділ «Як користуватися», реальний запуск Linux/Windows, прибрано `run_server.bat` / `UA_TTS_Client_Full_Cycle` | ✅ |
+| 9.2.2 | `Doc/ua_tts_client_arch.md` — переписано під реальність: ManagedBass 4.0.2 (`Bass.CreateStream(byte[])`, `Bass.DefaultDevice`), фактичне дерево файлів, сигнатури інтерфейсів, DI, Wayland | ✅ |
+| 9.2.3 | `Doc/implementation_roadmap.md` — видалити | ✅ |
+| 9.2.4 | `Doc/ua_tts_client_architecture(remove).md` — видалити (конфліктний дубль) | ✅ |
+| 9.2.5 | `Doc/API.md` — новий: точний контракт ендпоінтів із прикладами запитів/відповідей | ✅ |
+| 9.2.6 | `AGENTS.md` і `Doc/Final_Plan.md` — оновити стан | ✅ |
+
+**Фактично (Крок 9.2):**
+- `README.md` (корінь): вимоги (`libbass`, `wl-clipboard`/`xsel`, група `input`),
+  запуск сервера (`./Server_py/run_server.sh` / `cd Server_py && python server.py`),
+  запуск клієнта (`dotnet run`), повний розділ «Як користуватися» (статус-бар,
+  Quick TTS, Alt+Q, міні-плеєр, налаштування, обмеження терміналів), посилання на
+  `Doc/Final_Plan.md`, `AGENTS.md`, `Doc/API.md`;
+- `Doc/API.md`: 6 ендпоінтів із таблицями полів, прикладами `curl` і JSON,
+  форматом помилок, правилами сумісності клієнта (fallback health, терпимий парсер
+  помилок, таймаут 5 хв). `/api/ping` і `/health` позначені як неіснуючі;
+- `Doc/ua_tts_client_arch.md`: прибрано хибні `BASS_StreamCreateFile`/`GCHandle`,
+  `IDocumentParserService`, `ExportFormat`, `PingServerAsync`, `yay -S bass` і «план
+  наступних дій»; додано фактичний ManagedBass API, дерево, контракти, DI і Wayland;
+- `README.md` пояснює, чому `Doc/Readme.md` перенесено: файл був обриваний на
+  порожньому розділі «Як користуватися» й посилався на неіснуючі `run_server.bat`
+  та `UA_TTS_Client_Full_Cycle`;
+- **тести (9.1) не створювалися** — за запитом користувача лише документація.
 
 ---
 
@@ -521,6 +553,8 @@ Base URL `http://127.0.0.1:5000`. CORS: `Access-Control-Allow-Origin: *`.
 | 2026-10-21 | Виправлено тишу: `Bass.Init(0)` відкривав пристрій «No sound». Перейшли на `Bass.DefaultDevice` (-1). Перевірено через `pactl list sink-inputs`: з'являється `PipeWire ALSA [app]` на sink 86 (Bluetooth-навушники), гучність 100% |
 | 2026-10-21 | Виправлено захоплення виділеного: Alt+Q тепер спрацьовує після відпускання обох клавіш (раніше Ctrl+C ішов як Ctrl+Alt+C); на Wayland першим читається `wl-paste`; буфер опитується до 900 мс, і якщо не змінився — повертається порожній рядок, а не старий вміст. Ланцюжок перевірено harness-ом на `zenity`: захоплено `CLIP_TEST_98765` |
 | 2026-10-21 | Прибрано попередження Rider: `Design.DataContext="{x:Static …}"` замінено на `if (Design.IsDesignMode) DataContext = DesignData…` у code-behind. XAML-аналізатор більше не плутає attached property; `dotnet build` — 0 warnings |
+| 2026-10-21 | Закомічено роботу Кроків 6–8 і виправлення: `e7b04a1 feat(ui)`, `32068fa fix(audio)`, `5d547f2 fix(automation)`, `2a2cdc6 docs`. `dotnet build` — 0 warnings / 0 errors; робоче дерево після комітів чисте |
+| 2026-10-21 | **Крок 9.2 (документація) виконано** — за запитом користувача **без тестів (9.1 лишився)**. `Doc/Readme.md` перенесено в `README.md` у корінь і дописано: вимоги (`libbass`, `wl-clipboard`/`xsel`, група `input`), запуск сервера (`./Server_py/run_server.sh` або `cd Server_py && python server.py`), запуск клієнта, повний розділ «Як користуватися», прибрано неіснуючі `run_server.bat` і `UA_TTS_Client_Full_Cycle`. Створено `Doc/API.md` — контракт 6 ендпоінтів із таблицями полів, `curl`-прикладами, форматом помилок і правилами сумісності клієнта. `Doc/ua_tts_client_arch.md` переписано під реальність: прибрано `BASS_StreamCreateFile`/`GCHandle`, `yay -S bass`, `IDocumentParserService`, `ExportFormat`, `PingServerAsync`; додано фактичний API ManagedBass 4.0.2, дерево файлів, сигнатури інтерфейсів, Composition Root і Wayland-поведінку. Видалено `Doc/implementation_roadmap.md` та `Doc/ua_tts_client_architecture(remove).md`. Оновлено `AGENTS.md` (статус, таблиця `Doc/`, стан git) |
 
 ---
 
@@ -529,7 +563,9 @@ Base URL `http://127.0.0.1:5000`. CORS: `Access-Control-Allow-Origin: *`.
 1. Прочитати `AGENTS.md` і цей файл.
 2. Перевірити стан Кроків: `git status`, наявність файлів у `Core/`, `Infrastructure/`,
    `ViewModels/`, `Views/`.
-3. Визначити перший незавершений крок (розділ 3) і виконати його.
+3. Перший незавершений крок (розділ 3) — **Крок 9.1: тести** (`UA_TTS_Client.Tests`,
+   xUnit + FluentAssertions + NSubstitute). Далі — наступні ітерації: Reader,
+   Character Voice, зміна гарячої клавіші.
 4. Після кроку — оновити статус у розділі 3 і додати рядок у журнал (розділ 9).
 5. **Коміти:** не комітити чужі незакомічені зміни без запиту. Працю над Кроками 0–5 можна
    вести одним turn-ом (рішення R5); Кроки 6–9 — окремо з перевіркою користувача.

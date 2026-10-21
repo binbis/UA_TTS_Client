@@ -1,393 +1,268 @@
-# Архітектурна специфікація та дизайн UA_TTS_Client
+# Архітектура UA_TTS_Client
 
-Цей документ описує архітектуру оновленого кросплатформного клієнта **UA_TTS_Client** на базі **.NET 10**, **Avalonia UI** та **CommunityToolkit.Mvvm** для роботи під **Linux (Arch/EndeavourOS, Wayland/PipeWire)** та **Windows 11**.
+> **Статус станом на 2026-10-21:** реалізовано Кроки 0–9 плану (без юніт-тестів).
+> Цей документ описує **фактичну** архітектуру реалізованого клієнта.
+> Порядок роботи — `Doc/Final_Plan.md`; перевірені факти API та підводні камені — `AGENTS.md`;
+> контракт сервера — `Doc/API.md`.
 
----
-
-## 1. Аналіз аудіо-рушія (`IAudioPlayerService`)
-
-Оскільки Python-сервер повертає `audio/wav` у бінарному вигляді (через endpoint `/api/synthesize`), ключовою вимогою до плеєра є:
-1. Можливість відтворення з потоку пам'яті (`Stream` / `byte[]`) без примусового збереження на диск для кожного запиту.
-2. Підтримка регулювання швидкості, паузи/продовження та зупинки в реальному часі.
-3. Стабільна робота під **Linux PipeWire / PulseAudio** та **Windows WASAPI**.
-
-### Порівняння кандидатів:
-
-| Критерій | `NetCoreAudio` | `Silk.NET.OpenAL` | `ManagedBass` (BASS Audio) |
-| :--- | :--- | :--- | :--- |
-| **Відтворення з пам'яті (`Stream` / `byte[]`)** | ❌ Тільки локальні файли (вимагає запису на диск) | ✅ Повний низькорівневий контроль | ✅ Нативна підтримка `BASS_StreamCreateFile` з пам'яті (`IntPtr` / `GCHandle`) |
-| **Кросплатформність** | ⚠️ Залежить від наявності `ffplay` / `aplay` у системі | ✅ Працює через `libopenal.so` / `openal32.dll` | ✅ Нативні бібліотеки `libbass.so` (Linux) та `bass.dll` (Win) |
-| **PipeWire / PulseAudio сумісність** | ⚠️ Нестабільні форки системних процесів | ✅ Відмінна через системний OpenAL бекенд | ✅ Чудова через PulseAudio/ALSA шар PipeWire |
-| **Контроль позиції / Пауза / Гучність** | ❌ Мінімальний (лише Play/Stop) | ⚠️ Потрібно писати буферизацію вручну | ✅ Повний набір (`ChannelSetAttribute`, `ChannelPause`, `ChannelStop`) |
-| **Складність коду** | Низька, але функціонал бідний | Висока (C-like низькорівневий OpenAL API) | Збалансована (лаконічний C# wrapper) |
-
-### Рекомендація:
-**ManagedBass** є найкращим вибором для продакшн-якості. Він дозволяє:
-- Відтворювати `byte[]` або `MemoryStream` без тимчасових `.wav` файлів.
-- Безшовно керувати гучністю, паузою та завершенням треку.
-- На Linux автоматично зв'язується з `libbass.so` (потрібно підкласти біля бінарника або поставити з AUR: `yay -S bass`).
-- *Альтернатива (простіший старт без сторонніх native C-бібліотек)*: Якщо не хочеться тягнути `libbass.so`, можна використати порт **SoundFlow** або **LibVLCSharp**. Проте `ManagedBass` перевірений часом саме для TTS-клієнтів.
+Клієнт — Avalonia 12 + .NET 10 (MVVM через CommunityToolkit.Mvvm) для локального
+Python TTS-сервера (`Server_py/`, Flask + StyleTTS2). Цільові ОС: Linux
+(EndeavourOS/Arch, Wayland + PipeWire) і Windows 11.
 
 ---
 
-## 2. Структура директорій проєкту (Tree)
+## 1. Шари та правила залежностей
 
-Проєкт розділено на логічні шари за принципами Clean Architecture всередині одного рішення:
+| Шар | Каталог | Що містить | Може залежати від |
+|---|---|---|---|
+| **Domain** | `Core/` | enum-и, DTO, доменний виняток, інтерфейси сервісів | **ні від чого** (без `Avalonia.*`, `HttpClient`, `ManagedBass.*`, `SharpHook.*`) |
+| **Infrastructure** | `Infrastructure/` | реалізації `Core`-інтерфейсів: HTTP, BASS, хук, JSON-конфіг | `Core`, зовнішні бібліотеки |
+| **Presentation** | `ViewModels/` | MVVM-логіка, `partial class` + генератори | `Core` (+ `ILogger`) |
+| **View** | `Views/` | XAML з compiled bindings (`x:DataType` обов'язковий) | `ViewModels` через `ViewLocator` |
+| **Composition Root** | `App.axaml.cs` | **єдине** місце реєстрації DI, старт/завершення | усе разом |
+
+Правила: DI лише через конструктори; помилки транспорту не доходять до
+ViewModel (перетворюються на `TtsApiException`); аудіо відтворюється **з пам'яті**
+(`byte[]`), тимчасові `.wav` не пишуться.
+
+---
+
+## 2. Вибір аудіо-рушія (історичний зріз)
+
+Вимоги: відтворення з `byte[]` без запису на диск, пауза/гучність/автозупинка,
+стабільна робота в PipeWire (Linux) і WASAPI (Windows).
+
+| Критерій | `NetCoreAudio` | `Silk.NET.OpenAL` | **`ManagedBass` (обрано)** |
+| --- | :--- | :--- | :--- |
+| Відтворення з пам'яті | ❌ лише файли | ✅ повний контроль | ✅ `Bass.CreateStream(byte[], long, long, BassFlags)` |
+| Кросплатформність | ⚠️ потребує `ffplay`/`aplay` | ✅ `libopenal.so` | ✅ `libbass.so` / `bass.dll` |
+| PipeWire/PulseAudio | ⚠️ нестабільні форки процесів | ✅ добре | ✅ чудово (шар ALSA в PipeWire) |
+| Пауза/гучність/позиція | ❌ | ⚠️ буферизація вручну | ✅ `ChannelPause`, `ChannelSetAttribute`, `ChannelSetSync` |
+| Складність коду | низька, бідний функціонал | висока (C-like) | збалансована |
+
+**Фактичний API ManagedBass 4.0.2** (класів `ManagedBass.Playback` /
+`ManagedBass.Channel` **не існує**; лише статичний `ManagedBass.Bass`):
+
+```csharp
+Bass.Init(Bass.DefaultDevice, 44100, DeviceInitFlags.Default, IntPtr.Zero, IntPtr.Zero);
+int handle = Bass.CreateStream(wavBytes, 0, wavBytes.Length, BassFlags.Default);
+Bass.ChannelSetSync(handle, SyncFlags.End, 0, syncProc, IntPtr.Zero);
+Bass.ChannelPlay(handle, false);
+Bass.ChannelPause(handle);                                   // toggle
+Bass.ChannelSetAttribute(handle, ChannelAttribute.Volume, v);
+Bass.ChannelIsActive(handle);                                // → PlaybackState
+Bass.ChannelStop(handle); Bass.StreamFree(handle); Bass.Free();
+```
+
+Перевірені підводні камені (повний перелік — в `AGENTS.md`):
+
+- **`Bass.Init(0, …)` — це пристрій «No sound»**, а не пристрій за замовчуванням.
+  Завжди `Bass.DefaultDevice` (-1) → потік з'являється в PipeWire
+  (`pactl list sink-inputs`). Саме через `0` звук був відсутній.
+- `SyncProcedure(int syncHandle, int channel, int data, IntPtr user)` — **перший
+  параметр це дескриптор синхронізації, канал — другий**; порівнювати треба з `channel`.
+- Прапорця `BassFlags.Memory` немає — перегрузка `byte[]` робить усе сама, але
+  **масив має жити весь час відтворення** (поле сервісу / `GCHandle`).
+- NuGet-пакет не містить нативних бібліотек: на Linux потрібен `yay -S libbass`
+  (`bass` з `extra` — це гра); на Windows — `bass.dll` біля бінарника.
+- `ManagedBass.PlaybackState` ↔ доменний `Core.Enums.PlaybackState` конвертується
+  в сервісі, `Core` від ManagedBass не залежить.
+
+---
+
+## 3. Фактичне дерево файлів
 
 ```text
 UA_TTS_Client/
-├── App.axaml
-├── App.axaml.cs
-├── app.manifest
-├── Program.cs
-├── ViewLocator.cs
-├── UA_TTS_Client.csproj
-├── Assets/
-│   ├── avalonia-logo.ico
-│   └── Icons/
+├── AGENTS.md                     ← перевірені факти для агентів/розробника
+├── README.md                     ← запуск і користування
+├── UA_TTS_Client.sln
+├── App.axaml / App.axaml.cs      ← Composition Root (DI, старт, завершення)
+├── Program.cs                    ← шаблон Avalonia (не змінюється)
+├── ViewLocator.cs                ← .ViewModels → .Views, ViewModel → View (+ MainWindow)
 ├── Core/
-│   ├── Enums/
-│   │   ├── PlaybackState.cs              # Playing, Paused, Stopped, Buffering
-│   │   └── ExportFormat.cs               # Wav, Mp3, Ogg
-│   ├── Interfaces/
-│   │   ├── IAudioPlayerService.cs        # Керування звуком (Play, Pause, Stop, Seek)
-│   │   ├── ITtsApiClient.cs             # Взаємодія з Flask-сервером
-│   │   ├── IGlobalHotkeyService.cs       # SharpHook обробник Alt+Q
-│   │   ├── IClipboardAutomationService.cs# Симуляція Ctrl+C та витягування тексту
-│   │   ├── IDocumentParserService.cs     # Парсинг PDF/Word/ODT/TXT
-│   │   └── ISettingsService.cs           # Збереження/завантаження конфігурації
-│   └── Models/
-│       ├── AppConfig.cs                  # Модель налаштувань (URL, Default Voice, Hotkey)
-│       ├── TtsRequestDto.cs              # Модель запиту на синтез
-│       ├── VerbalizeRequestDto.cs
-│       └── CharacterVoicePreset.cs       # Для майбутньої вкладки ігрових персонажів
+│   ├── Enums/        PlaybackState.cs, ServerStatus.cs
+│   ├── Exceptions/   TtsApiException.cs
+│   ├── Models/       AppConfig.cs, TtsRequestDto.cs, VerbalizeRequestDto.cs,
+│   │                 TextResponseDto.cs, ApiErrorResponse.cs, ServerHealth.cs
+│   └── Interfaces/   ISettingsService.cs, ITtsApiClient.cs, IAudioPlayerService.cs,
+│                     IClipboardAutomationService.cs, IGlobalHotkeyService.cs
 ├── Infrastructure/
-│   ├── Audio/
-│   │   └── BassAudioPlayerService.cs     # Реалізація через ManagedBass
-│   ├── Api/
-│   │   └── TtsApiClient.cs               # HttpClient + перевірка стану сервера
-│   ├── Automation/
-│   │   ├── SharpHookGlobalHotkeyService.cs # Обробка Alt+Q
-│   │   └── WaylandClipboardAutomationService.cs # Робота через TextCopy / SharpHook uinput
-│   ├── Parsing/
-│   │   └── DocumentParserService.cs      # Клієнтська або серверна обробка документів
-│   └── Storage/
-│       └── JsonSettingsService.cs        # Збереження у ~/.config/UA_TTS_Client/config.json
+│   ├── Api/          TtsApiClient.cs
+│   ├── Audio/        BassAudioPlayerService.cs
+│   ├── Automation/   SharpHookGlobalHotkeyService.cs, WaylandClipboardAutomationService.cs
+│   └── Storage/      JsonSettingsService.cs
 ├── ViewModels/
-│   ├── ViewModelBase.cs
-│   ├── MainWindowViewModel.cs            # Хост для вкладок та глобального статусу сервера
-│   ├── Tabs/
-│   │   ├── QuickTtsViewModel.cs          # Alt+Q, швидке читання буфера
-│   │   ├── ReaderViewModel.cs            # Озвучування файлів, книг, навігація по абзацах
-│   │   ├── CharacterVoiceViewModel.cs    # Концепт ігрової озвучки
-│   │   └── SettingsViewModel.cs          # Слайдери, чекбокси, вибір голосу, тест підключення
-│   └── Components/
-│       └── PlaybackControlViewModel.cs   # Перевикористовуваний блок Play/Pause/Volume
-└── Views/
-    ├── MainWindow.axaml
-    ├── MainWindow.axaml.cs
-    └── Tabs/
-        ├── QuickTtsView.axaml
-        ├── QuickTtsView.axaml.cs
-        ├── ReaderView.axaml
-        ├── ReaderView.axaml.cs
-        ├── CharacterVoiceView.axaml
-        ├── CharacterVoiceView.axaml.cs
-        ├── SettingsView.axaml
-        └── SettingsView.axaml.cs
+│   ├── ViewModelBase.cs            ← SynchronizationContext.OnUiThread для подій BASS
+│   ├── MainWindowViewModel.cs      ← статус сервера (15 с), вкладки, Alt+Q
+│   ├── Tabs/       QuickTtsViewModel.cs, SettingsViewModel.cs,
+│   │               ReaderViewModel.cs (заглушка), CharacterVoiceViewModel.cs (заглушка)
+│   ├── Components/ PlaybackControlViewModel.cs
+│   └── Design/     DesignData.cs   ← фіктивні сервіси лише для прев'ю в Rider
+├── Views/
+│   ├── MainWindow.axaml(.cs)
+│   └── Tabs/       QuickTtsView, SettingsView, ReaderView, CharacterVoiceView (.axaml/.cs)
+├── Server_py/                     ← Flask-сервер (запускати ТІЛЬКИ звідси)
+└── Doc/                           ← план, API, архітектура, стандарти
 ```
 
 ---
 
-## 3. Ключові контракти сервісів (Core/Interfaces)
-
-### 3.1. Керування аудіо: `IAudioPlayerService.cs`
-Повністю абстрагує бізнес-логіку від того, яка саме аудіо-бібліотека грає звук.
+## 4. Контракти (`Core/Interfaces`)
 
 ```csharp
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using UA_TTS_Client.Core.Enums;
-
-namespace UA_TTS_Client.Core.Interfaces;
-
-public interface IAudioPlayerService : IDisposable
+public interface IAudioPlayerService
 {
     PlaybackState State { get; }
-    float Volume { get; set; } // 0.0f до 1.0f
-    
+    double Volume { get; }                                   // 0.0…1.0
     event EventHandler<PlaybackState>? StateChanged;
-    event EventHandler? PlaybackEnded;
-
-    Task PlayAsync(Stream audioStream, CancellationToken cancellationToken = default);
-    Task PlayAsync(byte[] audioData, CancellationToken cancellationToken = default);
-    void Pause();
-    void Resume();
-    void Stop();
+    Task PlayAsync(byte[] wavData, CancellationToken ct = default);
+    void Pause(); void Resume(); void Stop();
+    void SetVolume(double volume);
 }
-```
-
-### 3.2. Взаємодія з Python Backend: `ITtsApiClient.cs`
-Відповідає за виклики Flask API.
-
-```csharp
-using System.Collections.Generic;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using UA_TTS_Client.Core.Enums;
-using UA_TTS_Client.Core.Models;
-
-namespace UA_TTS_Client.Core.Interfaces;
 
 public interface ITtsApiClient
 {
-    Task<bool> PingServerAsync(CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<string>> GetVoicesAsync(CancellationToken cancellationToken = default);
-    Task<string> VerbalizeTextAsync(string rawText, CancellationToken cancellationToken = default);
-    Task<byte[]> SynthesizeAsync(TtsRequestDto request, CancellationToken cancellationToken = default);
-    Task<byte[]> ConvertAudioAsync(byte[] wavData, ExportFormat format, CancellationToken cancellationToken = default);
-    Task<string> ParseDocumentAsync(Stream fileStream, string fileName, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<string>> GetVoicesAsync(CancellationToken ct = default);
+    Task<ServerHealth> GetHealthAsync(CancellationToken ct = default);   // 404 → fallback /api/voices
+    Task<string> VerbalizeAsync(string text, CancellationToken ct = default);
+    Task<byte[]> SynthesizeAsync(TtsRequestDto request, CancellationToken ct = default);
+    Task<string> ParseFileAsync(Stream fileStream, string fileName, CancellationToken ct = default);
 }
-```
-
-### 3.3. Кросплатформна автоматизація буфера та клавіатури: `IClipboardAutomationService.cs`
-Під Wayland копіювання з активного вікна вимагає симуляції комбінації `Ctrl+C` через віртуальний uinput (через SharpHook), короткої паузи (50-100ms) для оновлення системного буфера, а потім читання через `TextCopy` (що спирається на `wl-clipboard` у системі).
-
-```csharp
-using System.Threading.Tasks;
-
-namespace UA_TTS_Client.Core.Interfaces;
 
 public interface IClipboardAutomationService
 {
-    Task<string?> CaptureSelectedTextAsync();
-    Task<string?> GetClipboardTextAsync();
-    Task SetClipboardTextAsync(string text);
+    Task<string> CaptureSelectedTextAsync(CancellationToken ct = default);
+}
+
+public interface IGlobalHotkeyService
+{
+    event EventHandler? HotkeyPressed;
+    void Start();
+    Task StopAsync();
+}
+
+public interface ISettingsService
+{
+    Task<AppConfig> LoadAsync(CancellationToken ct = default);
+    Task SaveAsync(AppConfig config, CancellationToken ct = default);
 }
 ```
 
+Enum-и: `PlaybackState { Idle, Playing, Paused, Stopped, Error }`,
+`ServerStatus { Unknown, Online, Offline, Error }`.
+Моделі — `record` із `[JsonPropertyName]`, що повторюють імена полів сервера
+(`text`, `voice`, `speed`, `volume`, `translate`). Помилка API —
+`TtsApiException { int? StatusCode; bool IsConnectionError; }`.
+
 ---
 
-## 4. Конфігурація та кросплатформні шляхи (`ISettingsService`)
+## 5. Конфігурація (`ISettingsService` → `JsonSettingsService`)
 
-Критично не використовувати жорстко закодовані шляхи з `\` чи `/`.
+- Шлях: `Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+  "UA_TTS_Client", "config.json")` → `~/.config/UA_TTS_Client/config.json` (Linux),
+  `%APPDATA%\UA_TTS_Client\config.json` (Windows). Жорстко закодованих `\`/`/` немає.
+- **Атомарний запис:** temp-файл у тому ж каталозі → `File.Move(temp, path, overwrite: true)`;
+  прибирання temp-файлу в `finally`.
+- Відсутній/пошкоджений файл → значення за замовчуванням (`AppConfig`), без винятку.
+- Другий конструктор `JsonSettingsService(logger, filePath)` — ізявним шляхом
+  (використовується тестами Кроку 9.1).
+- `SemaphoreSlim(1,1)` серіалізує читання/запис.
+
+Поля `AppConfig`: `ServerUrl` (default `http://127.0.0.1:5000`), `SelectedVoice`,
+`Speed` (1.0), `Volume` (1.0), `Hotkey` (`Alt+Q`).
+
+---
+
+## 6. Composition Root (`App.axaml.cs`)
 
 ```csharp
-using System;
-using System.IO;
-using System.Text.Json;
-using System.Threading.Tasks;
-using UA_TTS_Client.Core.Interfaces;
-using UA_TTS_Client.Core.Models;
+var services = new ServiceCollection();
+services.AddLogging(b => b.AddSimpleConsole(...).AddFilter("System.Net.Http.HttpClient", LogLevel.Warning));
 
-namespace UA_TTS_Client.Infrastructure.Storage;
+var startupConfig = LoadStartupConfig();          // синхронно ДО побудови контейнера
+services.AddSingleton(startupConfig);             // адреса потрібна для HttpClient.BaseAddress
 
-public class JsonSettingsService : ISettingsService
+services.AddSingleton<ISettingsService, JsonSettingsService>();
+services.AddSingleton<IAudioPlayerService, BassAudioPlayerService>();
+services.AddSingleton<IClipboardAutomationService, WaylandClipboardAutomationService>();
+services.AddSingleton<IGlobalHotkeyService, SharpHookGlobalHotkeyService>();
+services.AddHttpClient<ITtsApiClient, TtsApiClient>(c =>
 {
-    private readonly string _configFilePath;
-    private AppConfig _currentConfig = new();
+    c.BaseAddress = baseAddress;                  // із AppConfig, fallback на типовий
+    c.Timeout = TimeSpan.FromMinutes(5);
+});
 
-    public JsonSettingsService()
-    {
-        // ~/.config/UA_TTS_Client на Linux
-        // %APPDATA%\UA_TTS_Client на Windows
-        string appDataDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "UA_TTS_Client"
-        );
+services.AddSingleton<PlaybackControlViewModel>();
+services.AddSingleton<SettingsViewModel>();
+services.AddSingleton<QuickTtsViewModel>();
+services.AddSingleton<MainWindowViewModel>();
 
-        if (!Directory.Exists(appDataDir))
-        {
-            Directory.CreateDirectory(appDataDir);
-        }
-
-        _configFilePath = Path.Combine(appDataDir, "config.json");
-    }
-
-    public async Task<AppConfig> LoadAsync()
-    {
-        if (!File.Exists(_configFilePath))
-        {
-            _currentConfig = new AppConfig();
-            await SaveAsync(_currentConfig);
-            return _currentConfig;
-        }
-
-        try
-        {
-            await using var stream = File.OpenRead(_configFilePath);
-            _currentConfig = await JsonSerializer.DeserializeAsync<AppConfig>(stream) ?? new AppConfig();
-        }
-        catch
-        {
-            _currentConfig = new AppConfig();
-        }
-
-        return _currentConfig;
-    }
-
-    public async Task SaveAsync(AppConfig config)
-    {
-        _currentConfig = config;
-        var options = new JsonSerializerOptions { WriteIndented = true };
-        await using var stream = File.Create(_configFilePath);
-        await JsonSerializer.SerializeAsync(stream, config, options);
-    }
-}
+var provider = services.BuildServiceProvider();
+var window = new MainWindow { DataContext = provider.GetRequiredService<MainWindowViewModel>() };
+window.Opened += async (_, _) => await viewModel.InitializeAsync();
+desktop.Exit += (_, _) => { viewModel.Dispose(); provider.Dispose(); };
 ```
 
----
+Ключові рішення:
 
-## 5. Впровадження залежностей (DI) та ініціалізація (`App.axaml.cs`)
-
-Для коректної роботи Avalonia з `Microsoft.Extensions.DependencyInjection`, реєстрація сервісів та ViewModel виконується в єдиному місці:
-
-```csharp
-using System;
-using System.Net.Http;
-using Avalonia;
-using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Markup.Xaml;
-using Microsoft.Extensions.DependencyInjection;
-using UA_TTS_Client.Core.Interfaces;
-using UA_TTS_Client.Infrastructure.Api;
-using UA_TTS_Client.Infrastructure.Audio;
-using UA_TTS_Client.Infrastructure.Automation;
-using UA_TTS_Client.Infrastructure.Storage;
-using UA_TTS_Client.ViewModels;
-using UA_TTS_Client.ViewModels.Tabs;
-using UA_TTS_Client.Views;
-
-namespace UA_TTS_Client;
-
-public partial class App : Application
-{
-    public IServiceProvider Services { get; private set; } = null!;
-
-    public override void Initialize()
-    {
-        AvaloniaXamlLoader.Load(this);
-    }
-
-    public override void OnFrameworkInitializationCompleted()
-    {
-        var collection = new ServiceCollection();
-        ConfigureServices(collection);
-        Services = collection.BuildServiceProvider();
-
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            var mainVm = Services.GetRequiredService<MainWindowViewModel>();
-            desktop.MainWindow = new MainWindow
-            {
-                DataContext = mainVm
-            };
-        }
-
-        base.OnFrameworkInitializationCompleted();
-    }
-
-    private static void ConfigureServices(IServiceCollection services)
-    {
-        // 1. HttpClient для Python Server
-        services.AddHttpClient<ITtsApiClient, TtsApiClient>(client =>
-        {
-            client.BaseAddress = new Uri("http://127.0.0.1:5000");
-            client.Timeout = TimeSpan.FromSeconds(120); // Великі файли можуть конвертуватися довго
-        });
-
-        // 2. Інфраструктурні Singleton-сервіси
-        services.AddSingleton<ISettingsService, JsonSettingsService>();
-        services.AddSingleton<IAudioPlayerService, BassAudioPlayerService>();
-        services.AddSingleton<IClipboardAutomationService, WaylandClipboardAutomationService>();
-        services.AddSingleton<IGlobalHotkeyService, SharpHookGlobalHotkeyService>();
-
-        // 3. ViewModels (Вкладки як Singleton або Transient залежно від збереження стану)
-        services.AddSingleton<QuickTtsViewModel>();
-        services.AddSingleton<ReaderViewModel>();
-        services.AddSingleton<CharacterVoiceViewModel>();
-        services.AddSingleton<SettingsViewModel>();
-
-        // 4. Головна ViewModel
-        services.AddSingleton<MainWindowViewModel>();
-    }
-}
-```
+- конфіг читається **синхронно** до `BuildServiceProvider` — інакше `BaseAddress`
+  не встигне встановитися; **зміна адреси в UI застосовується після перезапуску**
+  (написано прямо в UI);
+- `desktop.Exit` звільняє ViewModel і контейнер (BASS, хук, `HttpClient`);
+- `MainWindowViewModel.InitializeAsync` стартує з події `window.Opened`
+  (перевірка сервера + `IGlobalHotkeyService.Start()`).
 
 ---
 
-## 6. Архітектура вкладок (Tabs) та зв'язок з UI
+## 7. UI: ViewLocator, вкладки, прев'ю
 
-### Головне вікно (`MainWindow.axaml`):
-Використовує `TabControl`, де кожна вкладка зв'язується зі своєю ViewModel через `ViewLocator`:
-
-```xml
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:UA_TTS_Client.ViewModels"
-        x:Class="UA_TTS_Client.Views.MainWindow"
-        x:DataType="vm:MainWindowViewModel"
-        Title="UA TTS Client"
-        Width="950" Height="680"
-        WindowStartupLocation="CenterScreen">
-
-    <Grid RowDefinitions="Auto, *, Auto">
-        <!-- Верхня панель статусу сервера -->
-        <Border Grid.Row="0" Background="{DynamicResource SystemChromeLowColor}" Padding="10,6">
-            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <Ellipse Width="10" Height="10" Fill="{Binding ServerStatusColor}" />
-                <TextBlock Text="{Binding ServerStatusText}" VerticalAlignment="Center" FontWeight="SemiBold" />
-                <Button Command="{Binding ReconnectServerCommand}" Content="🔄 Перевірити з'єднання" Margin="10,0,0,0" />
-            </StackPanel>
-        </Border>
-
-        <!-- Вкладки інтерфейсу -->
-        <TabControl Grid.Row="1" Margin="8">
-            <TabItem Header="⚡ Швидке озвучення (Alt+Q)">
-                <ContentControl Content="{Binding QuickTtsVm}" />
-            </TabItem>
-            <TabItem Header="📖 Читач книг і документів">
-                <ContentControl Content="{Binding ReaderVm}" />
-            </TabItem>
-            <TabItem Header="🎮 Голоси персонажів (WIP)">
-                <ContentControl Content="{Binding CharacterVoiceVm}" />
-            </TabItem>
-            <TabItem Header="⚙️ Налаштування">
-                <ContentControl Content="{Binding SettingsVm}" />
-            </TabItem>
-        </TabControl>
-
-        <!-- Нижня закріплена панель відтворення (Mini-Player) -->
-        <Border Grid.Row="2" Background="{DynamicResource SystemChromeMediumColor}" Padding="12,8">
-            <!-- Кнопки Play, Pause, Stop, регулятор гучності -->
-        </Border>
-    </Grid>
-</Window>
-```
+- `ViewLocator` замінює `.ViewModels` → `.Views` і `ViewModel` → `View`; для
+  `MainWindowViewModel` додатково пробує `Views.MainWindow` (головне вікно насправді
+  створюється явно в `App.axaml.cs`, локатор відповідає лише за вміст вкладок).
+- Кожен XAML має `x:DataType` (compiled bindings → помилка вже на збірці).
+- **Design-time DataContext — у code-behind:**
+  `if (Design.IsDesignMode) DataContext = DesignData.MainWindow;`
+  (`Design.DataContext="{x:Static …}"` у XAML дає хибне попередження Rider-аналізатора).
+- `MainWindow.axaml`: верхня панель (назва + `Ellipse.status-dot.online` +
+  `ServerStatusText` + кнопка «Перевірити»), `TabControl` на 4 вкладки, нижня панель
+  міні-плеєра (`Playback.*`). Стилі описані в `Window.Styles`.
+- Умовні класи: `Classes.online="{Binding IsServerOnline}"`; видимість повідомлень —
+  через `StringConverters.IsNotNullOrEmpty`.
+- `MainWindowViewModel`: `PeriodicTimer` (перевірка `GET /api/health` кожні 15 с),
+  підписка на `HotkeyPressed` (Alt+Q → захоплення виділеного → текст у Quick TTS).
+- `SettingsViewModel` — джерело істини для голосу/швидкості; гучність
+  синхронізується з `PlaybackControlViewModel` в обидва боки.
 
 ---
 
-## 7. Специфіка роботи під Wayland (Linux)
+## 8. Специфіка Wayland (Linux)
 
-Оскільки Wayland навмисно ізолює вікна одне від одного:
-1. **SharpHook (`libuiohook`)**:
-   - Перехоплення глобальних клавіш (`Alt+Q`) працює у фоновому потоці через `TaskPoolGlobalHook`.
-   - Для емуляції натискань `Ctrl+C` користувач повинен мати доступ до `/dev/uinput` (додавання до групи `input` виконано).
-2. **TextCopy / Буфер обміну**:
-   - `TextCopy` автоматично викликає системні утиліти `wl-paste` / `wl-copy`. Наявність `wl-clipboard` у системі покриває це на 100%.
-3. **Затримки перед читанням буфера**:
-   - Емуляція натискання клавіш — асинхронна подія. Між відправкою події `Key.C` та читанням з буфера необхідно витримати затримку близько `80-120 мс` (`await Task.Delay(100)`), інакше буде прочитано старий вміст буфера.
+Wayland ізолює вікна, тому «захопити виділення» працює лише через симуляцію:
+
+1. **`Alt+Q`** → `SharpHookGlobalHotkeyService`
+   (`TaskPoolGlobalHook(parallelismLevel: 1, UioHookProvider.Instance)`).
+   Alt+Q **озброюється на натисканні й спрацьовує після відпускання обох клавіш** —
+   інакше симульований `Ctrl+C` надсилається, поки фізичний Alt затиснутий, і активне
+   вікно отримує `Ctrl+Alt+C`. Власні симуляції відсікаються через `IsEventSimulated`.
+2. **Симуляція `Ctrl+C`** → `SharpHook.Simulation.EventSimulator` (uinput; користувач
+   у групі `input`). `ydotool` у цій сесії події не доставляє — це fallback, не основний шлях.
+3. **Читання буфера** → спершу `wl-paste` (Wayland), потім `TextCopy`/`xsel`
+   (X11, може віддати застарілий буфер). Після `Ctrl+C` вміст **опитується до 900 мс**;
+   якщо не змінився — повертається порожній рядок, а не старий текст.
+4. **Обмеження терміналів:** там копіює `Ctrl+Shift+C`, а `Ctrl+C` — це SIGINT,
+   тому із термінала текст копіюється вручну й вставляється в Quick TTS.
 
 ---
 
-## 8. План наступних дій з реалізації
+## 9. Обмеження та наступні кроки
 
-1. **Крок 1**: Встановити NuGet-пакет аудіо-движка (`ManagedBass`).
-2. **Крок 2**: Створити DTO та інтерфейси в каталозі `Core/`.
-3. **Крок 3**: Реалізувати `TtsApiClient` для зв'язку з `server.py` та протестувати виклики `/api/voices` і `/api/synthesize`.
-4. **Крок 4**: Реалізувати `BassAudioPlayerService` для програвання звукових масивів `byte[]`.
-5. **Крок 5**: Реалізувати `SharpHookGlobalHotkeyService` для реакції на `Alt+Q`.
-6. **Крок 6**: Зверстати View та ViewModels для кожної з 4-х вкладок.
+- **Тести (Крок 9.1) не створені** — тестовий проєкт `UA_TTS_Client.Tests`
+  (xUnit + FluentAssertions + NSubstitute) поки не існує.
+- Вкладки **Reader** і **Character Voice** — заглушки.
+- Зміна гарячої клавіші — лише довідкове поле в налаштуваннях.
+- Конвертація аудіо (`POST /api/convert`) у клієнті не використовується.
+- Зміна адреси сервера потребує перезапуску (обмеження `HttpClient.BaseAddress`).
+- Windows-збірка не тестувалася (потрібна `bass.dll` біля бінарника).
+
+Порядок подальшої роботи — `Doc/Final_Plan.md`.

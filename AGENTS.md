@@ -3,9 +3,11 @@
 Avalonia/.NET 10 клієнт (MVVM, CommunityToolkit.Mvvm) для локального Python TTS-сервера
 (`Server_py/`, Flask + StyleTTS2). Цільові ОС: Linux EndeavourOS/Arch (Wayland + PipeWire) та Windows 11.
 
-**Клієнт у процесі розробки.** Реалізовано Кроки 0–8: `Core/` (контракти), `Infrastructure/`
-(API, BASS-аудіо, хук, буфер, JSON-конфіг), ViewModels, Views (XAML) і Composition Root
-у `App.axaml.cs`. Лишився Крок 9 — тести й фінальна документація. Застосунок уже запускається
+**Клієнт у процесі розробки.** Реалізовано Кроки 0–9: `Core/` (контракти), `Infrastructure/`
+(API, BASS-аудіо, хук, буфер, JSON-конфіг), ViewModels, Views (XAML), Composition Root
+у `App.axaml.cs` і документація (Крок 9.2: `README.md`, `Doc/API.md`,
+`Doc/ua_tts_client_arch.md` під реальність, видалено застарілі `Doc/`-файли).
+**Лишилися тести (Крок 9.1)** — тестовий проєкт не створено. Застосунок запускається
 як повноцінне вікно з чотирма вкладками та міні-плеєром.
 
 ---
@@ -25,7 +27,7 @@ dotnet run
 
 - Є `UA_TTS_Client.sln` (класичний формат — сумісний з усіма версіями Rider; .NET 10 за
   замовчуванням створює `.slnx`, тому формат задано явно). `dotnet build` з кореня працює.
-- Тестовий проєкт ще не створено (Крок 9).
+- Тестовий проєкт ще не створено (**Крок 9.1** — єдине, що лишилося в плані).
 - Немає lint/format/codegen-конфігурації. Немає CI.
 - SDK: .NET 10.0.113 · Python 3.14.8 (`Server_py/venv`) · torch 2.14.1+cu130, **CUDA доступна**.
 - Запуск сервера ≈45 с (модель `patriotyk/styletts2_ukrainian_multispeaker` ~911 МБ уже в кеші HF).
@@ -64,10 +66,11 @@ Base URL: `http://127.0.0.1:5000` (Flask dev server, CORS `Access-Control-Allow-
 - `/api/convert` і `/api/parse_file` тепер теж повертають JSON `{"error": …}`. Але парсер клієнта
   усе одно терпить і plain text: сервер міг бути не оновлений.
 - Не ламати CORS-заголовки: браузерне розширення користується цим самим сервером.
+- Повний контракт із прикладами `curl`/JSON — **`Doc/API.md`** (створено на Кроці 9.2).
 
 ---
 
-## ManagedBass 4.0.2 — реальний API (у `Doc/` він описаний ХИБНО)
+## ManagedBass 4.0.2 — реальний API (у `Doc/ua_tts_client_arch.md` уже виправлено)
 
 Класів `ManagedBass.Playback` / `ManagedBass.Channel` **не існує**. Є лише статичний `ManagedBass.Bass`:
 
@@ -100,7 +103,8 @@ Bass.Volume;                          // double, глобальний
   `ChannelIsActive` → `Playing`.
 - NuGet-пакет **не містить** нативних бібліотек. Потрібен системний `/usr/lib/libbass.so`.
   AUR-пакет називається **`libbass`** (`yay -S libbass`) — **`bass` з репозиторію `extra` — це
-  гра «Beneath A Steel Sky»**, не бібліотека. `Doc/` тут помиляється.
+  гра «Beneath A Steel Sky»**, не бібліотека (у старих `Doc/`-файлах була саме ця помилка;
+  `Doc/ua_tts_client_arch.md` уже виправлено).
 - `libbass.so` на цій машині встановлено.
 
 **Як перевірити API, а не гадати** (ManagedBass/SharpHook/TextCopy не мають нормальних доків):
@@ -228,8 +232,8 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 6. **BASS `SyncProcedure`**: перший аргумент — дескриптор синхронізації, другий — канал.
    Помилка тут не дає жодної помилки в лозі, просто автозупинка не спрацьовує.
 7. **Імена файлів у `Doc/` потребують екранування в shell**: `Єдина кодова база linux win11.md`
-   (пробіли) та `ua_tts_client_architecture(remove).md` (дужки). Також Linux чутливий до
-   регістру — namespace у XAML (`x:Class`, `x:DataType`) має точно збігатися з текстом у `.cs`.
+   (пробіли). Також Linux чутливий до регістру — namespace у XAML (`x:Class`, `x:DataType`)
+   має точно збігатися з текстом у `.cs`.
 8. **`.gitignore`**: `Server_py/venv/` ігнорується лише вбудованим `venv/.gitignore` (`*`),
    а не кореневим правилом — кореневе правило додано вже у поточних (незакомічених) змінах.
 9. **`Bass.Init(0, …)` — це пристрій «No sound»**, не пристрій за замовчуванням. Завжди
@@ -241,26 +245,34 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 
 ---
 
-## `Doc/` — ненадійне джерело
+## `Doc/` та `README.md` — що чим є
 
-Файли згенеровані Gemini і **розходяться з реальністю**. Не копіюй з них API без перевірки.
+Стан після **Кроку 9.2**: документи оновлено під реальний код. Старі генеровані файли
+(`implementation_roadmap.md`, `ua_tts_client_architecture(remove).md`, `Doc/Readme.md`)
+**видалено**.
 
 | Файл | Стан |
 |---|---|
-| `Doc/Єдина кодова база linux win11.md` | **Найнадійніший** — цілі та стандарти коду. Єдине, що варто читати повністю |
-| `Doc/Запит на архітектуру.md` | Початкові вимоги: 4 вкладки, `Alt+Q`, Wayland-фокус |
-| `Doc/ua_tts_client_arch.md` | ManagedBass API описано **неправильно**: `BASS_StreamCreateFile` + `GCHandle` — це стиль до-4.0, у 4.0.2 такого немає (див. вище) |
-| `Doc/ua_tts_client_architecture(remove).md` | Дубль `ua_tts_client_arch.md` з **конфліктною** структурою: верхні `Models/` + `DTOs/` + `Services/` замість `Core/Models/` + `Infrastructure/`. Кандидат на видалення |
-| `Doc/implementation_roadmap.md` | Roadmap від Gemini; посилається на неіснуючі `/api/ping` і `/health` |
-| `Doc/Readme.md` | Обривається на порожньому розділі «## 📖 Як користуватися»; називає неіснуючі `run_server.bat` та `UA_TTS_Client_Full_Cycle` |
+| `README.md` (корінь) | **Актуальний**: реальний запуск сервера/клієнта, розділ «Як користуватися», обмеження терміналу. Перенесено з `Doc/Readme.md` і дописано |
+| `Doc/API.md` | **Актуальний**: контракт ендпоінтів із прикладами `curl`/JSON (перевірено на живому сервері) |
+| `Doc/ua_tts_client_arch.md` | **Виправлено**: фактичне дерево файлів, сигнатури інтерфейсів, реальний ManagedBass 4.0.2, DI, Wayland |
+| `Doc/Final_Plan.md` | **Канонічний план**: нумерація кроків, статуси, журнал виконання |
+| `Doc/Єдина кодова база linux win11.md` | Найнадійніший зі старих — цілі та стандарти коду. Варто читати повністю |
+| `Doc/Запит на архітектуру.md` | Початкові вимоги: 4 вкладки, `Alt+Q`, Wayland-фокус (історичний) |
+| ~~`Doc/implementation_roadmap.md`~~ | **Видалено** (Крок 9.2): посилався на неіснуючі `/api/ping` і `/health` |
+| ~~`Doc/ua_tts_client_architecture(remove).md`~~ | **Видалено** (Крок 9.2): конфліктний дубль архітектури |
+| ~~`Doc/Readme.md`~~ | **Перенесено** в `README.md` у корінь (Крок 9.2) |
 
 ---
 
 ## Стан git
 
-Останній коміт: `d027288 docs: оновити AGENTS.md і Final_Plan.md за підсумками Кроків 0–5`.
-Після нього в робочому дереві: Кроки 6–8 (ViewModels, Views, DI, `ViewLocator`,
-`Microsoft.Extensions.Logging.Console`) та оновлення цього файлу й `Doc/Final_Plan.md`.
+Останній коміт: `2a2cdc6 docs: оновити AGENTS.md і Final_Plan.md за підсумками Кроків 6–8`
+(до нього: `5d547f2 fix(automation)`, `32068fa fix(audio)`, `e7b04a1 feat(ui)`).
+Після нього в робочому дереві — **Крок 9.2 (документація)**: `README.md` (новий у корені),
+`Doc/API.md` (новий), `Doc/ua_tts_client_arch.md` (переписано під реальність), видалені
+`Doc/Readme.md`, `Doc/implementation_roadmap.md`, `Doc/ua_tts_client_architecture(remove).md`,
+оновлені `AGENTS.md` і `Doc/Final_Plan.md`.
 Незакомічено — не комітити без запиту.
 
 План роботи — у `Doc/Final_Plan.md` (актуальніший за цей розділ).
@@ -272,6 +284,9 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 **Канонічний план — `Doc/Final_Plan.md`.** Не дублюй його зміст у цьому файлі: там є
 нумерація кроків, поточний стан, контракти й журнал виконання.
 
-Поточний напрям — **вертикальний зріз «Quick TTS + міні-плеєр»**: буфер → API → BASS → UI.
+Поточний стан: **Кроки 0–9 виконано без тестів**. Єдиний незавершений пункт плану —
+**Крок 9.1** (тестовий проєкт `UA_TTS_Client.Tests`), плюс майбутні ітерації
+(Reader, Character Voice, зміна гарячої клавіші).
 
-Фактичний стан історії та вимоги — у `Doc/`; **приоритет має виконуваний код і ці два файли**, не документи.
+Фактичний стан історії та вимоги — у `Doc/` і `README.md`; **приоритет має виконуваний код
+і ці два файли**, не документи.
