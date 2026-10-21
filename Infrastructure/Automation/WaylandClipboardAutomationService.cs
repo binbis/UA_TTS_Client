@@ -29,10 +29,14 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
 {
     private const string ApplicationName = "UA_TTS_Client";
 
-    /// <summary>Затримка між симуляцією Ctrl+C і читанням буфера (мс).</summary>
-    private const int ClipboardDelayMilliseconds = 120;
+    /// <summary>Інтервал опитування буфера обміну після симуляції Ctrl+C (мс).</summary>
+    private const int ClipboardPollIntervalMilliseconds = 50;
+
+    /// <summary>Скільки чекати, доки вміст буфера зміниться після Ctrl+C.</summary>
+    private static readonly TimeSpan ClipboardChangeTimeout = TimeSpan.FromMilliseconds(900);
 
     private static readonly TimeSpan YdotoolTimeout = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan ClipboardCommandTimeout = TimeSpan.FromSeconds(2);
 
     private readonly ILogger<WaylandClipboardAutomationService> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -60,6 +64,10 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
 
+            // Запам'ятовуємо поточний вміст: якщо Ctrl+C не спрацює, буфер не зміниться
+            // і ми не підсунемо користувачу старий текст як «захоплений».
+            var previous = await ReadClipboardAsync(cancellationToken).ConfigureAwait(false);
+
             var simulated = await SimulateCopyAsync(cancellationToken).ConfigureAwait(false);
             if (!simulated)
             {
@@ -67,12 +75,22 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
                 return string.Empty;
             }
 
-            // Буфер обміну оновлюється асинхронно: без паузи читається старе значення.
-            await Task.Delay(ClipboardDelayMilliseconds, cancellationToken).ConfigureAwait(false);
+            var deadline = DateTime.UtcNow + ClipboardChangeTimeout;
+            while (DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(ClipboardPollIntervalMilliseconds, cancellationToken).ConfigureAwait(false);
 
-            var text = await ReadClipboardAsync(cancellationToken).ConfigureAwait(false);
-            _logger.LogDebug("Захоплено {Length} символів із буфера обміну", text.Length);
-            return text;
+                var current = await ReadClipboardAsync(cancellationToken).ConfigureAwait(false);
+                if (!string.Equals(current, previous, StringComparison.Ordinal))
+                {
+                    _logger.LogDebug("Захоплено {Length} символів із буфера обміну", current.Length);
+                    return current;
+                }
+            }
+
+            _logger.LogWarning("Буфер обміну не змінився після Ctrl+C: нічого не виділено "
+                               + "або активне вікно не прийняло Ctrl+C");
+            return string.Empty;
         }
         finally
         {
@@ -84,22 +102,26 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
     /// Читає текст із буфера обміну.
     /// </summary>
     /// <remarks>
-    /// TextCopy на Linux працює лише через X11 (<c>xsel</c>), тому в чистому Wayland-сеансі
-    /// без XWayland він падає. У такому разі використовується <c>wl-paste</c>.
+    /// У Wayland-сеансі спершу використовується <c>wl-paste</c>: TextCopy на Linux працює
+    /// лише через X11 (<c>xsel</c>) і може повернути застарілий X11-буфер замість свіжого
+    /// Wayland-буфера. Якщо <c>wl-paste</c> недоступний, є fallback на TextCopy та <c>xsel</c>.
     /// </remarks>
     private async Task<string> ReadClipboardAsync(CancellationToken cancellationToken)
     {
-        try
+        if (OperatingSystem.IsLinux() && IsWaylandSession())
         {
-            var text = await ClipboardService.GetTextAsync(cancellationToken).ConfigureAwait(false);
-            if (!string.IsNullOrEmpty(text))
+            var wayland = await TryRunClipboardCommandAsync("wl-paste", ["--no-newline"], cancellationToken)
+                .ConfigureAwait(false);
+            if (wayland is not null)
             {
-                return text;
+                return wayland;
             }
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+
+        var textCopy = await ReadWithTextCopyAsync(cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrEmpty(textCopy))
         {
-            _logger.LogDebug(ex, "TextCopy не зміг прочитати буфер обміну — пробую wl-paste");
+            return textCopy;
         }
 
         if (!OperatingSystem.IsLinux())
@@ -107,17 +129,30 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
             return string.Empty;
         }
 
-        var wayland = await TryRunClipboardCommandAsync("wl-paste", ["--no-newline"], cancellationToken)
-            .ConfigureAwait(false);
-        if (wayland is not null)
-        {
-            return wayland;
-        }
-
         var x11 = await TryRunClipboardCommandAsync("xsel", ["--clipboard", "--output"], cancellationToken)
             .ConfigureAwait(false);
         return x11 ?? string.Empty;
     }
+
+    /// <summary>
+    /// Читає буфер через TextCopy (на Linux — X11/<c>xsel</c>).
+    /// </summary>
+    private async Task<string> ReadWithTextCopyAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await ClipboardService.GetTextAsync(cancellationToken).ConfigureAwait(false) ?? string.Empty;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogDebug(ex, "TextCopy не зміг прочитати буфер обміну");
+            return string.Empty;
+        }
+    }
+
+    /// <summary>Чи запущений застосунок у Wayland-сеансі.</summary>
+    private static bool IsWaylandSession() =>
+        !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY"));
 
     /// <summary>
     /// Запускає консольну утиліту буфера обміну й повертає її stdout.
@@ -150,7 +185,7 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
             }
 
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(YdotoolTimeout);
+            timeoutCts.CancelAfter(ClipboardCommandTimeout);
 
             var outputTask = process.StandardOutput.ReadToEndAsync(timeoutCts.Token);
             await process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(false);
@@ -160,7 +195,7 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            _logger.LogWarning("{FileName} не встиг завершитися за {Timeout} с", fileName, YdotoolTimeout.TotalSeconds);
+            _logger.LogWarning("{FileName} не встиг завершитися за {Timeout} с", fileName, ClipboardCommandTimeout.TotalSeconds);
             return null;
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)

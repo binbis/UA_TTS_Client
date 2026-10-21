@@ -18,6 +18,9 @@ namespace UA_TTS_Client.Infrastructure.Automation;
 /// <para>Стан модифікаторів доводиться тримати самостійно: у <see cref="KeyboardEventData"/>
 /// немає інформації про затиснуті Alt/Ctrl, тому окремо відслідковуються події
 /// <see cref="KeyCode.VcLeftAlt"/> та <see cref="KeyCode.VcRightAlt"/>.</para>
+/// <para>Гаряча клавіша спрацьовує не в момент натискання Q, а після відпускання обох
+/// клавіш. Інакше симуляція <c>Ctrl+C</c> для захоплення виділеного тексту надсилалася б,
+/// поки фізичний Alt ще затиснутий, і застосунок отримував би <c>Ctrl+Alt+C</c>.</para>
 /// <para>Власні симульовані події (наприклад, <c>Ctrl+C</c> від сервісу буфера обміну)
 /// ігноруються через <see cref="HookEventArgs.IsEventSimulated"/>.</para>
 /// </remarks>
@@ -31,7 +34,8 @@ public sealed class SharpHookGlobalHotkeyService : IGlobalHotkeyService, IDispos
     private TaskPoolGlobalHook? _hook;
     private Task? _runTask;
     private volatile bool _altPressed;
-    private volatile bool _hotkeyTriggered;
+    private volatile bool _qPressed;
+    private volatile bool _hotkeyArmed;
     private bool _disposed;
 
     /// <summary>
@@ -86,7 +90,8 @@ public sealed class SharpHookGlobalHotkeyService : IGlobalHotkeyService, IDispos
             _hook = null;
             _runTask = null;
             _altPressed = false;
-            _hotkeyTriggered = false;
+            _qPressed = false;
+            _hotkeyArmed = false;
         }
 
         if (hook is null)
@@ -177,11 +182,14 @@ public sealed class SharpHookGlobalHotkeyService : IGlobalHotkeyService, IDispos
             return;
         }
 
-        if (keyCode == KeyCode.VcQ && _altPressed && !_hotkeyTriggered)
+        if (keyCode == KeyCode.VcQ)
         {
-            // Автоповтор Q не повинен викликати захоплення кілька разів поспіль.
-            _hotkeyTriggered = true;
-            RaiseHotkeyPressed();
+            _qPressed = true;
+            if (_altPressed)
+            {
+                // Автоповтор Q не створює повторних спрацювань: озброюємось один раз.
+                _hotkeyArmed = true;
+            }
         }
     }
 
@@ -197,11 +205,31 @@ public sealed class SharpHookGlobalHotkeyService : IGlobalHotkeyService, IDispos
         if (keyCode is KeyCode.VcLeftAlt or KeyCode.VcRightAlt)
         {
             _altPressed = false;
+            TryRaiseHotkey();
         }
         else if (keyCode == KeyCode.VcQ)
         {
-            _hotkeyTriggered = false;
+            _qPressed = false;
+            TryRaiseHotkey();
         }
+    }
+
+    /// <summary>
+    /// Повідомляє про гарячу клавішу, коли обидві її клавіші вже відпущені.
+    /// </summary>
+    /// <remarks>
+    /// Це принципово: поки фізичний Alt затиснутий, симульований <c>Ctrl+C</c> приходить
+    /// у застосунок як <c>Ctrl+Alt+C</c> і нічого не копіює.
+    /// </remarks>
+    private void TryRaiseHotkey()
+    {
+        if (!_hotkeyArmed || _altPressed || _qPressed)
+        {
+            return;
+        }
+
+        _hotkeyArmed = false;
+        RaiseHotkeyPressed();
     }
 
     /// <summary>
