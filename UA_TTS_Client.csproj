@@ -18,6 +18,7 @@
         <Folder Include="Infrastructure\Storage\" />
         <Folder Include="Models\"/>
         <AvaloniaResource Include="Assets\**"/>
+        <Folder Include="Server_py\" />
         <Folder Include="ViewModels\Components\" />
         <Folder Include="ViewModels\Tabs\" />
         <Folder Include="Views\Tabs\" />
