@@ -44,6 +44,9 @@ out/
 UpgradeLog.htm
 UpgradeLog.xml
 
+# Python
+./Server_py/venv
+
 # Логи та тимчасові файли
 *.log
 *.tmp
@@ -56,7 +59,6 @@ packages/
 *.nupkg
 
 # Системні файли ОС
-
 .DS_Store
 Thumbs.db
 Desktop.ini
