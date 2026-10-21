@@ -225,6 +225,15 @@ def extract_text_from_odt(file_stream):
 def api_get_voices():
     return jsonify(list(voices.keys()))
 
+@app.route('/api/health', methods=['GET'])
+def api_health():
+    return jsonify({
+        "status": "ok",
+        "device": device,
+        "voices": len(voices),
+        "model": "patriotyk/styletts2_ukrainian_multispeaker",
+    })
+
 @app.route('/api/verbalize', methods=['POST'])
 def api_verbalize():
     data = request.json
@@ -324,7 +333,7 @@ def api_synthesize():
 
 @app.route('/api/convert', methods=['POST'])
 def api_convert():
-    if 'file' not in request.files: return "No file", 400
+    if 'file' not in request.files: return jsonify({"error": "No file"}), 400
     file = request.files['file']
     fmt = request.form.get('format', 'mp3')
     try:
@@ -338,7 +347,7 @@ def api_convert():
 
 @app.route('/api/parse_file', methods=['POST'])
 def api_parse_file():
-    if 'file' not in request.files: return "No file", 400
+    if 'file' not in request.files: return jsonify({"error": "No file"}), 400
     file = request.files['file']
     filename = file.filename.lower()
     
