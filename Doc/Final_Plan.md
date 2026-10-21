@@ -58,10 +58,10 @@
 | 2 | Сервер: мінімальні правки `server.py` | ✅ **виконано** |
 | 3 | Infrastructure: Storage + API | ✅ **виконано** |
 | 4 | Infrastructure: Audio (ManagedBass) | ✅ **виконано** |
-| 5 | Infrastructure: Automation (хук + буфер) | ✅ **виконано** (живу перевірку Alt+Q — після UI, Крок 6–7) |
-| 6 | ViewModels | ⬜ не розпочато |
-| 7 | Views (XAML) | ⬜ не розпочато |
-| 8 | Composition Root (DI) | ⬜ не розпочато |
+| 5 | Infrastructure: Automation (хук + буфер) | ✅ **виконано** (Alt+Q перевірено фізично; копіювання виправлено — тригер на відпусканні) |
+| 6 | ViewModels | ✅ **виконано** |
+| 7 | Views (XAML) | ✅ **виконано** |
+| 8 | Composition Root (DI) | ✅ **виконано** |
 | 9 | Тести + документація | ⬜ не розпочато |
 
 Уже виконано поза кроками (див. «Журнал виконання»): аналіз репозиторію, запуск і перевірка
@@ -113,10 +113,12 @@ UA_TTS_Client/
 │   ├── MainWindowViewModel.cs
 │   ├── Tabs/       QuickTtsViewModel.cs, SettingsViewModel.cs
 │   │               ReaderViewModel.cs, CharacterVoiceViewModel.cs   ← заглушки
-│   └── Components/ PlaybackControlViewModel.cs
+│   ├── Components/ PlaybackControlViewModel.cs
+│   └── Design/     DesignData.cs   ← дані для прев'ю XAML у Rider
 └── Views/
     ├── MainWindow.axaml(.cs)
-    └── Tabs/       QuickTtsView.axaml(.cs), SettingsView.axaml(.cs)
+    └── Tabs/       QuickTtsView.axaml(.cs), SettingsView.axaml(.cs),
+                    ReaderView.axaml(.cs), CharacterVoiceView.axaml(.cs)
 ```
 
 > Порожні `<Folder Include=…>` з `.csproj` прибрано на Кроці 0.4. `Core/` та `Infrastructure/`
@@ -255,7 +257,8 @@ curl -sS -X POST http://127.0.0.1:5000/api/synthesize \
 - таймаут у конструкторі піднімається до 5 хв, якщо він менший за 2 хв;
 - `TtsApiException` має `StatusCode` і `IsConnectionError` (мережа/таймаут);
 - `JsonSettingsService` має другий конструктор із явним шляхом — для тестів Кроку 9;
-- на Linux `TextCopy` вимагає X11, тому в automation-сервісі є fallback на `wl-paste`.
+- на Linux `TextCopy` вимагає X11, тому в automation-сервісі основний шлях читання — `wl-paste`,
+  а TextCopy/xsel — fallback; після Ctrl+C буфер опитується до 900 мс.
 
 ---
 
@@ -265,8 +268,9 @@ curl -sS -X POST http://127.0.0.1:5000/api/synthesize \
 `IDisposable`.
 
 **Життєвий цикл:**
-1. `Bass.Init(device: 0, freq: 44100, DeviceInitFlags.Default, IntPtr.Zero, IntPtr.Zero)` —
-   один раз, з перевіркою `Bass.LastError`.
+1. `Bass.Init(Bass.DefaultDevice, 44100, DeviceInitFlags.Default, IntPtr.Zero, IntPtr.Zero)` —
+   один раз, з перевіркою `Bass.LastError`. **Не `0`**: на Linux індекс 0 — це «No sound»,
+   а `Bass.DefaultDevice == -1` — активний вихід PipeWire/PulseAudio.
 2. `int handle = Bass.CreateStream(wavBytes, 0, wavBytes.Length, BassFlags.Default)` —
    масив `byte[]` **має жити весь час відтворення** (pin через `GCHandle` або зберегти в полі).
 3. `Bass.ChannelSetSync(handle, SyncFlags.End, 0, syncProc, IntPtr.Zero)` — автозупинка/подія
@@ -281,10 +285,13 @@ curl -sS -X POST http://127.0.0.1:5000/api/synthesize \
 **Обов'язково:** `IDisposable`, обробка `Bass.LastError` / `BassException.ErrorCode`,
 `ILogger<T>`, без запису тимчасових `.wav` на диск.
 
-**Перевірка (виконано):** сервіс відтворив WAV, отриманий від сервера (позиція BASS рухалася,
-пристрій 0); пауза/продовження/стоп/гучність працюють; кінець треку автоматично дає `Stopped`.
+**Перевірка (виконано):** сервіс відтворив WAV, отриманий від сервера (позиція BASS рухалася);
+пауза/продовження/стоп/гучність працюють; кінець треку автоматично дає `Stopped`.
 Знайдено й виправлено помилку: `SyncProcedure` передає дескриптор синхронізації першим
 параметром, тому автозупинка спершу не спрацьовувала.
+**Пізніше знайдено причину тиші в UI:** `Bass.Init(0, …)` відкривав пристрій «No sound».
+Після переходу на `Bass.DefaultDevice` `pactl list sink-inputs` показує потік
+`PipeWire ALSA [app]` на активному sink (Bluetooth-навушники), звук іде.
 
 ---
 
@@ -294,8 +301,8 @@ curl -sS -X POST http://127.0.0.1:5000/api/synthesize \
 
 | Файл | Реалізація |
 |---|---|
-| `Infrastructure/Automation/SharpHookGlobalHotkeyService.cs` | `TaskPoolGlobalHook(parallelismLevel: 1, new UioHookProvider())`; підписка на `KeyPressed`; фільтр «затиснутий Alt + натиснутий Q». `KeyboardEventData` — **структура**: поле `KeyCode`, властивість `KeyChar`; імена enum — з префіксом `Vc` (`VcQ`, `VcLeftAlt`, `VcLeftControl`). Модифікатори треба тримати у власному стані (окремим хуком на `VcLeftAlt`/`VcRightAlt`), у `KeyboardEventData` їх немає. Ігнорувати власні симульовані події через `IsEventSimulated` |
-| `Infrastructure/Automation/WaylandClipboardAutomationService.cs` | `SharpHook.Simulation.EventSimulator` → `Sequence()` → `AddKeyPress(KeyCode.VcLeftControl)` + `AddKeyPress(KeyCode.VcC)` + `AddKeyRelease(...)` → `.Simulate()` (або скорочено `Simulator.SimulateKeyStroke(KeyCode.VcLeftControl, KeyCode.VcC)`) → **`await Task.Delay(80..120)`** → читати буфер через `TextCopy.ClipboardService.GetText()` |
+| `Infrastructure/Automation/SharpHookGlobalHotkeyService.cs` | `TaskPoolGlobalHook(parallelismLevel: 1, new UioHookProvider())`; підписка на `KeyPressed`/`KeyReleased`; Alt+Q озброюється на натисканні й спрацьовує **після відпускання обох клавіш** (інакше Ctrl+C іде як Ctrl+Alt+C). `KeyboardEventData` — **структура**: поле `KeyCode`, властивість `KeyChar`; імена enum — з префіксом `Vc` (`VcQ`, `VcLeftAlt`, `VcLeftControl`). Модифікатори треба тримати у власному стані (окремим хуком на `VcLeftAlt`/`VcRightAlt`), у `KeyboardEventData` їх немає. Ігнорувати власні симульовані події через `IsEventSimulated` |
+| `Infrastructure/Automation/WaylandClipboardAutomationService.cs` | `SharpHook.Simulation.EventSimulator` → `Sequence()` → `AddKeyPress(KeyCode.VcLeftControl)` + `AddKeyPress(KeyCode.VcC)` + `AddKeyRelease(...)` → `.Simulate()` → опитувати буфер до 900 мс, доки він не зміниться (Wayland: `wl-paste`, fallback — `TextCopy`/`xsel`) |
 
 **Wayland-специфіка:** Wayland не дає доступу до виділення в чужих вікнах — лише симуляція
 Ctrl+C через uinput. Користувач у групі `input`, демон `ydotool` активний.
@@ -306,18 +313,24 @@ Ctrl+C через uinput. Користувач у групі `input`, демон
 **Фактично:**
 - хук стартує й отримує події (перевірено симульованими `Ctrl+F13`; власні симульовані події
   відфільтровуються через `IsEventSimulated`);
-- перед `Ctrl+C` сервіс відпускає Alt, інакше активне вікно отримало б `Ctrl+Alt+C`;
+- **тригер перенесено на відпускання Alt+Q**: інакше симуляція Ctrl+C надсилалася, поки
+  фізичний Alt ще затиснутий, і вікно отримувало `Ctrl+Alt+C`;
 - резервні шляхи: SharpHook `EventSimulator` → `ydotool key 56:0 100:0 29:1 46:1 46:0 29:0`
-  для симуляції; `TextCopy` → `wl-paste` → `xsel` для читання буфера;
-- **живу перевірку Alt+Q відкладено до появи UI (Кроки 6–7)**: зараз захоплений текст нікуди
-  виводити, а автоматична симуляція Ctrl+C надіслала б SIGINT у термінал користувача.
+  для симуляції; `wl-paste` (Wayland) → `TextCopy`/`xsel` для читання буфера;
+- повний ланцюжок «виділення → симульований Ctrl+C → `wl-paste`» перевірено на
+  `zenity --entry`: захоплено рівно `CLIP_TEST_98765`;
+- якщо буфер не змінився за 900 мс, сервіс повертає порожній рядок, а не старий вміст;
+- **обмеження:** у терміналах копіювання — `Ctrl+Shift+C`, тому симульований `Ctrl+C` там
+  надсилає SIGINT; для термінала треба скопіювати вручну й вставити в поле (`Ctrl+V`);
+- **живу перевірку Alt+Q фізично виконано** (хук спрацьовує); у цій сесії `ydotool` для
+  автоматизації не працює, тому UI-перевірка виконується вручну.
 
 > Якщо SharpHook під Wayland не перехоплює клавіатуру — fallback: викликати `ydotool` CLI
 > через `Process.Start` замість `EventSimulator`.
 
 ---
 
-### Крок 6 — ViewModels ⬜
+### Крок 6 — ViewModels ✅
 
 **Файли:**
 
@@ -334,18 +347,31 @@ Ctrl+C через uinput. Користувач у групі `input`, демон
 залежності лише через конструктор; асинхронні команди з `CancellationToken`;
 жодного `ConfigureAwait` без потреби; `ILogger<T>`.
 
-**Перевірка:** `dotnet build`; у кожній VM гарантовано `Dispose`/отміна `CancellationTokenSource`.
+**Перевірка (виконано):** `dotnet build` — 0 warnings; консольний harness на реальних сервісах
+перевірив завантаження 31 голосу, захоплення тексту, синтез, перехід `Playing → Stopped`,
+збереження й читання конфігу, синхронізацію гучності, валідацію URL, стани `Online`/`Offline`.
+
+**Фактично:**
+- `ViewModelBase` запам'ятовує `SynchronizationContext` і надає `OnUiThread` — події BASS
+  приходять із фонового потоку, тому стан плеєра оновлюється через нього;
+- `SettingsViewModel` є джерелом істини для `QuickTtsViewModel` (голос, швидкість);
+  гучність синхронізується з `PlaybackControlViewModel` в обидва боки;
+- `MainWindowViewModel` тримає `PeriodicTimer` (перевірка сервера кожні 15 с) і підписку
+  на `IGlobalHotkeyService.HotkeyPressed` (Alt+Q → захоплення виділеного);
+- для прев'ю Rider додано `ViewModels/Design/DesignData.cs` з фіктивними реалізаціями
+  інтерфейсів; production-код його не використовує.
 
 ---
 
-### Крок 7 — Views (XAML) ⬜
+### Крок 7 — Views (XAML) ✅
 
 **Файли:** `Views/MainWindow.axaml(.cs)`, `Views/Tabs/QuickTtsView.axaml(.cs)`,
 `Views/Tabs/SettingsView.axaml(.cs)`.
 
 **Обов'язково:**
 - `x:DataType="vm:XxxViewModel"` у кожному XAML (compiled bindings → перевірка ще на збірці);
-- `Design.DataContext` для прев'ю в Rider;
+- design-time DataContext — у code-behind через `if (Design.IsDesignMode) DataContext = DesignData…`
+  (Rider-аналізатор помилково скаржиться на `Design.DataContext` з `x:Static`);
 - `RequestedThemeVariant="Dark"` уже встановлено в `App.axaml` — не змінювати;
 - Avalonia 12: замість `Window` у вкладках — `UserControl`; іконки — лише з `Assets/`.
 
@@ -354,11 +380,20 @@ Ctrl+C через uinput. Користувач у групі `input`, демон
 - центральний `TabControl` на 4 вкладки;
 - нижня панель: міні-плеєр (Play/Pause/Stop, гучність, стан, назва голосу).
 
-**Перевірка:** вікно відкривається, вкладки перемикаються, індикатор сервера стає зеленим.
+**Перевірка (виконано):** вікно відкривається, вкладки перемикаються, індикатор сервера стає зеленим.
+
+**Фактично:**
+- додано `Views/Tabs/ReaderView.axaml(.cs)` і `CharacterVoiceView.axaml(.cs)`, щоб ViewLocator
+  резолвив усі чотири вкладки (у початковому дереві були лише дві);
+- Avalonia 12: `TextBox.Watermark` застарілий → `PlaceholderText`; прокрутка всередині
+  `TextBox` задається через `ScrollViewer.VerticalScrollBarVisibility`;
+- стилі `Classes="hint"` і `Ellipse.status-dot.online` описані в `MainWindow.Styles`;
+- візуальну перевірку зроблено скриншотом робочого вікна (KDE/Wayland): верхня панель
+  «Онлайн · cuda · 31 голосів» із зеленим індикатором, 4 вкладки, міні-плеєр працюють.
 
 ---
 
-### Крок 8 — Composition Root (DI) ⬜
+### Крок 8 — Composition Root (DI) ✅
 
 **Файл:** `App.axaml.cs` — єдине місце реєстрації.
 
@@ -380,7 +415,19 @@ desktop.MainWindow = new MainWindow { DataContext = services.BuildServiceProvide
 `FullName.Replace("ViewModel", "View")` → `UA_TTS_Client.Views.MainView`, чого **не існує**
 (є `Views.MainWindow`). Результат — `TextBlock "Not Found: …"` замість вікна.
 
-**Перевірка:** запуск застосунку → вікно, вкладки, статус сервера, звук.
+**Перевірка (виконано):** запуск застосунку → вікно, вкладки, статус сервера, звук.
+
+**Фактично:**
+- `App.axaml.cs` реєструє `AddLogging` (консоль, фільтр для шумних `HttpClient`-логів),
+  `JsonSettingsService`, `BassAudioPlayerService`, automation-сервіси, типізований
+  `HttpClient` і чотири ViewModel;
+- конфігурація читається синхронно **до** побудови контейнера (адреса сервера потрібна
+  для `BaseAddress`) і реєструється як singleton `AppConfig`; зміна URL застосовується
+  після перезапуску — це прямо написано в UI;
+- `MainWindowViewModel.InitializeAsync` викликається з `window.Opened`;
+  `desktop.Exit` звільняє ViewModel і `ServiceProvider` (BASS, хук, клієнти);
+- `ViewLocator` тепер замінює `.ViewModels` → `.Views` і `ViewModel` → `View`, а для
+  `MainWindowViewModel` додатково пробує `Views.MainWindow`.
 
 ---
 
@@ -448,7 +495,7 @@ Base URL `http://127.0.0.1:5000`. CORS: `Access-Control-Allow-Origin: *`.
 |---|---|---|
 | SharpHook не перехоплює клавіатуру під Wayland | середня | ✅ хук стартує й отримує події на цій машині; для симуляції є fallback на `ydotool`, для читання — на `wl-paste` |
 | `CreateStream(byte[])` не працює як очікується (прапорця `Memory` в enum немає) | низька | ✅ перевірено: WAV із `byte[]` відтворюється, позиція рухається |
-| Немає ALSA/PulseAudio-виходу в сеансі Wayland | низька | ✅ `Bass.Init(0, …)` успішний; помилка ініціалізації переводить сервіс у `Error` і показується в UI |
+| Немає ALSA/PulseAudio-виходу в сеансі Wayland | низька | ✅ `Bass.DefaultDevice` створює потік у PipeWire (перевірено `pactl`); `Bass.Init(0, …)` вів на «No sound» — виправлено. Помилка ініціалізації переводить сервіс у `Error` |
 | Сервер довго генерує великий текст | низька | Таймаут 5 хв у `TtsApiClient`, індикатор синтезу в UI |
 | Помилка парсингу відповіді сервера | середня | Парсер терпить і JSON, і plain text (див. Крок 3) |
 | Помилки компіляції в XAML через compiled bindings | висока | `x:DataType` у кожному файлі; перевірка на `dotnet build` після Кроку 7 |
@@ -469,6 +516,11 @@ Base URL `http://127.0.0.1:5000`. CORS: `Access-Control-Allow-Origin: *`.
 | 2026-10-21 | **Кроки 0–5 реалізовано.** Крок 0: прибрано `<Folder Include>` з `.csproj`, створено `Server_py/run_server.sh`, `UA_TTS_Client.sln`. Крок 1: `Core/` (enum-и, 7 моделей, 5 інтерфейсів, `TtsApiException`). Крок 2: `/api/health`, уніфіковані JSON-помилки (`server.py`). Крок 3: `JsonSettingsService`, `TtsApiClient` із fallback health і доменними винятками. Крок 4: `BassAudioPlayerService` — відтворення з пам'яті, пауза/стоп/гучність, автозупинка. Крок 5: `SharpHookGlobalHotkeyService` (Alt+Q) + `WaylandClipboardAutomationService` (Ctrl+C, ydotool/wl-paste fallback). `dotnet build` — 0 warnings / 0 errors; smoke-тест усіх ендпоінтів і сервісів — PASS |
 | 2026-10-21 | Виявлено під час Кроку 4: `Bass.SyncProcedure` передає **дескриптор синхронізації** першим, канал — другим; через це автозупинка не спрацьовувала. Виправлено, внесено в `AGENTS.md` |
 | 2026-10-21 | Виявлено: `TextCopy` на Linux працює лише через X11; додано fallback `wl-paste` → `xsel` у `WaylandClipboardAutomationService` |
+| 2026-10-21 | **Кроки 6–8 реалізовано.** ViewModels: `MainWindowViewModel` (health-check кожні 15 с, Alt+Q), `QuickTtsViewModel` (захоплення → синтез → плеєр, скасування), `SettingsViewModel` (голоси, швидкість, гучність, збереження), `PlaybackControlViewModel`, заглушки Reader/Character Voice. Views: головне вікно з індикатором сервера, 4 вкладки, міні-плеєр; XAML з `x:DataType`, design-time DataContext у code-behind через `Design.IsDesignMode`. DI: усі сервіси + ViewModel-и, конфіг читається до побудови контейнера, `ViewLocator` виправлено |
+| 2026-10-21 | Перевірено: `dotnet build` — 0 warnings / 0 errors; VM-harness на реальних сервісах (31 голос, синтез, стан плеєра, збереження конфігу, Online/Offline) — ALL PASSED; скриншот робочого вікна підтвердив макет і зелений індикатор «Онлайн · cuda · 31 голосів» |
+| 2026-10-21 | Виправлено тишу: `Bass.Init(0)` відкривав пристрій «No sound». Перейшли на `Bass.DefaultDevice` (-1). Перевірено через `pactl list sink-inputs`: з'являється `PipeWire ALSA [app]` на sink 86 (Bluetooth-навушники), гучність 100% |
+| 2026-10-21 | Виправлено захоплення виділеного: Alt+Q тепер спрацьовує після відпускання обох клавіш (раніше Ctrl+C ішов як Ctrl+Alt+C); на Wayland першим читається `wl-paste`; буфер опитується до 900 мс, і якщо не змінився — повертається порожній рядок, а не старий вміст. Ланцюжок перевірено harness-ом на `zenity`: захоплено `CLIP_TEST_98765` |
+| 2026-10-21 | Прибрано попередження Rider: `Design.DataContext="{x:Static …}"` замінено на `if (Design.IsDesignMode) DataContext = DesignData…` у code-behind. XAML-аналізатор більше не плутає attached property; `dotnet build` — 0 warnings |
 
 ---
 
