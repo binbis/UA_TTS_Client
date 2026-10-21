@@ -45,12 +45,15 @@ UpgradeLog.htm
 UpgradeLog.xml
 
 # Python
-./Server_py/venv
+Server_py/__pycache__/
+Server_py/venv/
 
 # Логи та тимчасові файли
 *.log
 *.tmp
 *.bak
+*.wav
+*.mp3
 
 # Кеш та пакети (NuGet)
 *.nuget.props
