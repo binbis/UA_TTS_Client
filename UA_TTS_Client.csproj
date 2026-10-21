@@ -8,20 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Folder Include="Core\Enums\" />
-        <Folder Include="Core\Interfaces\" />
-        <Folder Include="Core\Models\" />
-        <Folder Include="Infrastructure\Api\" />
-        <Folder Include="Infrastructure\Audio\" />
-        <Folder Include="Infrastructure\Automation\" />
-        <Folder Include="Infrastructure\Parsing\" />
-        <Folder Include="Infrastructure\Storage\" />
-        <Folder Include="Models\"/>
         <AvaloniaResource Include="Assets\**"/>
-        <Folder Include="Server_py\" />
-        <Folder Include="ViewModels\Components\" />
-        <Folder Include="ViewModels\Tabs\" />
-        <Folder Include="Views\Tabs\" />
     </ItemGroup>
 
     <ItemGroup>
