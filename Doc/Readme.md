@@ -48,6 +48,8 @@ python server.py
 ```bash
 ### для wayland
 sudo pacman -S ydotoold
+```
+```bash
 ### для TextCopy
 sudo pacman -S wl-clipboard xsel
 
