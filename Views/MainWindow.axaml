@@ -3,20 +3,108 @@
         xmlns:vm="using:UA_TTS_Client.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
         x:Class="UA_TTS_Client.Views.MainWindow"
-        x:DataType="vm:MainViewModel"
+        x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="UA_TTS_Client">
+        Title="UA TTS Client"
+        Width="980" Height="680"
+        MinWidth="760" MinHeight="520">
 
-    <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainViewModel />
-    </Design.DataContext>
+    <Window.Styles>
+        <Style Selector="Ellipse.status-dot">
+            <Setter Property="Fill" Value="#F85149" />
+        </Style>
+        <Style Selector="Ellipse.status-dot.online">
+            <Setter Property="Fill" Value="#3FB950" />
+        </Style>
+        <Style Selector="Button.player">
+            <Setter Property="MinWidth" Value="38" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.hint">
+            <Setter Property="Foreground" Value="#8B949E" />
+        </Style>
+    </Window.Styles>
 
-    <TextBox Text="{Binding Greeting}"
-             HorizontalAlignment="Center"
-             VerticalAlignment="Center" />
+    <DockPanel>
 
+        <!-- Верхня панель: назва та стан сервера -->
+        <Border DockPanel.Dock="Top" Padding="16,10" BorderThickness="0,0,0,1" BorderBrush="#30363D">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="UA TTS Client"
+                           FontSize="20"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <Ellipse Classes="status-dot"
+                             Classes.online="{Binding IsServerOnline}"
+                             Width="10" Height="10"
+                             VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding ServerStatusText}"
+                               VerticalAlignment="Center"
+                               ToolTip.Tip="{Binding ServerDetails}" />
+                    <Button Content="Перевірити" Command="{Binding RefreshServerStatusCommand}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Нижня панель: міні-плеєр -->
+        <Border DockPanel.Dock="Bottom" Padding="16,8" BorderThickness="0,1,0,0" BorderBrush="#30363D">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+                <Button Classes="player"
+                        Content="{Binding Playback.PlayPauseGlyph}"
+                        Command="{Binding Playback.TogglePlayPauseCommand}"
+                        ToolTip.Tip="Пауза / продовжити" />
+
+                <Button Grid.Column="1"
+                        Classes="player"
+                        Content="■"
+                        Margin="6,0,0,0"
+                        Command="{Binding Playback.StopCommand}"
+                        ToolTip.Tip="Зупинити" />
+
+                <TextBlock Grid.Column="2"
+                           Margin="12,0,0,0"
+                           VerticalAlignment="Center"
+                           Text="{Binding Playback.StateText}" />
+
+                <TextBlock Grid.Column="3"
+                           Margin="16,0"
+                           VerticalAlignment="Center"
+                           Classes="hint"
+                           Text="{Binding Playback.VoiceName}" />
+
+                <TextBlock Grid.Column="4"
+                           VerticalAlignment="Center"
+                           Classes="hint"
+                           Text="Гучність" />
+
+                <Slider Grid.Column="5"
+                        Width="160"
+                        Margin="8,0,0,0"
+                        Minimum="0"
+                        Maximum="1"
+                        Value="{Binding Playback.Volume}" />
+            </Grid>
+        </Border>
+
+        <!-- Центральна частина: вкладки -->
+        <TabControl Margin="12,8">
+            <TabItem Header="Quick TTS">
+                <ContentControl Content="{Binding QuickTts}" />
+            </TabItem>
+            <TabItem Header="Reader">
+                <ContentControl Content="{Binding Reader}" />
+            </TabItem>
+            <TabItem Header="Character Voice">
+                <ContentControl Content="{Binding CharacterVoice}" />
+            </TabItem>
+            <TabItem Header="Налаштування">
+                <ContentControl Content="{Binding Settings}" />
+            </TabItem>
+        </TabControl>
+
+    </DockPanel>
 </Window>

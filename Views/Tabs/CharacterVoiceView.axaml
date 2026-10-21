@@ -1,0 +1,21 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:UA_TTS_Client.ViewModels.Tabs"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="500"
+             x:Class="UA_TTS_Client.Views.Tabs.CharacterVoiceView"
+             x:DataType="vm:CharacterVoiceViewModel">
+
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" Margin="24">
+        <TextBlock Text="{Binding Title}"
+                   FontSize="20"
+                   FontWeight="SemiBold"
+                   HorizontalAlignment="Center" />
+        <TextBlock Text="{Binding Description}"
+                   Classes="hint"
+                   MaxWidth="520"
+                   TextAlignment="Center"
+                   TextWrapping="Wrap" />
+    </StackPanel>
+</UserControl>

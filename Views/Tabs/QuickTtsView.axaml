@@ -1,0 +1,54 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:UA_TTS_Client.ViewModels.Tabs"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="500"
+             x:Class="UA_TTS_Client.Views.Tabs.QuickTtsView"
+             x:DataType="vm:QuickTtsViewModel">
+
+    <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="4">
+
+        <TextBlock Grid.Row="0"
+                   Classes="hint"
+                   TextWrapping="Wrap"
+                   Text="Вставте текст або натисніть «Захопити виділене». Alt+Q працює у браузері чи редакторі; у терміналі Ctrl+C — це SIGINT, тому скопіюйте вручну (Ctrl+Shift+C) і вставте сюди." />
+
+        <TextBox Grid.Row="1"
+                 Margin="0,8"
+                 Text="{Binding Text}"
+                 PlaceholderText="Текст для озвучення…"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 VerticalContentAlignment="Top"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto" />
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
+            <Button Content="Захопити виділене"
+                    Command="{Binding CaptureSelectedTextCommand}" />
+            <Button Content="Озвучити"
+                    Command="{Binding SynthesizeCommand}"
+                    Classes="accent" />
+            <Button Content="Скасувати"
+                    Command="{Binding SynthesizeCancelCommand}"
+                    IsVisible="{Binding IsBusy}" />
+            <ProgressBar Width="140"
+                         IsIndeterminate="True"
+                         VerticalAlignment="Center"
+                         IsVisible="{Binding IsBusy}" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="3" Margin="0,8,0,0" Spacing="4">
+            <TextBlock Classes="hint"
+                       TextWrapping="Wrap"
+                       Text="{Binding StatusMessage}"
+                       IsVisible="{Binding StatusMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+            <TextBlock Foreground="#F85149"
+                       TextWrapping="Wrap"
+                       Text="{Binding ErrorMessage}"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+        </StackPanel>
+
+    </Grid>
+</UserControl>
