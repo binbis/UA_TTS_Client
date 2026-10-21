@@ -20,7 +20,6 @@ namespace UA_TTS_Client.Infrastructure.Audio;
 /// </remarks>
 public sealed class BassAudioPlayerService : IAudioPlayerService, IDisposable
 {
-    private const int DefaultDevice = 0;
     private const int DefaultOutputFrequency = 44100;
 
     private readonly ILogger<BassAudioPlayerService> _logger;
@@ -210,12 +209,16 @@ public sealed class BassAudioPlayerService : IAudioPlayerService, IDisposable
 
         try
         {
-            if (Bass.Init(DefaultDevice, DefaultOutputFrequency, DeviceInitFlags.Default, IntPtr.Zero, IntPtr.Zero))
+            // На Linux індекс 0 — це не «пристрій за замовчуванням», а віртуальний
+            // пристрій «No sound». Bass.DefaultDevice (-1) маршрутизується через
+            // PipeWire/PulseAudio до активного виходу (навушників, колонок тощо).
+            if (Bass.Init(Bass.DefaultDevice, DefaultOutputFrequency, DeviceInitFlags.Default, IntPtr.Zero, IntPtr.Zero))
             {
                 _ownsBassInitialization = true;
                 _initialized = true;
-                _logger.LogInformation("BASS ініціалізовано (версія {Version}, пристрій {Device})",
-                    Bass.Version, Bass.CurrentDevice);
+                var deviceInfo = Bass.GetDeviceInfo(Bass.CurrentDevice);
+                _logger.LogInformation("BASS ініціалізовано (версія {Version}, пристрій {Device}: {Name})",
+                    Bass.Version, Bass.CurrentDevice, deviceInfo.Name);
                 return true;
             }
         }
