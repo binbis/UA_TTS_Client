@@ -53,12 +53,12 @@
 
 | Крок | Назва | Статус |
 |---|---|---|
-| 0 | Передумови та гігієна репозиторію | 🟡 **частково** |
-| 1 | Core: контракти | ⬜ не розпочато |
-| 2 | Сервер: мінімальні правки `server.py` | ⬜ не розпочато |
-| 3 | Infrastructure: Storage + API | ⬜ не розпочато |
-| 4 | Infrastructure: Audio (ManagedBass) | ⬜ не розпочато |
-| 5 | Infrastructure: Automation (хук + буфер) | ⬜ не розпочато |
+| 0 | Передумови та гігієна репозиторію | ✅ **виконано** |
+| 1 | Core: контракти | ✅ **виконано** |
+| 2 | Сервер: мінімальні правки `server.py` | ✅ **виконано** |
+| 3 | Infrastructure: Storage + API | ✅ **виконано** |
+| 4 | Infrastructure: Audio (ManagedBass) | ✅ **виконано** |
+| 5 | Infrastructure: Automation (хук + буфер) | ✅ **виконано** (живу перевірку Alt+Q — після UI, Крок 6–7) |
 | 6 | ViewModels | ⬜ не розпочато |
 | 7 | Views (XAML) | ⬜ не розпочато |
 | 8 | Composition Root (DI) | ⬜ не розпочато |
@@ -92,15 +92,18 @@
 UA_TTS_Client/
 ├── AGENTS.md                     ← створено
 ├── Doc/Final_Plan.md             ← цей файл
+├── UA_TTS_Client.sln             ← створено (Крок 0.6)
 ├── App.axaml / App.axaml.cs      ← Composition Root (DI)
 ├── Program.cs                    ← не змінюється (шаблон Avalonia)
 ├── ViewLocator.cs                ← ВИПРАВИТИ (див. Крок 8)
-├── Core/                         ← не залежить від Avalonia/HTTP/BASS
+├── Core/                         ← створено
 │   ├── Enums/      PlaybackState.cs, ServerStatus.cs
-│   ├── Models/     AppConfig.cs, TtsRequestDto.cs, VerbalizeRequestDto.cs, ApiErrorResponse.cs
+│   ├── Exceptions/ TtsApiException.cs
+│   ├── Models/     AppConfig.cs, TtsRequestDto.cs, VerbalizeRequestDto.cs,
+│   │               TextResponseDto.cs, ApiErrorResponse.cs, ServerHealth.cs
 │   └── Interfaces/ ISettingsService.cs, ITtsApiClient.cs, IAudioPlayerService.cs,
 │                   IClipboardAutomationService.cs, IGlobalHotkeyService.cs
-├── Infrastructure/
+├── Infrastructure/               ← створено
 │   ├── Api/        TtsApiClient.cs
 │   ├── Audio/      BassAudioPlayerService.cs
 │   ├── Automation/ SharpHookGlobalHotkeyService.cs, WaylandClipboardAutomationService.cs
@@ -116,26 +119,26 @@ UA_TTS_Client/
     └── Tabs/       QuickTtsView.axaml(.cs), SettingsView.axaml(.cs)
 ```
 
-> `Core/`, `Infrastructure/`, `Models/` зараз існують лише як порожні `<Folder Include=…>`
-> у `.csproj`. При створенні реальних файлів **прибери ці заглушки** (Крок 0.6),
-> інакше MSBuild створюватиме дублікати папок.
+> Порожні `<Folder Include=…>` з `.csproj` прибрано на Кроці 0.4. `Core/` та `Infrastructure/`
+> уже містять реальні файли; `ViewModels/`, `Views/`, `App.axaml.cs`, `ViewLocator.cs` —
+> предмет Кроків 6–8.
 
 ---
 
 ## 6. Кроки
 
-### Крок 0 — Передумови та гігієна 🟡
+### Крок 0 — Передумови та гігієна ✅
 
 **Мета:** привести репозиторій і середовище до стану, придатного для розробки.
 
 | # | Дія | Статус |
 |---|---|---|
 | 0.1 | Встановити системну бібліотеку BASS: `yay -S libbass` (AUR-пакет — саме `libbass`; `bass` з `extra` — це гра!) | ✅ `/usr/lib/libbass.so` встановлено |
-| 0.2 | `.gitignore`: `Server_py/__pycache__/`, `Server_py/venv/`, `*.wav`, `*.mp3`, `*.log`; прибрати непрацюючий `./Server_py/venv` | ✅ зроблено, **не закомічено** |
-| 0.3 | `.csproj`: прибрати зайвий `System.Text.Json` (NU1510) | ✅ зроблено, **не закомічено** |
-| 0.4 | `.csproj`: прибрати 13 порожніх `<Folder Include=…>` (будуть замінені реальними файлами) | ⬜ |
-| 0.5 | `Server_py/run_server.sh` — запуск венва з правильним cwd | ⬜ |
-| 0.6 | `UA_TTS_Client.sln` (проєкт + майбутній тестовий) | ⬜ |
+| 0.2 | `.gitignore`: `Server_py/__pycache__/`, `Server_py/venv/`, `*.wav`, `*.mp3`, `*.log`; прибрати непрацюючий `./Server_py/venv` | ✅ зроблено |
+| 0.3 | `.csproj`: прибрати зайвий `System.Text.Json` (NU1510) | ✅ зроблено |
+| 0.4 | `.csproj`: прибрати 13 порожніх `<Folder Include=…>` (будуть замінені реальними файлами) | ✅ прибрано |
+| 0.5 | `Server_py/run_server.sh` — запуск венва з правильним cwd | ✅ створено, `chmod +x` |
+| 0.6 | `UA_TTS_Client.sln` (проєкт + майбутній тестовий) | ✅ `UA_TTS_Client.sln` (класичний формат; `dotnet build` з кореня працює) |
 | 0.7 | Перевірити демон `ydotool` (`systemctl --user is-active ydotool`) | ✅ enabled + active |
 
 **0.5 — зміст `Server_py/run_server.sh`:**
@@ -147,16 +150,16 @@ cd "$(dirname "$0")"
 exec venv/bin/python server.py
 ```
 
-**Перевірка Кроку 0:**
+**Перевірка Кроку 0 (виконано):**
 ```bash
 dotnet build                                   # 0 warnings, 0 errors
-cd Server_py && ./run_server.sh                # Flask на http://127.0.0.1:5000
+./Server_py/run_server.sh                      # Flask на http://127.0.0.1:5000
 curl -sS http://127.0.0.1:5000/api/voices       # JSON-масив із 31 голосом
 ```
 
 ---
 
-### Крок 1 — Core: контракти ⬜
+### Крок 1 — Core: контракти ✅
 
 **Мета:** визначити чисті абстракції, від яких залежатимуть усі наступні кроки. `Core` не
 посулається на Avalonia, `HttpClient`, ManagedBass чи SharpHook.
@@ -180,11 +183,17 @@ curl -sS http://127.0.0.1:5000/api/voices       # JSON-масив із 31 гол
 **Вимоги:** XML-документація українською на всіх публічних членах; Guard Clauses;
 `#nullable enable`; жодних залежностей від зовнішніх бібліотек.
 
-**Перевірка:** `dotnet build` проходить; `Core/` не імпортує `Avalonia.*`, `ManagedBass.*`, `SharpHook.*`.
+**Перевірка (виконано):** `dotnet build` проходить; `Core/` не імпортує `Avalonia.*`,
+`ManagedBass.*`, `SharpHook.*`.
+
+**Фактично створено:** усі файли з таблиці плюс `Core/Models/ServerHealth.cs`,
+`Core/Models/TextResponseDto.cs` (спільна відповідь `/api/verbalize` і `/api/parse_file`)
+та `Core/Exceptions/TtsApiException.cs` (доменний виняток, щоб ViewModel не бачила
+`HttpRequestException`). Подія стану — `EventHandler<PlaybackState>`; `Pause`/`Resume` розділені.
 
 ---
 
-### Крок 2 — Сервер: мінімальні правки `server.py` ⬜
+### Крок 2 — Сервер: мінімальні правки `server.py` ✅
 
 **Мета:** додати health-check і привести помилки до єдиного формату. **Не ламати** сумісність
 з браузерним розширенням (CORS-заголовки, формат відповіді `/api/synthesize`).
@@ -207,7 +216,7 @@ curl -sS http://127.0.0.1:5000/api/voices       # JSON-масив із 31 гол
    (зараз це plain text із `Content-Type: text/html` — клієнт змушений терпіти обидва формати).
 3. Жодних інших змін. CORS-блок `after_request` не чіпати.
 
-**Перевірка:**
+**Перевірка (виконано 2026-10-21):**
 ```bash
 curl -sS http://127.0.0.1:5000/api/health
 # {"device":"cuda","model":"...","status":"ok","voices":31}
@@ -223,7 +232,7 @@ curl -sS -X POST http://127.0.0.1:5000/api/synthesize \
 
 ---
 
-### Крок 3 — Infrastructure: Storage + API ⬜
+### Крок 3 — Infrastructure: Storage + API ✅
 
 **Файли:**
 
@@ -238,12 +247,19 @@ curl -sS -X POST http://127.0.0.1:5000/api/synthesize \
 
 **Реєстрація (Крок 8):** `services.AddHttpClient<ITtsApiClient, TtsApiClient>(c => c.BaseAddress = new Uri(cfg.ServerUrl))`
 
-**Перевірка:** тимчасовий консольний smoke-test усіх 5 ендпоинтів через `TtsApiClient`
-(або `curl` — див. Крок 2).
+**Перевірка (виконано):** тимчасовий консольний smoke-test усіх ендпоінтів через `TtsApiClient`
+(`/tmp/opencode/smoke`, поза репозиторієм): voices, health, verbalize, synthesize, parse_file,
+помилка JSON, offline-сервер, fallback `404 /api/health → /api/voices` — усе PASS.
+
+**Фактично:**
+- таймаут у конструкторі піднімається до 5 хв, якщо він менший за 2 хв;
+- `TtsApiException` має `StatusCode` і `IsConnectionError` (мережа/таймаут);
+- `JsonSettingsService` має другий конструктор із явним шляхом — для тестів Кроку 9;
+- на Linux `TextCopy` вимагає X11, тому в automation-сервісі є fallback на `wl-paste`.
 
 ---
 
-### Крок 4 — Infrastructure: Audio (ManagedBass 4.0.2) ⬜ ⚠️ найризикованіший
+### Крок 4 — Infrastructure: Audio (ManagedBass 4.0.2) ✅
 
 **Файл:** `Infrastructure/Audio/BassAudioPlayerService.cs` — реалізація `IAudioPlayerService`,
 `IDisposable`.
@@ -254,8 +270,9 @@ curl -sS -X POST http://127.0.0.1:5000/api/synthesize \
 2. `int handle = Bass.CreateStream(wavBytes, 0, wavBytes.Length, BassFlags.Default)` —
    масив `byte[]` **має жити весь час відтворення** (pin через `GCHandle` або зберегти в полі).
 3. `Bass.ChannelSetSync(handle, SyncFlags.End, 0, syncProc, IntPtr.Zero)` — автозупинка/подія
-   «дослухано». Делегат: `SyncProcedure(int handle, int channel, int data, IntPtr user)`.
-4. `Bass.ChannelPlay(handle, restart: false)`.
+   «дослухано». Делегат: `SyncProcedure(int syncHandle, int channel, int data, IntPtr user)` —
+   **перший параметр це дескриптор синхронізації**, канал — другий.
+4. `Bass.ChannelPlay(handle, false)` — іменованого аргументу `restart` у 4.0.2 немає.
 5. Пауза — `Bass.ChannelPause(handle)` (toggle; атрибута `PlaybackPaused` **не існує**).
 6. Гучність — `Bass.ChannelSetAttribute(handle, ChannelAttribute.Volume, 0f..1f)`.
 7. Стан — `Bass.ChannelIsActive(handle)` → `ManagedBass.PlaybackState { Stopped, Playing, Stalled, Paused }`.
@@ -264,11 +281,14 @@ curl -sS -X POST http://127.0.0.1:5000/api/synthesize \
 **Обов'язково:** `IDisposable`, обробка `Bass.LastError` / `BassException.ErrorCode`,
 `ILogger<T>`, без запису тимчасових `.wav` на диск.
 
-**Перевірка:** застосунок відтворює WAV, отриманий від сервера; натискання Stop припиняє звук.
+**Перевірка (виконано):** сервіс відтворив WAV, отриманий від сервера (позиція BASS рухалася,
+пристрій 0); пауза/продовження/стоп/гучність працюють; кінець треку автоматично дає `Stopped`.
+Знайдено й виправлено помилку: `SyncProcedure` передає дескриптор синхронізації першим
+параметром, тому автозупинка спершу не спрацьовувала.
 
 ---
 
-### Крок 5 — Infrastructure: Automation (хук + буфер) ⬜ ⚠️ Wayland
+### Крок 5 — Infrastructure: Automation (хук + буфер) ✅ ⚠️ Wayland
 
 **Файли:**
 
@@ -282,6 +302,15 @@ Ctrl+C через uinput. Користувач у групі `input`, демон
 
 **Перевірка:** Alt+Q з будь-якого вікна (напр. терміналу) додає виділений текст у поле;
 кнопка «Захопити виділене» працює так само.
+
+**Фактично:**
+- хук стартує й отримує події (перевірено симульованими `Ctrl+F13`; власні симульовані події
+  відфільтровуються через `IsEventSimulated`);
+- перед `Ctrl+C` сервіс відпускає Alt, інакше активне вікно отримало б `Ctrl+Alt+C`;
+- резервні шляхи: SharpHook `EventSimulator` → `ydotool key 56:0 100:0 29:1 46:1 46:0 29:0`
+  для симуляції; `TextCopy` → `wl-paste` → `xsel` для читання буфера;
+- **живу перевірку Alt+Q відкладено до появи UI (Кроки 6–7)**: зараз захоплений текст нікуди
+  виводити, а автоматична симуляція Ctrl+C надіслала б SIGINT у термінал користувача.
 
 > Якщо SharpHook під Wayland не перехоплює клавіатуру — fallback: викликати `ydotool` CLI
 > через `Process.Start` замість `EventSimulator`.
@@ -417,10 +446,10 @@ Base URL `http://127.0.0.1:5000`. CORS: `Access-Control-Allow-Origin: *`.
 
 | Ризик | Ймовірність | Мітигація |
 |---|---|---|
-| SharpHook не перехоплює клавіатуру під Wayland | середня | Спійкати на початку Кроку 5; fallback на `ydotool` CLI |
-| `CreateStream(byte[])` не працює як очікується (прапорця `Memory` в enum немає) | низька | Спайк-тест на початку Кроку 4; запасний варіант — `Bass.CreateStream(IntPtr, …)` із `GCHandle` |
-| Немає ALSA/PulseAudio-виходу в сеансі Wayland | низька | Перевірити `Bass.Init` на старті; показати помилку в UI |
-| Сервер довго генерує великий текст | низька | Таймаут ≥120 с, індикатор синтезу в UI |
+| SharpHook не перехоплює клавіатуру під Wayland | середня | ✅ хук стартує й отримує події на цій машині; для симуляції є fallback на `ydotool`, для читання — на `wl-paste` |
+| `CreateStream(byte[])` не працює як очікується (прапорця `Memory` в enum немає) | низька | ✅ перевірено: WAV із `byte[]` відтворюється, позиція рухається |
+| Немає ALSA/PulseAudio-виходу в сеансі Wayland | низька | ✅ `Bass.Init(0, …)` успішний; помилка ініціалізації переводить сервіс у `Error` і показується в UI |
+| Сервер довго генерує великий текст | низька | Таймаут 5 хв у `TtsApiClient`, індикатор синтезу в UI |
 | Помилка парсингу відповіді сервера | середня | Парсер терпить і JSON, і plain text (див. Крок 3) |
 | Помилки компіляції в XAML через compiled bindings | висока | `x:DataType` у кожному файлі; перевірка на `dotnet build` після Кроку 7 |
 
@@ -437,6 +466,9 @@ Base URL `http://127.0.0.1:5000`. CORS: `Access-Control-Allow-Origin: *`.
 | 2026-10-21 | Створено `AGENTS.md` — перевірені факти, підводні камені, точні API |
 | 2026-10-21 | Виправлено `.gitignore` (не закомічено) та `.csproj` — прибрано `System.Text.Json` (не закомічено) |
 | 2026-10-21 | Створено цей документ |
+| 2026-10-21 | **Кроки 0–5 реалізовано.** Крок 0: прибрано `<Folder Include>` з `.csproj`, створено `Server_py/run_server.sh`, `UA_TTS_Client.sln`. Крок 1: `Core/` (enum-и, 7 моделей, 5 інтерфейсів, `TtsApiException`). Крок 2: `/api/health`, уніфіковані JSON-помилки (`server.py`). Крок 3: `JsonSettingsService`, `TtsApiClient` із fallback health і доменними винятками. Крок 4: `BassAudioPlayerService` — відтворення з пам'яті, пауза/стоп/гучність, автозупинка. Крок 5: `SharpHookGlobalHotkeyService` (Alt+Q) + `WaylandClipboardAutomationService` (Ctrl+C, ydotool/wl-paste fallback). `dotnet build` — 0 warnings / 0 errors; smoke-тест усіх ендпоінтів і сервісів — PASS |
+| 2026-10-21 | Виявлено під час Кроку 4: `Bass.SyncProcedure` передає **дескриптор синхронізації** першим, канал — другим; через це автозупинка не спрацьовувала. Виправлено, внесено в `AGENTS.md` |
+| 2026-10-21 | Виявлено: `TextCopy` на Linux працює лише через X11; додано fallback `wl-paste` → `xsel` у `WaylandClipboardAutomationService` |
 
 ---
 

@@ -3,8 +3,9 @@
 Avalonia/.NET 10 клієнт (MVVM, CommunityToolkit.Mvvm) для локального Python TTS-сервера
 (`Server_py/`, Flask + StyleTTS2). Цільові ОС: Linux EndeavourOS/Arch (Wayland + PipeWire) та Windows 11.
 
-**Клієнт ще не реалізовано** — це чистий шаблон Avalonia. `Core/`, `Infrastructure/`, `Models/`
-існують лише як порожні `<Folder Include=…>` у `.csproj`, на диску їх немає.
+**Клієнт у процесі розробки.** Реалізовано шари `Core/` (контракти) та `Infrastructure/`
+(API, BASS-аудіо, глобальний хук, буфер обміну, JSON-конфіг). ViewModels, Views і DI
+(Кроки 6–9 за планом) ще попереду — зараз у `ViewModels/` лише шаблонний `MainViewModel`.
 
 ---
 
@@ -17,15 +18,24 @@ dotnet build
 # Клієнт — запуск
 dotnet run
 
-# Сервер — ОБОВ'ЯЗКОВО з каталогу Server_py (див. нижче про cwd)
-cd Server_py && venv/bin/python server.py
+# Сервер — з правильним cwd (скрипт сам переходить у Server_py/)
+./Server_py/run_server.sh
 ```
 
-- `.sln` **не існує** — лише `UA_TTS_Client.csproj`. Тестовий проєкт теж відсутній.
+- Є `UA_TTS_Client.sln` (класичний формат — сумісний з усіма версіями Rider; .NET 10 за
+  замовчуванням створює `.slnx`, тому формат задано явно). `dotnet build` з кореня працює.
+- Тестовий проєкт ще не створено (Крок 9).
 - Немає lint/format/codegen-конфігурації. Немає CI.
 - SDK: .NET 10.0.113 · Python 3.14.8 (`Server_py/venv`) · torch 2.14.1+cu130, **CUDA доступна**.
 - Запуск сервера ≈45 с (модель `patriotyk/styletts2_ukrainian_multispeaker` ~911 МБ уже в кеші HF).
   Модель вантажиться при кожному старті — не здивуйся, що до першого запиту довго.
+
+### Явні `using` обов'язкові
+
+У `.csproj` **немає** `<ImplicitUsings>` — `System`, `System.IO`, `System.Net.Http`,
+`System.Threading.Tasks` не імпортуються автоматично. Додавай `using` у кожен файл.
+У `BassAudioPlayerService` є конфлікт імен `PlaybackState` з `ManagedBass.PlaybackState`,
+тому там використано alias.
 
 ### Сервер запускати ТІЛЬКИ з `Server_py/`
 
@@ -41,14 +51,17 @@ Base URL: `http://127.0.0.1:5000` (Flask dev server, CORS `Access-Control-Allow-
 | Метод | Шлях | Тіло | Успіх | Помилка |
 |---|---|---|---|---|
 | GET | `/api/voices` | — | `["Вероніка Дорош", …]` (31 голос) | — |
+| GET | `/api/health` | — | `{"status":"ok","device":"cuda","voices":31,"model":"…"}` | — |
 | POST | `/api/verbalize` | `{"text"}` | `{"text"}` | 400 `{"error":"No text"}` |
 | POST | `/api/synthesize` | `{"text","voice","speed","volume","translate"}` | `audio/wav`, 24 кГц моно 16-bit PCM | 500 `{"error"}` |
-| POST | `/api/convert` | multipart `file`, `format` | `audio/<fmt>` | **400 plain-text `No file`** (`text/html`) |
-| POST | `/api/parse_file` | multipart `file` | `{"text"}` | **400 plain-text `No file`** (`text/html`) |
+| POST | `/api/convert` | multipart `file`, `format` | `audio/<fmt>` | 400 `{"error":"No file"}` |
+| POST | `/api/parse_file` | multipart `file` | `{"text"}` | 400 `{"error":"No file"}` |
 
-- **`/api/health` і `/api/ping` НЕ ІСНУЮТЬ** → 404. Health-check роби через `GET /api/voices`.
-- Помилки з `/api/convert` і `/api/parse_file` — **не JSON**, а 7-байтовий текст `No file`.
-  Клієнт має бути стійким і до JSON, і до plain text.
+- `/api/health` **додано** в `Server_py/server.py` (Крок 2). `/api/ping` і `/health` досі не існують → 404.
+- `TtsApiClient.GetHealthAsync` на 404 від `/api/health` робить fallback на `GET /api/voices`
+  (сумісність зі старим сервером без патча).
+- `/api/convert` і `/api/parse_file` тепер теж повертають JSON `{"error": …}`. Але парсер клієнта
+  усе одно терпить і plain text: сервер міг бути не оновлений.
 - Не ламати CORS-заголовки: браузерне розширення користується цим самим сервером.
 
 ---
@@ -72,9 +85,13 @@ Bass.LastError;                       // → ManagedBass.Errors
 Bass.Volume;                          // double, глобальний
 ```
 
-- Делегат: `SyncProcedure(int handle, int channel, int data, IntPtr user)`.
+- Делегат: `SyncProcedure(int syncHandle, int channel, int data, IntPtr user)` — **перший параметр
+  це дескриптор синхронізації, а не каналу**. Порівнювати з `_streamHandle` треба `channel`.
+  Помилка тут тихо ламає автоперехід у `Stopped` (перевірено на Кроці 4).
 - У `BassFlags` **немає** прапорця `Memory` — перегрузка `byte[]` обробляє це сама, але масив
   мусить жити весь час відтворення (pin через `GCHandle` або зберігати в полі сервісу).
+- `Bass.Init(0, 44100, DeviceInitFlags.Default, …)` на цій машині працює (пристрій 0, версія
+  2.4.18.3); відтворення з `byte[]` перевірено — позиція рухається, `ChannelIsActive` → `Playing`.
 - NuGet-пакет **не містить** нативних бібліотек. Потрібен системний `/usr/lib/libbass.so`.
   AUR-пакет називається **`libbass`** (`yay -S libbass`) — **`bass` з репозиторію `extra` — це
   гра «Beneath A Steel Sky»**, не бібліотека. `Doc/` тут помиляється.
@@ -88,6 +105,35 @@ mkdir -p /tmp/apidump && cd /tmp/apidump
 # Program.cs: Assembly.Load("ManagedBass").GetType("ManagedBass.Bass")
 #             .GetMembers(BindingFlags.Public|BindingFlags.Static|BindingFlags.DeclaredOnly)
 ```
+
+---
+
+## SharpHook 8.0.0 і TextCopy 6.2.1 — перевірені факти
+
+```csharp
+var hook = new TaskPoolGlobalHook(parallelismLevel: 1, UioHookProvider.Instance);
+hook.KeyPressed += (_, e) => { /* e.Data.KeyCode, e.IsEventSimulated */ };
+var task = hook.RunAsync();          // не блокує; завершується після Stop()
+hook.Stop(); hook.Dispose();
+
+var simulator = SharpHook.Simulation.EventSimulator.Create("app-name", UioHookProvider.Instance);
+simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
+```
+
+- `KeyboardHookEventArgs` живе в namespace **`SharpHook`**, а не `SharpHook.Data`
+  (`KeyboardEventData` — у `SharpHook.Data`).
+- `GlobalHookBase` має `RunAsync(GlobalHookType = All, bool useBackgroundThread = false)`,
+  `Stop()`, `Dispose()`; події `KeyPressed/KeyReleased/KeyTyped/HookEnabled/HookDisabled`.
+- `EventSimulator.Create(applicationName, provider)` на Linux ініціалізує uinput-пристрої;
+  `SimulateKeyStroke(params KeyCode[])` — це extension у `SharpHook.Simulation`.
+- Симульовані події повертаються у хук із `IsEventSimulated == true` — саме так відсікається
+  власний `Ctrl+C`.
+- Перевірено на цій машині: `HookEnabled` спрацьовує, симульовані `Ctrl+F13`/`Ctrl+C` видно
+  в обробнику. **Реальне натискання Alt+Q треба перевірити вручну** (див. Крок 5).
+- **TextCopy на Linux працює лише через X11 (`xsel`)**: без `DISPLAY` кидає виняток, навіть якщо
+  `wl-paste` доступний. Тому `WaylandClipboardAutomationService` має fallback на `wl-paste`,
+  а потім на `xsel`.
+- `ClipboardService.GetTextAsync(CancellationToken)` і `SetTextAsync` — статичні методи.
 
 ---
 
@@ -134,13 +180,16 @@ mkdir -p /tmp/apidump && cd /tmp/apidump
    CommunityToolkit.Mvvm 8.x: генератор створює partial-властивість на C# 13 `field`
    (`get => field;`) і `PropertyChanged` працює. Єдине, що тут лишнє — шаблонне значення
    `"Welcome to Avalonia!"`.
-4. **Сервер не має `/api/health`** — будь-яка health-check логіка в клієнті має спиратися на
-   `GET /api/voices`.
-5. **Помилки сервера неоднорідні** (JSON vs plain text `No file`) — парсер має терпіти обидва.
-6. **Імена файлів у `Doc/` потребують екранування в shell**: `Єдина кодова база linux win11.md`
+4. **`/api/health` тепер є** (додано в `server.py`), але `TtsApiClient` усе одно має fallback на
+   `GET /api/voices` для сумісності зі старим сервером. Не видаляй цей fallback.
+5. **Помилки сервера історично неоднорідні** (JSON vs plain text `No file`) — парсер
+   `TtsApiClient.ReadErrorMessageAsync` терпить обидва формати. Не звужуй його до JSON.
+6. **BASS `SyncProcedure`**: перший аргумент — дескриптор синхронізації, другий — канал.
+   Помилка тут не дає жодної помилки в лозі, просто автозупинка не спрацьовує.
+7. **Імена файлів у `Doc/` потребують екранування в shell**: `Єдина кодова база linux win11.md`
    (пробіли) та `ua_tts_client_architecture(remove).md` (дужки). Також Linux чутливий до
    регістру — namespace у XAML (`x:Class`, `x:DataType`) має точно збігатися з текстом у `.cs`.
-7. **`.gitignore`**: `Server_py/venv/` ігнорується лише вбудованим `venv/.gitignore` (`*`),
+8. **`.gitignore`**: `Server_py/venv/` ігнорується лише вбудованим `venv/.gitignore` (`*`),
    а не кореневим правилом — кореневе правило додано вже у поточних (незакомічених) змінах.
 
 ---
@@ -162,11 +211,10 @@ mkdir -p /tmp/apidump && cd /tmp/apidump
 
 ## Стан git
 
-Останній коміт: `757dd25 додано теку до проєкту`. Незакомічені зміни: `.gitignore`
-(`Server_py/__pycache__/`, `Server_py/venv/`, `*.wav`, `*.mp3`; прибрано неробочий `./Server_py/venv`),
-`App.axaml` (`RequestedThemeVariant="Dark"`), `UA_TTS_Client.csproj` (прибрано зайвий
-`System.Text.Json` → NU1510 зник), `Doc/Readme.md` (`yay -S bass` → `yay -S libbass`).
-Не комітай ці зміни без запиту — частина з них уже узгоджена з користувачем.
+Останній коміт: `45beae3 docs(plan): додати фінальний план реалізації UA_TTS_Client`.
+Після нього в робочому дереві: реалізація Кроків 0–5 (зміни `server.py`, `.csproj`,
+новий `UA_TTS_Client.sln`, `Server_py/run_server.sh`, `Core/`, `Infrastructure/`)
+та оновлення цього файлу й `Doc/Final_Plan.md`. Незакомічено — не комітити без запиту.
 
 План роботи — у `Doc/Final_Plan.md` (актуальніший за цей розділ).
 
