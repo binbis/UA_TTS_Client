@@ -97,7 +97,7 @@ sleep 3 && wl-paste
 - Пакет для аналізу аудіо-рушія ManagedBass
 
 ``` bash
-yay -S bass
+yay -S libbass
 ```
 
 ### Крок 1: Підготовка сервера (Python)
