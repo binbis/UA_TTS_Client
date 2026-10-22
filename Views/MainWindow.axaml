@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:UA_TTS_Client.ViewModels"
+        xmlns:conv="using:Avalonia.Data.Converters"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
@@ -52,7 +53,7 @@
 
         <!-- Нижня панель: міні-плеєр -->
         <Border DockPanel.Dock="Bottom" Padding="16,8" BorderThickness="0,1,0,0" BorderBrush="#30363D">
-            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto">
                 <Button Classes="player"
                         Content="{Binding Playback.PlayPauseGlyph}"
                         Command="{Binding Playback.TogglePlayPauseCommand}"
@@ -70,11 +71,17 @@
                            VerticalAlignment="Center"
                            Text="{Binding Playback.StateText}" />
 
-                <TextBlock Grid.Column="3"
-                           Margin="16,0"
-                           VerticalAlignment="Center"
-                           Classes="hint"
-                           Text="{Binding Playback.VoiceName}" />
+                <StackPanel Grid.Column="3"
+                            Orientation="Horizontal"
+                            Spacing="12"
+                            Margin="16,0"
+                            VerticalAlignment="Center">
+                    <TextBlock Classes="hint"
+                               Text="{Binding Playback.VoiceName}" />
+                    <TextBlock Classes="hint"
+                               Text="{Binding Playback.FragmentPositionText}"
+                               IsVisible="{Binding Playback.FragmentPositionText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
 
                 <TextBlock Grid.Column="4"
                            VerticalAlignment="Center"
@@ -86,7 +93,15 @@
                         Margin="8,0,0,0"
                         Minimum="0"
                         Maximum="1"
+                        TickFrequency="0.1"
+                        IsSnapToTickEnabled="True"
                         Value="{Binding Playback.Volume}" />
+
+                <TextBlock Grid.Column="6"
+                           Width="40"
+                           Margin="8,0,0,0"
+                           VerticalAlignment="Center"
+                           Text="{Binding Playback.Volume, StringFormat='{}{0:0.0}'}" />
             </Grid>
         </Border>
 

@@ -111,13 +111,15 @@ UA_TTS_Client/
 │   └── Storage/
 │       └── JsonSettingsService.cs
 ├── ViewModels/
-│   ├── ViewModelBase.cs          ← OnUiThread, SymbolsWord
+│   ├── ViewModelBase.cs          ← OnUiThread, SymbolsWord, PluralWord
 │   ├── MainWindowViewModel.cs    ← вкладки, health-check, гаряча клавіша
 │   ├── Components/
 │   │   └── PlaybackControlViewModel.cs
 │   ├── Tabs/
 │   │   ├── QuickTtsViewModel.cs
 │   │   ├── SettingsViewModel.cs
+│   │   ├── ChunkingModeOption.cs ← варіант режиму фрагментації для ComboBox
+│   │   ├── ExportFormatOption.cs ← варіант формату експорту для ComboBox
 │   │   ├── ReaderViewModel.cs    ← заглушка
 │   │   └── CharacterVoiceViewModel.cs ← заглушка
 │   └── Design/
@@ -217,11 +219,12 @@ UA_TTS_Client/
 ### 6.3 Синтез і відтворення (поточний стан)
 
 1. `QuickTts.SynthesizeCommand` бере `Text` і ріже його `ITextChunker` за
-   `Settings.SelectedChunkingMode`.
+   `Settings.ChunkingMode`.
 2. `PlaybackControlViewModel.StartQueueAsync` → `FragmentPlaybackService.StartAsync`:
    - синтез фрагментів послідовно (`ITtsApiClient.SynthesizeAsync` → `POST /api/synthesize`);
    - один фрагмент синтезується наперед, поки грає поточний;
-   - пакети по `Settings.BatchSize` (1–10); між пакетами — очікування `ContinueAsync`.
+   - пакети по `Settings.BatchSize` (1–10); між пакетами — очікування `ContinueAsync`,
+     якщо увімкнено `Settings.PauseAfterEachBatch` (інакше пакети грають підряд).
 3. `BassAudioPlayerService.PlayAsync`:
    - `Bass.Init(Bass.DefaultDevice, …)`;
    - `Bass.CreateStream(byte[], …)`;
@@ -255,7 +258,18 @@ UA_TTS_Client/
 
 ### 6.5 Налаштування
 
-- `SettingsViewModel` — джерело істини для голосу, швидкості, гучності.
+- `SettingsViewModel` — джерело істини для голосу, швидкості, гучності, режиму
+  фрагментації, розміру пакета й формату експорту.
+- ComboBox працює з option-записами (`ChunkingModeOption`, `ExportFormatOption`) без
+  магічних індексів; значення для логіки — `ChunkingMode` / `ExportFormat`
+  (fallback на типові, якщо в конфігу невідоме значення).
+- `NumericUpDown` «Фрагментів у пакеті» (1–10, крок 1); слайдери швидкості/гучності
+  з кроком 0.1 (`IsSnapToTickEnabled`, формат `0.0`).
+- Чекбокс «Пауза після кожного пакета» (`PauseAfterEachBatch`, типово ✅) — коли вимкнено,
+  `FragmentPlaybackService` сам запускає наступний пакет. Типовий режим фрагментації —
+  «Абзаци».
+- Чекбокси `AutoSynthesizeOnHotkey` / `ActivateOnHotkey` `MainWindowViewModel` читає
+  безпосередньо під час `Alt+Q` — зміни діють одразу; на диск їх пише `SaveCommand`.
 - `Volume` синхронізується з `PlaybackControlViewModel` в обидва боки
   (захист від циклу — `_syncingVolume`).
 - `SaveCommand` валідовує URL і пише `AppConfig` через `ISettingsService`.
@@ -269,15 +283,20 @@ UA_TTS_Client/
 `MainWindowViewModel` додатково пробує `Views.MainWindow`. Головне вікно створюється явно
 в `App.axaml.cs`.
 
+`QuickTtsView` показує стан черги: позицію (`Playback.FragmentPositionText`), прев'ю
+поточного фрагмента (`CurrentFragmentText`, до 60 символів), статус завершення пакета
+або всієї черги (`QueueStatusText`) і кнопку «Наступний пакет» при `IsBatchPending`.
+Помилка черги потрапляє в `ErrorMessage` через подію `Playback.QueueFailed`.
+
 ---
 
 ## 7. View ↔ ViewModel
 
 | View | ViewModel | Примітка |
 |---|---|---|
-| `Views/MainWindow.axaml` | `MainWindowViewModel` | статус сервера, вкладки, міні-плеєр |
-| `Views/Tabs/QuickTtsView.axaml` | `QuickTtsViewModel` | текст, захоплення, синтез, експорт аудіо |
-| `Views/Tabs/SettingsView.axaml` | `SettingsViewModel` | URL, голос, швидкість, гучність, hotkey |
+| `Views/MainWindow.axaml` | `MainWindowViewModel` | статус сервера, вкладки, міні-плеєр (позиція у черзі, гучність 0.1) |
+| `Views/Tabs/QuickTtsView.axaml` | `QuickTtsViewModel` | текст, захоплення, синтез, лічильники черги, експорт аудіо |
+| `Views/Tabs/SettingsView.axaml` | `SettingsViewModel` | URL, голос, швидкість, гучність, фрагментація, пакет, формат експорту, hotkey |
 | `Views/Tabs/ReaderView.axaml` | `ReaderViewModel` | заглушка |
 | `Views/Tabs/CharacterVoiceView.axaml` | `CharacterVoiceViewModel` | заглушка |
 

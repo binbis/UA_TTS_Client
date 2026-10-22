@@ -18,10 +18,15 @@ namespace UA_TTS_Client.ViewModels.Components;
 /// </summary>
 public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
 {
+    private const int FragmentPreviewLength = 60;
+
     private readonly IAudioPlayerService _audioPlayer;
     private readonly IFragmentPlaybackService _fragmentPlayback;
     private readonly ILogger<PlaybackControlViewModel> _logger;
     private bool _disposed;
+
+    private int _lastTotalFragments;
+    private int _lastTotalBatches;
 
     /// <summary>
     /// Створює міні-плеєр.
@@ -76,6 +81,17 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     public partial string? FragmentPositionText { get; set; }
 
+    /// <summary>Початок тексту поточного фрагмента (до 60 символів).</summary>
+    [ObservableProperty]
+    public partial string? CurrentFragmentText { get; set; }
+
+    /// <summary>Стан черги для вкладки Quick TTS: завершення пакета або всієї черги.</summary>
+    [ObservableProperty]
+    public partial string? QueueStatusText { get; set; }
+
+    /// <summary>Виникає на UI-потоці, коли черга фрагментів зупинилася з помилкою.</summary>
+    public event EventHandler<Exception>? QueueFailed;
+
     /// <summary>Чи завершився пакет і черга чекає на продовження.</summary>
     [ObservableProperty]
     public partial bool IsBatchPending { get; set; }
@@ -110,6 +126,7 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
     /// <param name="voice">Ім'я голосу для відображення в плеєрі.</param>
     /// <param name="speed">Швидкість мовлення.</param>
     /// <param name="batchSize">Кількість фрагментів у пакеті.</param>
+    /// <param name="pauseAfterEachBatch">Чи зупинятися після кожного пакета.</param>
     /// <param name="cancellationToken">Токен скасування.</param>
     /// <exception cref="ArgumentNullException"><paramref name="fragments"/> дорівнює <see langword="null"/>.</exception>
     public async Task StartQueueAsync(
@@ -117,6 +134,7 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
         string? voice,
         double speed,
         int batchSize,
+        bool pauseAfterEachBatch = true,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(fragments);
@@ -125,6 +143,8 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
         HasQueue = true;
         IsBatchPending = false;
         ContinueButtonText = null;
+        QueueStatusText = null;
+        CurrentFragmentText = null;
 
         await _fragmentPlayback.StartAsync(
             fragments,
@@ -132,7 +152,8 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
             {
                 Voice = voice,
                 Speed = speed,
-                BatchSize = batchSize
+                BatchSize = batchSize,
+                PauseAfterEachBatch = pauseAfterEachBatch
             },
             cancellationToken);
     }
@@ -210,8 +231,12 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
             HasQueue = true;
             IsBatchPending = false;
             ContinueButtonText = null;
+            QueueStatusText = null;
+            _lastTotalFragments = _fragmentPlayback.TotalFragments;
+            _lastTotalBatches = e.TotalBatches;
             FragmentPositionText =
-                $"Фрагмент {e.Fragment.Index} з {_fragmentPlayback.TotalFragments} · пакет {e.Batch} з {e.TotalBatches}";
+                $"Фрагмент {e.Fragment.Index} з {_lastTotalFragments} · пакет {e.Batch} з {e.TotalBatches}";
+            CurrentFragmentText = BuildFragmentPreview(e.Fragment.Text);
         });
     }
 
@@ -224,6 +249,9 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
             IsBatchPending = true;
             ContinueButtonText = e.HasNext ? $"Наступний пакет ({e.CompletedBatch + 1} з {e.TotalBatches})" : null;
             StateText = $"Пакет {e.CompletedBatch} з {e.TotalBatches} завершено";
+            QueueStatusText = e.HasNext
+                ? $"Пакет {e.CompletedBatch} з {e.TotalBatches} завершено. Натисніть ▶ або «Наступний пакет»"
+                : null;
         });
     }
 
@@ -236,6 +264,10 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
             IsBatchPending = false;
             ContinueButtonText = null;
             StateText = "Готово";
+            QueueStatusText = _lastTotalFragments > 0
+                ? $"Готово: {_lastTotalBatches} {PluralWord(_lastTotalBatches, "пакет", "пакети", "пакетів")}, " +
+                  $"{_lastTotalFragments} {PluralWord(_lastTotalFragments, "фрагмент", "фрагменти", "фрагментів")}"
+                : null;
         });
     }
 
@@ -250,6 +282,8 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
             IsBatchPending = false;
             ContinueButtonText = null;
             StateText = "Помилка аудіо";
+            QueueStatusText = null;
+            QueueFailed?.Invoke(this, e);
         });
     }
 
@@ -260,6 +294,24 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
         IsBatchPending = false;
         ContinueButtonText = null;
         FragmentPositionText = null;
+        CurrentFragmentText = null;
+        QueueStatusText = null;
+    }
+
+    /// <summary>Формує короткий опис фрагмента для показу в UI.</summary>
+    /// <param name="text">Текст фрагмента.</param>
+    /// <returns>Перші 60 символів в один рядок; довший текст завершується трикрапкою.</returns>
+    private static string BuildFragmentPreview(string text)
+    {
+        var normalized = text.ReplaceLineEndings(" ").Trim();
+        while (normalized.Contains("  ", StringComparison.Ordinal))
+        {
+            normalized = normalized.Replace("  ", " ", StringComparison.Ordinal);
+        }
+
+        return normalized.Length <= FragmentPreviewLength
+            ? normalized
+            : normalized[..FragmentPreviewLength] + "…";
     }
 
     /// <summary>

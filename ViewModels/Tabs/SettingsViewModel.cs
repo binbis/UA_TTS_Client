@@ -19,17 +19,24 @@ using UA_TTS_Client.Core.Models;
 namespace UA_TTS_Client.ViewModels.Tabs;
 
 /// <summary>
-/// Вкладка налаштувань: адреса сервера, голос, швидкість, гучність і гаряча клавіша.
+/// Вкладка налаштувань: адреса сервера, голос, швидкість, гучність, фрагментація,
+/// формат експорту й гаряча клавіша.
 /// </summary>
 /// <remarks>
 /// Ця ViewModel є джерелом істини для <see cref="QuickTtsViewModel"/>: синтез бере
-/// поточний голос і швидкість саме звідси. Гучність синхронізується з міні-плеєром
-/// в обидва боки.
+/// поточний голос, швидкість, режим фрагментації та розмір пакета саме звідси.
+/// Гучність синхронізується з міні-плеєром в обидва боки.
 /// </remarks>
 public partial class SettingsViewModel : ViewModelBase, IDisposable
 {
     private const double MinSpeed = 0.5;
     private const double MaxSpeed = 2.0;
+
+    private static readonly ChunkingModeOption DefaultChunkingMode =
+        new(TextChunkingMode.Paragraphs, "Абзаци");
+
+    private static readonly ExportFormatOption DefaultExportFormat =
+        new(AudioExportFormat.Mp4, "MP4 (аудіо, типово)");
 
     private readonly ISettingsService _settingsService;
     private readonly ITtsApiClient _apiClient;
@@ -97,17 +104,42 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     public partial bool ActivateOnHotkey { get; set; }
 
-    /// <summary>Режим поділу тексту на фрагменти.</summary>
+    /// <summary>Варіанти режиму фрагментації для списку в налаштуваннях.</summary>
+    public IReadOnlyList<ChunkingModeOption> ChunkingModes { get; } =
+    [
+        DefaultChunkingMode,
+        new(TextChunkingMode.Sentences, "Речення"),
+        new(TextChunkingMode.MaxLength, "До 250 символів (розумне пакування)")
+    ];
+
+    /// <summary>Варіанти формату збереження аудіо для списку в налаштуваннях.</summary>
+    public IReadOnlyList<ExportFormatOption> ExportFormats { get; } =
+    [
+        DefaultExportFormat,
+        new(AudioExportFormat.Wav, "WAV (без стиснення)")
+    ];
+
+    /// <summary>Вибраний режим поділу тексту на фрагменти.</summary>
     [ObservableProperty]
-    public partial TextChunkingMode SelectedChunkingMode { get; set; } = TextChunkingMode.MaxLength;
+    public partial ChunkingModeOption? SelectedChunkingMode { get; set; }
 
     /// <summary>Кількість фрагментів у пакеті (від 1 до 10).</summary>
     [ObservableProperty]
     public partial int BatchSize { get; set; } = SpeechQueueOptions.DefaultBatchSize;
 
-    /// <summary>Формат збереження озвученого тексту.</summary>
+    /// <summary>Чи зупинятися після кожного пакета (типово) або грати всі пакети підряд.</summary>
     [ObservableProperty]
-    public partial AudioExportFormat SelectedExportFormat { get; set; } = AudioExportFormat.Mp4;
+    public partial bool PauseAfterEachBatch { get; set; } = true;
+
+    /// <summary>Вибраний формат збереження озвученого тексту.</summary>
+    [ObservableProperty]
+    public partial ExportFormatOption? SelectedExportFormat { get; set; }
+
+    /// <summary>Поточний режим фрагментації (зі значенням за замовчуванням).</summary>
+    public TextChunkingMode ChunkingMode => SelectedChunkingMode?.Mode ?? TextChunkingMode.Paragraphs;
+
+    /// <summary>Поточний формат збереження (зі значенням за замовчуванням).</summary>
+    public AudioExportFormat ExportFormat => SelectedExportFormat?.Format ?? AudioExportFormat.Mp4;
 
     /// <summary>Повідомлення про успішну дію.</summary>
     [ObservableProperty]
@@ -204,9 +236,10 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             Hotkey = string.IsNullOrWhiteSpace(Hotkey) ? AppConfig.DefaultHotkey : Hotkey,
             AutoSynthesizeOnHotkey = AutoSynthesizeOnHotkey,
             ActivateOnHotkey = ActivateOnHotkey,
-            ChunkingMode = SelectedChunkingMode,
+            ChunkingMode = this.ChunkingMode,
             BatchSize = batchSize,
-            ExportFormat = SelectedExportFormat
+            PauseAfterEachBatch = this.PauseAfterEachBatch,
+            ExportFormat = this.ExportFormat
         };
 
         IsBusy = true;
@@ -247,13 +280,24 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         Hotkey = string.IsNullOrWhiteSpace(config.Hotkey) ? AppConfig.DefaultHotkey : config.Hotkey;
         AutoSynthesizeOnHotkey = config.AutoSynthesizeOnHotkey;
         ActivateOnHotkey = config.ActivateOnHotkey;
-        SelectedChunkingMode = config.ChunkingMode;
+        SelectedChunkingMode = ChunkingModes.FirstOrDefault(option => option.Mode == config.ChunkingMode)
+            ?? DefaultChunkingMode;
         BatchSize = Math.Clamp(config.BatchSize, SpeechQueueOptions.MinBatchSize, SpeechQueueOptions.MaxBatchSize);
-        SelectedExportFormat = config.ExportFormat;
+        PauseAfterEachBatch = config.PauseAfterEachBatch;
+        SelectedExportFormat = ExportFormats.FirstOrDefault(option => option.Format == config.ExportFormat)
+            ?? DefaultExportFormat;
     }
 
     /// <summary>Округлює значення до кроку 0.1.</summary>
     private static double RoundToStep(double value) => Math.Round(value, 1, MidpointRounding.AwayFromZero);
+
+    /// <summary>Оновлює похідне значення після зміни режиму фрагментації.</summary>
+    partial void OnSelectedChunkingModeChanged(ChunkingModeOption? value) =>
+        OnPropertyChanged(nameof(ChunkingMode));
+
+    /// <summary>Оновлює похідне значення після зміни формату збереження.</summary>
+    partial void OnSelectedExportFormatChanged(ExportFormatOption? value) =>
+        OnPropertyChanged(nameof(ExportFormat));
 
     /// <summary>Передає зміну гучності міні-плеєру.</summary>
     partial void OnVolumeChanged(double value)

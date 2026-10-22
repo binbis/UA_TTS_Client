@@ -221,7 +221,9 @@ public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposa
         await firstStarted.Task.ConfigureAwait(false);
     }
 
-    /// <summary>Виконує один пакет і обробляє його завершення.</summary>
+    /// <summary>
+    /// Виконує пакети черги: один (якщо увімкнена пауза між пакетами) або всі підряд.
+    /// </summary>
     private async Task RunQueueAsync(
         int generation,
         int startIndex,
@@ -230,7 +232,28 @@ public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposa
     {
         try
         {
-            await RunBatchAsync(generation, startIndex, firstStarted, cancellationToken).ConfigureAwait(false);
+            var index = startIndex;
+
+            while (true)
+            {
+                await RunBatchAsync(generation, index, firstStarted, cancellationToken).ConfigureAwait(false);
+
+                if (generation != _generation || _options.PauseAfterEachBatch)
+                {
+                    return;
+                }
+
+                lock (_sync)
+                {
+                    index = _nextFragmentIndex;
+                }
+
+                if (index >= _fragments.Count)
+                {
+                    // Останній пакет уже підняв QueueCompleted.
+                    return;
+                }
+            }
         }
         catch (OperationCanceledException)
         {
@@ -314,14 +337,17 @@ public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposa
 
         if (nextIndex < fragments.Count)
         {
-            int completedBatch;
-            lock (_sync)
+            if (options.PauseAfterEachBatch)
             {
-                _isBatchPending = true;
-                completedBatch = _currentBatch;
-            }
+                int completedBatch;
+                lock (_sync)
+                {
+                    _isBatchPending = true;
+                    completedBatch = _currentBatch;
+                }
 
-            RaiseBatchCompleted(completedBatch, _totalBatches, hasNext: true);
+                RaiseBatchCompleted(completedBatch, _totalBatches, hasNext: true);
+            }
         }
         else
         {

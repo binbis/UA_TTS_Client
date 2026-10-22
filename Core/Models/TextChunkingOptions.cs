@@ -12,8 +12,8 @@ public sealed record TextChunkingOptions
     /// <summary>Максимальна довжина фрагмента за замовчуванням (символів).</summary>
     public const int DefaultMaxChunkLength = 250;
 
-    /// <summary>Режим поділу.</summary>
-    public TextChunkingMode Mode { get; init; } = TextChunkingMode.MaxLength;
+    /// <summary>Режим поділу (типово — абзаци).</summary>
+    public TextChunkingMode Mode { get; init; } = TextChunkingMode.Paragraphs;
 
     /// <summary>Максимальна довжина фрагмента в символах.</summary>
     public int MaxChunkLength { get; init; } = DefaultMaxChunkLength;

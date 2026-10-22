@@ -40,19 +40,29 @@ public abstract class ViewModelBase : ObservableObject
     /// </summary>
     /// <param name="count">Кількість символів.</param>
     /// <returns><c>символ</c>, <c>символи</c> або <c>символів</c>.</returns>
-    protected static string SymbolsWord(int count)
+    protected static string SymbolsWord(int count) => PluralWord(count, "символ", "символи", "символів");
+
+    /// <summary>
+    /// Вибирає українську форму іменника для заданої кількості.
+    /// </summary>
+    /// <param name="count">Кількість предметів.</param>
+    /// <param name="one">Форма для 1, 21, 31… (наприклад, <c>фрагмент</c>).</param>
+    /// <param name="few">Форма для 2–4, 22–24… (наприклад, <c>фрагменти</c>).</param>
+    /// <param name="many">Форма для 0, 5–20, 11–14… (наприклад, <c>фрагментів</c>).</param>
+    /// <returns>Відповідна форма іменника.</returns>
+    protected static string PluralWord(int count, string one, string few, string many)
     {
         var lastTwo = count % 100;
         if (lastTwo is >= 11 and <= 14)
         {
-            return "символів";
+            return many;
         }
 
         return (count % 10) switch
         {
-            1 => "символ",
-            2 or 3 or 4 => "символи",
-            _ => "символів"
+            1 => one,
+            2 or 3 or 4 => few,
+            _ => many
         };
     }
 }

@@ -16,9 +16,10 @@ using UA_TTS_Client.ViewModels.Components;
 namespace UA_TTS_Client.ViewModels.Tabs;
 
 /// <summary>
-/// Вкладка Quick TTS: захоплення виділеного тексту, синтез і передача аудіо в міні-плеєр.
+/// Вкладка Quick TTS: захоплення виділеного тексту, синтез, статуси черги
+/// та передача аудіо в міні-плеєр.
 /// </summary>
-public partial class QuickTtsViewModel : ViewModelBase
+public partial class QuickTtsViewModel : ViewModelBase, IDisposable
 {
     private readonly IClipboardAutomationService _clipboard;
     private readonly ITextChunker _textChunker;
@@ -27,6 +28,7 @@ public partial class QuickTtsViewModel : ViewModelBase
     private readonly IAudioExportService _audioExport;
     private readonly IFileSaveDialogService _fileSaveDialog;
     private readonly ILogger<QuickTtsViewModel> _logger;
+    private bool _disposed;
 
     /// <summary>
     /// Створює ViewModel вкладки Quick TTS.
@@ -55,7 +57,12 @@ public partial class QuickTtsViewModel : ViewModelBase
         _audioExport = audioExport ?? throw new ArgumentNullException(nameof(audioExport));
         _fileSaveDialog = fileSaveDialog ?? throw new ArgumentNullException(nameof(fileSaveDialog));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        _playback.QueueFailed += OnPlaybackQueueFailed;
     }
+
+    /// <summary>Міні-плеєр із чергою фрагментів (для біндінгів у XAML).</summary>
+    public PlaybackControlViewModel Playback => _playback;
 
     /// <summary>Текст для озвучення.</summary>
     [ObservableProperty]
@@ -194,7 +201,7 @@ public partial class QuickTtsViewModel : ViewModelBase
 
         var fragments = _textChunker.Split(text, new TextChunkingOptions
         {
-            Mode = _settings.SelectedChunkingMode
+            Mode = _settings.ChunkingMode
         });
 
         if (fragments.Count == 0)
@@ -205,7 +212,8 @@ public partial class QuickTtsViewModel : ViewModelBase
 
         ErrorMessage = null;
         IsBusy = true;
-        StatusMessage = $"Підготовлено {fragments.Count} фрагментів…";
+        StatusMessage =
+            $"Підготовлено {fragments.Count} {PluralWord(fragments.Count, "фрагмент", "фрагменти", "фрагментів")}…";
 
         try
         {
@@ -220,9 +228,11 @@ public partial class QuickTtsViewModel : ViewModelBase
                 _settings.SelectedVoice,
                 _settings.Speed,
                 batchSize,
+                _settings.PauseAfterEachBatch,
                 cancellationToken);
 
-            StatusMessage = $"Відтворення: {fragments.Count} фрагментів · пакет 1 з {totalBatches}.";
+            StatusMessage =
+                $"Підготовлено {fragments.Count} {PluralWord(fragments.Count, "фрагмент", "фрагменти", "фрагментів")} · пакет 1 з {totalBatches}";
         }
         catch (OperationCanceledException)
         {
@@ -264,7 +274,7 @@ public partial class QuickTtsViewModel : ViewModelBase
             return;
         }
 
-        var format = _settings.SelectedExportFormat;
+        var format = _settings.ExportFormat;
         var extension = format == AudioExportFormat.Wav ? "wav" : "mp4";
 
         ErrorMessage = null;
@@ -310,7 +320,7 @@ public partial class QuickTtsViewModel : ViewModelBase
                     Text = text,
                     Voice = _settings.SelectedVoice,
                     Speed = _settings.Speed,
-                    Chunking = new TextChunkingOptions { Mode = _settings.SelectedChunkingMode },
+                    Chunking = new TextChunkingOptions { Mode = _settings.ChunkingMode },
                     Format = format,
                     DestinationPath = destinationPath
                 },
@@ -372,6 +382,14 @@ public partial class QuickTtsViewModel : ViewModelBase
         };
     }
 
+    /// <summary>Показує помилку черги відтворення у статусі Quick TTS.</summary>
+    private void OnPlaybackQueueFailed(object? sender, Exception exception)
+    {
+        _logger.LogWarning(exception, "Черга відтворення зупинилася з помилкою");
+        StatusMessage = null;
+        ErrorMessage = "Черга відтворення зупинилася з помилкою. Деталі — у журналі застосунку.";
+    }
+
     private bool CanCapture() => !IsBusy && !IsExporting;
 
     private bool CanSynthesize() => !IsBusy && !IsExporting && !string.IsNullOrWhiteSpace(Text);
@@ -399,5 +417,17 @@ public partial class QuickTtsViewModel : ViewModelBase
         CaptureSelectedTextCommand.NotifyCanExecuteChanged();
         SynthesizeCommand.NotifyCanExecuteChanged();
         ExportCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>Відписується від подій міні-плеєра.</summary>
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _playback.QueueFailed -= OnPlaybackQueueFailed;
     }
 }

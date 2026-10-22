@@ -24,4 +24,9 @@ public sealed record SpeechQueueOptions
 
     /// <summary>Кількість фрагментів в одному пакеті (від 1 до 10).</summary>
     public int BatchSize { get; init; } = DefaultBatchSize;
+
+    /// <summary>
+    /// Чи зупиняти відтворення після кожного пакета (типово) або грати всі пакети підряд.
+    /// </summary>
+    public bool PauseAfterEachBatch { get; init; } = true;
 }

@@ -36,11 +36,16 @@ public sealed record AppConfig
     /// <summary>Чи активувати вікно й перемикатися на Quick TTS після <c>Alt+Q</c>.</summary>
     public bool ActivateOnHotkey { get; init; }
 
-    /// <summary>Режим поділу тексту на фрагменти.</summary>
-    public TextChunkingMode ChunkingMode { get; init; } = TextChunkingMode.MaxLength;
+    /// <summary>Режим поділу тексту на фрагменти (типово — абзаци).</summary>
+    public TextChunkingMode ChunkingMode { get; init; } = TextChunkingMode.Paragraphs;
 
     /// <summary>Кількість фрагментів у пакеті (від 1 до 10).</summary>
     public int BatchSize { get; init; } = SpeechQueueOptions.DefaultBatchSize;
+
+    /// <summary>
+    /// Чи зупиняти відтворення після кожного пакета (типово) або грати всі пакети підряд.
+    /// </summary>
+    public bool PauseAfterEachBatch { get; init; } = true;
 
     /// <summary>Формат збереження озвученого тексту.</summary>
     public AudioExportFormat ExportFormat { get; init; } = AudioExportFormat.Mp4;

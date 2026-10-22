@@ -14,15 +14,19 @@ namespace UA_TTS_Client.Core.Interfaces;
 /// <remarks>
 /// <para><see cref="StartAsync"/> повертається, щойно перший фрагмент почав грати,
 /// а не після завершення всього пакета: інакше UI був би «зайнятий» хвилинами.</para>
-/// <para>Між пакетами відтворення зупиняється; наступний пакет запускає
-/// <see cref="ContinueAsync"/> (вручну).</para>
+/// <para>Якщо <see cref="SpeechQueueOptions.PauseAfterEachBatch"/> увімкнено (типово),
+/// між пакетами відтворення зупиняється і наступний пакет запускає
+/// <see cref="ContinueAsync"/>; інакше всі пакети грають один за одним без втручання.</para>
 /// </remarks>
 public interface IFragmentPlaybackService
 {
     /// <summary>Виникає, коли черговий фрагмент починає відтворюватися.</summary>
     event EventHandler<FragmentStartedEventArgs>? FragmentStarted;
 
-    /// <summary>Виникає після завершення пакета, якщо лишилися наступні.</summary>
+    /// <summary>
+    /// Виникає після завершення пакета, якщо лишилися наступні й увімкнена пауза
+    /// між пакетами (<see cref="SpeechQueueOptions.PauseAfterEachBatch"/>).
+    /// </summary>
     event EventHandler<BatchCompletedEventArgs>? BatchCompleted;
 
     /// <summary>Виникає після відтворення останнього фрагмента черги.</summary>

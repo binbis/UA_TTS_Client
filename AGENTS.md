@@ -5,9 +5,9 @@ Avalonia/.NET 10 клієнт (MVVM, CommunityToolkit.Mvvm) для локаль�
 
 **Клієнт у робочому стані.** Реалізовано Кроки 0–9: `Core/` (контракти), `Infrastructure/`
 (API, BASS-аудіо, хук, буфер, JSON-конфіг), ViewModels, Views (XAML), Composition Root
-у `App.axaml.cs` і документація. В ітерації 2 виконано **Кроки 10–16** (документація,
-фрагментація, пакетна черга, автоозвучення після `Alt+Q`, експорт MP4/WAV); наступний —
-**Крок 17** (UI-перемикачі та лічильники).
+у `App.axaml.cs` і документація. В ітерації 2 виконано **Кроки 10–17** (документація,
+фрагментація, пакетна черга, автоозвучення після `Alt+Q`, експорт MP4/WAV, UI-перемикачі
+та лічильники); наступний — **Крок 18** (фінальна перевірка й документація).
 
 Канонічний план — **`Doc/Curent_Work_Plan.md`**, карта коду — **`Doc/Project_Structure.md`**.
 
@@ -167,6 +167,9 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
   а не після всього пакета. Далі пакет грає у фоні.
 - Між пакетами: `BatchCompleted` + `IsBatchPending == true`; наступний пакет запускає
   `ContinueAsync`. `QueueCompleted` — коли відтворено останній фрагмент.
+- `SpeechQueueOptions.PauseAfterEachBatch` (типово `true`): коли `false`, сервіс сам
+  запускає наступний пакет — `BatchCompleted`/`IsBatchPending` не виникають, кнопка
+  «Наступний пакет» не показується; `QueueCompleted` з підсумком усе одно піднімається.
 - Синтез-запити **послідовні** (один фрагмент наперед), щоб не перевантажувати GPU.
 - Пауза, подана одразу після `FragmentStarted`, застосовується вже після старту
   `BassAudioPlayerService.PlayAsync` — це перевірено harness-ом (інакше пауза «губилася»).
@@ -258,6 +261,20 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
   застосовується **після перезапуску** (це написано в UI).
 - `MainWindowViewModel` перевіряє сервер кожні 15 с через `PeriodicTimer`; кнопка
   «Перевірити» викликає той самий `RefreshServerStatusCommand`.
+- ComboBox зі списками налаштувань працює через option-записи (`ChunkingModeOption`,
+  `ExportFormatOption`) — без магічних індексів; `SelectedItem` біндиться на nullable
+  властивість, а логіка читає `ChunkingMode`/`ExportFormat` з fallback на типові
+  (типовий режим фрагментації — `Paragraphs`, «Абзаци»).
+- `NumericUpDown.Value` — `decimal?` (Avalonia 12.1.4); біндінг до `int`-властивості
+  працює (перевірено), `FormatString="0"` показує цілі числа.
+- Слайдери швидкості/гучності: `TickFrequency="0.1"` + `IsSnapToTickEnabled="True"`,
+  значення показується як `StringFormat='{}{0:0.0}'`.
+- Статуси черги для Quick TTS — `Playback.QueueStatusText` («Пакет 1 з 3 завершено…»,
+  «Готово: N пакетів, M фрагментів»); позиція — `FragmentPositionText`, прев'ю —
+  `CurrentFragmentText` (до 60 символів, один рядок). Помилка черги піднімає
+  `Playback.QueueFailed` → `ErrorMessage` Quick TTS (підписка знімається в `Dispose`).
+- Українське відмінювання чисел — `ViewModelBase.PluralWord(count, one, few, many)`
+  (для символів — `SymbolsWord`).
 
 ---
 
@@ -303,7 +320,7 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 |---|---|
 | `README.md` (корінь) | **Актуальний**: запуск сервера/клієнта, «Як користуватися», вимоги, обмеження |
 | `Doc/Project_Structure.md` | **Актуальний**: шари, фактичне дерево, контракти, DI, потоки, точки розширення |
-| `Doc/Curent_Work_Plan.md` | **Канонічний план ітерації 2**: кроки 10–18, статуси, журнал. Кроки 10–16 ✅, наступний 17 |
+| `Doc/Curent_Work_Plan.md` | **Канонічний план ітерації 2**: кроки 10–18, статуси, журнал. Кроки 10–17 ✅, наступний 18 |
 | `Doc/API.md` | **Актуальний**: контракт ендпоінтів із прикладами `curl`/JSON |
 | `Doc/Промпт для ллм - Єдина кодова база arch-win11.md` | Цілі та стандарти коду. Варто читати повністю |
 | ~~`Doc/ua_tts_client_arch.md`~~ | **Видалено** (Крок 10): замінено на `Project_Structure.md` |
@@ -316,10 +333,10 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 
 ## Стан git
 
-Останній коміт: `feat(export): експорт аудіо в MP4/WAV із кнопки Quick TTS` — **Крок 16**
-(код експорту, документація та видалення `Notes_Userstory.md` в одному коміті;
-хеш — див. `git log`). До нього: `fdb4106 docs` (Крок 15), `41d955d feat(hotkey)`,
-`ae319e1 docs`, `5f35b80 feat(playback)`, `957fbbe feat(text)`, `c8fba32 feat(settings)`.
+Останній коміт: `feat(ui): перемикачі налаштувань, лічильники черги та слайдери` —
+**Крок 17** (хеш — див. `git log`). До нього: `076cec5 feat(export)` (Крок 16),
+`fdb4106 docs` (Крок 15), `41d955d feat(hotkey)`, `ae319e1 docs`, `5f35b80 feat(playback)`,
+`957fbbe feat(text)`, `c8fba32 feat(settings)`.
 
 Робоче дерево після цього коміту — чисте.
 
@@ -330,8 +347,8 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 **Канонічний план — `Doc/Curent_Work_Plan.md`.** Не дублюй його зміст у цьому файлі: там є
 нумерація кроків, поточний стан, контракти й журнал виконання.
 
-Поточний стан ітерації 2: **Кроки 10–16 виконано**, наступний — **Крок 17** (UI: перемикачі
-нових налаштувань, лічильники фрагментів, слайдери). Крок 9.1 (тестовий проєкт)
+Поточний стан ітерації 2: **Кроки 10–17 виконано**, наступний — **Крок 18** (ручні
+сценарії разом із користувачем і фінальна документація). Крок 9.1 (тестовий проєкт)
 **скасовано** — автотести на цьому етапі не потрібні.
 
 Фактичний стан історії та вимоги — у `Doc/` і `README.md`; **пріоритет має виконуваний код

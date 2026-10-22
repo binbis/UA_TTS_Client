@@ -35,13 +35,14 @@
                 <Slider Grid.Column="0"
                         Minimum="0.5"
                         Maximum="2.0"
-                        TickFrequency="0.05"
+                        TickFrequency="0.1"
+                        IsSnapToTickEnabled="True"
                         Value="{Binding Speed}" />
                 <TextBlock Grid.Column="1"
                            Width="48"
                            Margin="8,0,0,0"
                            VerticalAlignment="Center"
-                           Text="{Binding Speed}" />
+                           Text="{Binding Speed, StringFormat='{}{0:0.0}'}" />
             </Grid>
 
             <TextBlock Text="Гучність відтворення" FontWeight="SemiBold" Margin="0,8,0,0" />
@@ -49,17 +50,65 @@
                 <Slider Grid.Column="0"
                         Minimum="0"
                         Maximum="1"
-                        TickFrequency="0.05"
+                        TickFrequency="0.1"
+                        IsSnapToTickEnabled="True"
                         Value="{Binding Volume}" />
                 <TextBlock Grid.Column="1"
                            Width="48"
                            Margin="8,0,0,0"
                            VerticalAlignment="Center"
-                           Text="{Binding Volume}" />
+                           Text="{Binding Volume, StringFormat='{}{0:0.0}'}" />
             </Grid>
+
+            <TextBlock Text="Фрагментація тексту" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <TextBlock Classes="hint" FontSize="12" Text="Режим поділу на фрагменти" />
+            <ComboBox ItemsSource="{Binding ChunkingModes}"
+                      SelectedItem="{Binding SelectedChunkingMode}"
+                      HorizontalAlignment="Stretch">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate DataType="vm:ChunkingModeOption">
+                        <TextBlock Text="{Binding Title}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <Grid ColumnDefinitions="Auto,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="Фрагментів у пакеті"
+                           VerticalAlignment="Center" />
+                <NumericUpDown Grid.Column="1"
+                               Margin="8,0,0,0"
+                               Width="140"
+                               Minimum="1"
+                               Maximum="10"
+                               Increment="1"
+                               FormatString="0"
+                               Value="{Binding BatchSize}" />
+            </Grid>
+            <CheckBox Content="Пауза після кожного пакета (кнопка «Наступний пакет»)"
+                      IsChecked="{Binding PauseAfterEachBatch}" />
+            <TextBlock Classes="hint"
+                       FontSize="12"
+                       TextWrapping="Wrap"
+                       Text="Якщо вимкнути, усі пакети відтворюються один за одним без ручного втручання." />
+
+            <TextBlock Text="Експорт аудіо" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <TextBlock Classes="hint" FontSize="12" Text="Формат збереження" />
+            <ComboBox ItemsSource="{Binding ExportFormats}"
+                      SelectedItem="{Binding SelectedExportFormat}"
+                      HorizontalAlignment="Stretch">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate DataType="vm:ExportFormatOption">
+                        <TextBlock Text="{Binding Title}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
 
             <TextBlock Text="Гаряча клавіша" FontWeight="SemiBold" Margin="0,8,0,0" />
             <TextBox Text="{Binding Hotkey}" IsReadOnly="True" />
+            <CheckBox Content="Озвучувати автоматично після Alt+Q"
+                      IsChecked="{Binding AutoSynthesizeOnHotkey}" />
+            <CheckBox Content="Активувати вікно й переходити на Quick TTS після Alt+Q"
+                      IsChecked="{Binding ActivateOnHotkey}" />
             <TextBlock Classes="hint"
                        FontSize="12"
                        TextWrapping="Wrap"
@@ -68,6 +117,11 @@
             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
                 <Button Content="Зберегти" Command="{Binding SaveCommand}" Classes="accent" />
             </StackPanel>
+
+            <TextBlock Classes="hint"
+                       FontSize="12"
+                       TextWrapping="Wrap"
+                       Text="Зміни діють одразу; кнопка «Зберегти» записує їх у config.json. Адреса сервера — після перезапуску." />
 
             <TextBlock Classes="hint"
                        TextWrapping="Wrap"

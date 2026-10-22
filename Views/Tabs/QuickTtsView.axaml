@@ -32,6 +32,10 @@
                     Classes="accent" />
             <Button Content="Зберегти аудіо…"
                     Command="{Binding ExportCommand}" />
+            <Button Content="{Binding Playback.ContinueButtonText}"
+                    Command="{Binding Playback.ContinueQueueCommand}"
+                    IsVisible="{Binding Playback.IsBatchPending}"
+                    ToolTip.Tip="Запустити наступний пакет фрагментів" />
             <Button Content="Скасувати"
                     Command="{Binding SynthesizeCancelCommand}"
                     IsVisible="{Binding IsBusy}" />
@@ -51,6 +55,18 @@
         </StackPanel>
 
         <StackPanel Grid.Row="3" Margin="0,8,0,0" Spacing="4">
+            <TextBlock Classes="hint"
+                       TextWrapping="Wrap"
+                       Text="{Binding Playback.FragmentPositionText}"
+                       IsVisible="{Binding Playback.FragmentPositionText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+            <TextBlock Classes="hint"
+                       TextWrapping="Wrap"
+                       Text="{Binding Playback.CurrentFragmentText}"
+                       IsVisible="{Binding Playback.CurrentFragmentText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+            <TextBlock Classes="hint"
+                       TextWrapping="Wrap"
+                       Text="{Binding Playback.QueueStatusText}"
+                       IsVisible="{Binding Playback.QueueStatusText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
             <TextBlock Classes="hint"
                        TextWrapping="Wrap"
                        Text="{Binding ExportProgressText}"
