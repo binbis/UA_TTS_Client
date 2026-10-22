@@ -60,6 +60,18 @@ public interface ITtsApiClient
     Task<byte[]> SynthesizeAsync(TtsRequestDto request, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Конвертує WAV у вказаний формат (<c>POST /api/convert</c>).
+    /// </summary>
+    /// <param name="wavData">Вміст WAV-файлу.</param>
+    /// <param name="format">Цільовий формат, наприклад <c>mp4</c>.</param>
+    /// <param name="cancellationToken">Токен скасування операції.</param>
+    /// <returns>Вміст конвертованого файлу.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="wavData"/> дорівнює <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="format"/> порожній.</exception>
+    /// <exception cref="TtsApiException">Сервер недоступний або повернув помилку.</exception>
+    Task<byte[]> ConvertAsync(byte[] wavData, string format, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Витягує текст із файлу документа (<c>POST /api/parse_file</c>).
     /// </summary>
     /// <param name="fileStream">Потік із вмістом файлу. Після завершення виклику потік звільняється.</param>

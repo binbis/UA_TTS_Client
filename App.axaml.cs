@@ -20,6 +20,7 @@ using UA_TTS_Client.ViewModels;
 using UA_TTS_Client.ViewModels.Components;
 using UA_TTS_Client.ViewModels.Tabs;
 using UA_TTS_Client.Views;
+using UA_TTS_Client.Views.Services;
 
 namespace UA_TTS_Client;
 
@@ -95,6 +96,8 @@ public partial class App : Application
         services.AddSingleton<IGlobalHotkeyService, SharpHookGlobalHotkeyService>();
         services.AddSingleton<ITextChunker, SentenceAwareTextChunker>();
         services.AddSingleton<IFragmentPlaybackService, FragmentPlaybackService>();
+        services.AddSingleton<IAudioExportService, AudioExportService>();
+        services.AddSingleton<IFileSaveDialogService, AvaloniaFileSaveDialogService>();
 
         var baseAddress = Uri.TryCreate(startupConfig.ServerUrl, UriKind.Absolute, out var parsed)
             ? parsed

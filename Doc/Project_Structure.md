@@ -66,7 +66,8 @@ UA_TTS_Client/
 │   │   ├── PlaybackState.cs      ← Idle, Playing, Paused, Stopped, Error
 │   │   ├── ServerStatus.cs       ← Unknown, Online, Offline, Error
 │   │   ├── TextChunkingMode.cs   ← Paragraphs, Sentences, MaxLength
-│   │   └── AudioExportFormat.cs  ← Mp4, Wav
+│   │   ├── AudioExportFormat.cs  ← Mp4, Wav
+│   │   └── AudioExportStage.cs   ← Synthesizing, Concatenating, Converting, Writing
 │   ├── Exceptions/
 │   │   └── TtsApiException.cs    ← StatusCode, IsConnectionError
 │   ├── Models/
@@ -80,7 +81,9 @@ UA_TTS_Client/
 │   │   ├── TextFragment.cs       ← Index + Text
 │   │   ├── SpeechQueueOptions.cs ← Voice, Speed, BatchSize (1–10)
 │   │   ├── FragmentStartedEventArgs.cs
-│   │   └── BatchCompletedEventArgs.cs
+│   │   ├── BatchCompletedEventArgs.cs
+│   │   ├── AudioExportRequest.cs  ← текст, голос, швидкість, формат, шлях
+│   │   └── AudioExportProgress.cs ← етап + лічильник фрагментів
 │   └── Interfaces/
 │       ├── ITtsApiClient.cs
 │       ├── ISettingsService.cs
@@ -88,12 +91,16 @@ UA_TTS_Client/
 │       ├── IClipboardAutomationService.cs
 │       ├── IGlobalHotkeyService.cs
 │       ├── ITextChunker.cs
-│       └── IFragmentPlaybackService.cs
+│       ├── IFragmentPlaybackService.cs
+│       ├── IAudioExportService.cs
+│       └── IFileSaveDialogService.cs
 ├── Infrastructure/
 │   ├── Api/
 │   │   └── TtsApiClient.cs       ← typed HttpClient
 │   ├── Audio/
-│   │   └── BassAudioPlayerService.cs
+│   │   ├── BassAudioPlayerService.cs
+│   │   ├── AudioExportService.cs     ← синтез → склеювання → конвертація → запис
+│   │   └── WavAudioConcatenator.cs   ← RIFF: склеювання PCM-чанків
 │   ├── Automation/
 │   │   ├── SharpHookGlobalHotkeyService.cs
 │   │   └── WaylandClipboardAutomationService.cs
@@ -117,6 +124,8 @@ UA_TTS_Client/
 │       └── DesignData.cs         ← фейки для прев'ю Rider
 └── Views/
     ├── MainWindow.axaml(.cs)
+    ├── Services/
+    │   └── AvaloniaFileSaveDialogService.cs ← системний діалог збереження
     └── Tabs/
         ├── QuickTtsView.axaml(.cs)
         ├── SettingsView.axaml(.cs)
@@ -124,23 +133,21 @@ UA_TTS_Client/
         └── CharacterVoiceView.axaml(.cs)
 ```
 
-> Наступні кроки ітерації додадуть файли експорту аудіо (`AudioExportService`,
-> `WavAudioConcatenator`, `IAudioFileDialogService` тощо). Їхній перелік і порядок —
-> у `Doc/Curent_Work_Plan.md`; цей файл оновлюється після реалізації.
-
 ---
 
 ## 4. Ключові контракти та реалізації
 
 | Інтерфейс (`Core/Interfaces`) | Реалізація (`Infrastructure`) | Призначення |
 |---|---|---|
-| `ITtsApiClient` | `Api/TtsApiClient.cs` | voices, health, verbalize, synthesize, parse_file |
+| `ITtsApiClient` | `Api/TtsApiClient.cs` | voices, health, verbalize, synthesize, convert, parse_file |
 | `ISettingsService` | `Storage/JsonSettingsService.cs` | `config.json` з атомарним записом |
 | `IAudioPlayerService` | `Audio/BassAudioPlayerService.cs` | BASS: play/pause/resume/stop/volume, `StateChanged` |
 | `IClipboardAutomationService` | `Automation/WaylandClipboardAutomationService.cs` | симуляція `Ctrl+C` + читання буфера |
 | `IGlobalHotkeyService` | `Automation/SharpHookGlobalHotkeyService.cs` | глобальний `Alt+Q`, подія `HotkeyPressed` |
 | `ITextChunker` | `Text/SentenceAwareTextChunker.cs` | поділ тексту на фрагменти (абзаци/речення/250) |
 | `IFragmentPlaybackService` | `Playback/FragmentPlaybackService.cs` | синтез + пакетна черга + пауза/стоп |
+| `IAudioExportService` | `Audio/AudioExportService.cs` + `WavAudioConcatenator` | експорт усього тексту в MP4/WAV |
+| `IFileSaveDialogService` | `Views/Services/AvaloniaFileSaveDialogService.cs` | системний діалог збереження (лише UI-потік) |
 
 `ITtsApiClient` реєструється як typed `HttpClient` з `BaseAddress` з конфігу та таймаутом 5 хв.
 `IClipboardAutomationService` на Linux читає буфер лише через `wl-paste`; на Windows
@@ -158,7 +165,8 @@ UA_TTS_Client/
    - `AddLogging` (консоль, фільтр шумних `HttpClient`-логів);
    - `AppConfig` як singleton;
    - `ISettingsService`, `IAudioPlayerService`, `IClipboardAutomationService`,
-     `IGlobalHotkeyService`, `ITextChunker`, `IFragmentPlaybackService`;
+     `IGlobalHotkeyService`, `ITextChunker`, `IFragmentPlaybackService`,
+     `IAudioExportService`, `IFileSaveDialogService`;
    - `AddHttpClient<ITtsApiClient, TtsApiClient>()`;
    - `PlaybackControlViewModel`, `SettingsViewModel`, `QuickTtsViewModel`,
      `MainWindowViewModel` — singletons.
@@ -224,7 +232,28 @@ UA_TTS_Client/
 5. Пауза/продовження/стоп черги — методи `IFragmentPlaybackService`; гучність —
    `IAudioPlayerService.SetVolume`.
 
-### 6.4 Налаштування
+### 6.4 Експорт аудіо (MP4 / WAV)
+
+1. `QuickTts.ExportCommand`: формат із `Settings.SelectedExportFormat`, далі
+   `IFileSaveDialogService.PickSavePathAsync` (`SuggestedFileName = UA_TTS_yyyy-MM-dd_HH-mm`).
+   Скасування діалогу → вихід без змін.
+2. `PlaybackControlViewModel.StopCommand` — відтворення/черга зупиняється (R18).
+3. `AudioExportService.ExportAsync`:
+   - `ITextChunker.Split` → порожньо → `ArgumentException`;
+   - послідовний `ITtsApiClient.SynthesizeAsync` кожного фрагмента (`Volume = 1.0`,
+     `Translate = false`), прогрес `Synthesizing (i, N)`;
+   - `WavAudioConcatenator.Concat` — перевірка RIFF/fmt/data (24 кГц, моно, 16-bit)
+     і склеювання PCM-чанків з новим заголовком, прогрес `Concatenating`;
+   - `Mp4` → `ITtsApiClient.ConvertAsync(wav, "mp4")` (`POST /api/convert`),
+     прогрес `Converting`; `Wav` — без конвертації;
+   - атомарний запис: тимчасовий файл у тому ж каталозі → `File.Move(overwrite: true)`,
+     прогрес `Writing`; при скасуванні/помилці тимчасовий файл видаляється.
+4. `QuickTtsViewModel` показує `ExportProgressText` / `ExportProgressPercent`; під час
+   експорту `CanCapture`/`CanSynthesize`/`CanExport` вимкнені, тож текст не зміниться.
+5. Помилки: текст сервера (`TtsApiException`) або `IOException` показуються в
+   `ErrorMessage`; MP4 залежить від `ffmpeg` на сервері (альтернатива — WAV).
+
+### 6.5 Налаштування
 
 - `SettingsViewModel` — джерело істини для голосу, швидкості, гучності.
 - `Volume` синхронізується з `PlaybackControlViewModel` в обидва боки
@@ -233,7 +262,7 @@ UA_TTS_Client/
 - `JsonSettingsService`: `~/.config/UA_TTS_Client/config.json` (Linux) /
   `%APPDATA%\UA_TTS_Client\config.json` (Windows); тимчасовий файл + `File.Move`.
 
-### 6.5 Вкладки
+### 6.6 Вкладки
 
 `MainWindow.axaml` містить `TabControl` з чотирма `TabItem`; вміст — `ContentControl`
 з ViewModel. `ViewLocator` перетворює `ViewModels.*` → `Views.*`, а для
@@ -247,7 +276,7 @@ UA_TTS_Client/
 | View | ViewModel | Примітка |
 |---|---|---|
 | `Views/MainWindow.axaml` | `MainWindowViewModel` | статус сервера, вкладки, міні-плеєр |
-| `Views/Tabs/QuickTtsView.axaml` | `QuickTtsViewModel` | текст, захоплення, синтез |
+| `Views/Tabs/QuickTtsView.axaml` | `QuickTtsViewModel` | текст, захоплення, синтез, експорт аудіо |
 | `Views/Tabs/SettingsView.axaml` | `SettingsViewModel` | URL, голос, швидкість, гучність, hotkey |
 | `Views/Tabs/ReaderView.axaml` | `ReaderViewModel` | заглушка |
 | `Views/Tabs/CharacterVoiceView.axaml` | `CharacterVoiceViewModel` | заглушка |

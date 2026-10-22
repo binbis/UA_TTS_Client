@@ -37,6 +37,7 @@ public static class DesignData
     /// <summary>Вкладка Quick TTS із тестовим текстом.</summary>
     public static QuickTtsViewModel QuickTts { get; } =
         new(new PreviewClipboard(), new PreviewTextChunker(), Settings, Playback,
+            new PreviewAudioExportService(), new PreviewFileSaveDialogService(),
             NullLogger<QuickTtsViewModel>.Instance);
 
     /// <summary>Головна ViewModel для прев'ю вікна.</summary>
@@ -183,8 +184,29 @@ file sealed class PreviewTtsApiClient : ITtsApiClient
     public Task<byte[]> SynthesizeAsync(TtsRequestDto request, CancellationToken cancellationToken = default)
         => Task.FromResult(Array.Empty<byte>());
 
+    public Task<byte[]> ConvertAsync(byte[] wavData, string format, CancellationToken cancellationToken = default)
+        => Task.FromResult(Array.Empty<byte>());
+
     public Task<string> ParseFileAsync(Stream fileStream, string fileName, CancellationToken cancellationToken = default)
         => Task.FromResult(string.Empty);
+}
+
+/// <summary>Фіктивний сервіс експорту аудіо, який нічого не робить.</summary>
+file sealed class PreviewAudioExportService : IAudioExportService
+{
+    public Task ExportAsync(
+        AudioExportRequest request,
+        IProgress<AudioExportProgress>? progress = null,
+        CancellationToken cancellationToken = default) => Task.CompletedTask;
+}
+
+/// <summary>Фіктивний діалог збереження файлу (завжди скасовується).</summary>
+file sealed class PreviewFileSaveDialogService : IFileSaveDialogService
+{
+    public Task<string?> PickSavePathAsync(
+        string suggestedFileName,
+        string extension,
+        CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
 }
 
 /// <summary>Фіктивне сховище налаштувань.</summary>

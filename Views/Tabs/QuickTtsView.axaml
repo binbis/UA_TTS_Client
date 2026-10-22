@@ -30,16 +30,31 @@
             <Button Content="Озвучити"
                     Command="{Binding SynthesizeCommand}"
                     Classes="accent" />
+            <Button Content="Зберегти аудіо…"
+                    Command="{Binding ExportCommand}" />
             <Button Content="Скасувати"
                     Command="{Binding SynthesizeCancelCommand}"
                     IsVisible="{Binding IsBusy}" />
+            <Button Content="Скасувати експорт"
+                    Command="{Binding ExportCancelCommand}"
+                    IsVisible="{Binding IsExporting}" />
             <ProgressBar Width="140"
                          IsIndeterminate="True"
                          VerticalAlignment="Center"
                          IsVisible="{Binding IsBusy}" />
+            <ProgressBar Width="140"
+                         Minimum="0"
+                         Maximum="100"
+                         Value="{Binding ExportProgressPercent}"
+                         VerticalAlignment="Center"
+                         IsVisible="{Binding IsExporting}" />
         </StackPanel>
 
         <StackPanel Grid.Row="3" Margin="0,8,0,0" Spacing="4">
+            <TextBlock Classes="hint"
+                       TextWrapping="Wrap"
+                       Text="{Binding ExportProgressText}"
+                       IsVisible="{Binding ExportProgressText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
             <TextBlock Classes="hint"
                        TextWrapping="Wrap"
                        Text="{Binding StatusMessage}"

@@ -124,6 +124,31 @@ public sealed class TtsApiClient : ITtsApiClient
     }
 
     /// <inheritdoc />
+    public async Task<byte[]> ConvertAsync(byte[] wavData, string format, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(wavData);
+        ArgumentException.ThrowIfNullOrWhiteSpace(format);
+
+        using var form = new MultipartFormDataContent();
+        using var fileContent = new ByteArrayContent(wavData);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("audio/wav");
+        form.Add(fileContent, "file", "export.wav");
+        form.Add(new StringContent(format), "format");
+
+        using var response = await SendAsync(HttpMethod.Post, "api/convert", form, cancellationToken)
+            .ConfigureAwait(false);
+
+        var audio = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+        if (audio.Length == 0)
+        {
+            throw new TtsApiException("Сервер повернув порожній файл після конвертації.", (int)response.StatusCode);
+        }
+
+        _logger.LogDebug("Конвертовано {Bytes} байт у формат {Format}", audio.Length, format);
+        return audio;
+    }
+
+    /// <inheritdoc />
     public async Task<string> ParseFileAsync(Stream fileStream, string fileName, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(fileStream);
