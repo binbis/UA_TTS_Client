@@ -21,12 +21,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 {
     private static readonly TimeSpan HealthCheckInterval = TimeSpan.FromSeconds(15);
 
+    /// <summary>Індекс вкладки Quick TTS у головному вікні.</summary>
+    private const int QuickTtsTabIndex = 0;
+
     private readonly ITtsApiClient _apiClient;
     private readonly IGlobalHotkeyService _hotkeyService;
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly CancellationTokenSource _cts = new();
 
     private bool _disposed;
+    private bool _hotkeyCaptureInProgress;
 
     /// <summary>
     /// Створює головну ViewModel.
@@ -69,6 +73,15 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Вкладка Character Voice (заглушка).</summary>
     public CharacterVoiceViewModel CharacterVoice { get; } = new();
 
+    /// <summary>
+    /// Виникає після <c>Alt+Q</c>, коли треба показати й активувати головне вікно.
+    /// </summary>
+    /// <remarks>
+    /// Підписник у <c>App.axaml.cs</c> викликає <c>Window.Activate()</c>. На Wayland
+    /// композитор може проігнорувати запит — активація виконується за принципом best effort.
+    /// </remarks>
+    public event EventHandler? ActivateRequested;
+
     /// <summary>Поточний стан TTS-сервера.</summary>
     [ObservableProperty]
     public partial ServerStatus ServerStatus { get; set; } = ServerStatus.Unknown;
@@ -80,6 +93,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Додаткові відомості про сервер (пристрій, кількість голосів, текст помилки).</summary>
     [ObservableProperty]
     public partial string ServerDetails { get; set; } = string.Empty;
+
+    /// <summary>Індекс вибраної вкладки головного вікна (0 — Quick TTS).</summary>
+    [ObservableProperty]
+    public partial int SelectedTabIndex { get; set; }
 
     /// <summary>Ознака того, що сервер онлайн (використовується для індикатора).</summary>
     public bool IsServerOnline => ServerStatus == ServerStatus.Online;
@@ -182,17 +199,62 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Запускає захоплення виділеного тексту за гарячою клавішею Alt+Q.
+    /// Запускає обробку гарячої клавіші Alt+Q на UI-потоці.
     /// </summary>
     private void OnHotkeyPressed(object? sender, EventArgs e)
     {
-        OnUiThread(() =>
+        OnUiThread(() => _ = HandleHotkeyAsync());
+    }
+
+    /// <summary>
+    /// Виконує послідовність Alt+Q: захоплення → активація → автосинтез.
+    /// </summary>
+    /// <remarks>
+    /// <para>Захоплення завжди перше: симуляція <c>Ctrl+C</c> має піти в активне чуже вікно.
+    /// Якщо активувати вікно раніше, буде скопійовано порожньо.</para>
+    /// <para>Повторне <c>Alt+Q</c> під час захоплення ігнорується.</para>
+    /// </remarks>
+    private async Task HandleHotkeyAsync()
+    {
+        if (_hotkeyCaptureInProgress)
         {
-            if (QuickTts.CaptureSelectedTextCommand.CanExecute(null))
+            _logger.LogDebug("Alt+Q: попереднє захоплення ще виконується — пропускаю");
+            return;
+        }
+
+        _hotkeyCaptureInProgress = true;
+
+        try
+        {
+            var captured = await QuickTts.CaptureForHotkeyAsync(_cts.Token);
+            if (!captured)
             {
-                QuickTts.CaptureSelectedTextCommand.Execute(null);
+                return;
             }
-        });
+
+            if (Settings.ActivateOnHotkey)
+            {
+                SelectedTabIndex = QuickTtsTabIndex;
+                ActivateRequested?.Invoke(this, EventArgs.Empty);
+            }
+
+            if (Settings.AutoSynthesizeOnHotkey)
+            {
+                await QuickTts.SynthesizeCurrentTextAsync(_cts.Token);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Застосунок закривається.
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Помилка обробки гарячої клавіші Alt+Q");
+        }
+        finally
+        {
+            _hotkeyCaptureInProgress = false;
+        }
     }
 
     /// <summary>Оновлює похідну ознаку онлайн-стану.</summary>

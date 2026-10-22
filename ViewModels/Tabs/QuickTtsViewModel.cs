@@ -64,36 +64,17 @@ public partial class QuickTtsViewModel : ViewModelBase
     public partial bool IsBusy { get; set; }
 
     /// <summary>
-    /// Захоплює виділений текст із активного вікна.
+    /// Захоплює виділений текст із активного вікна (кнопка «Захопити виділене»).
     /// </summary>
     /// <param name="cancellationToken">Токен скасування.</param>
     [RelayCommand(CanExecute = nameof(CanCapture))]
     private async Task CaptureSelectedTextAsync(CancellationToken cancellationToken)
     {
-        ErrorMessage = null;
-        StatusMessage = null;
         IsBusy = true;
 
         try
         {
-            var captured = await _clipboard.CaptureSelectedTextAsync(cancellationToken);
-            if (string.IsNullOrWhiteSpace(captured))
-            {
-                StatusMessage = "Нічого не захоплено — виділіть текст в активному вікні.";
-                return;
-            }
-
-            Text = captured.Trim();
-            StatusMessage = $"Захоплено {Text.Length} {SymbolsWord(Text.Length)}.";
-        }
-        catch (OperationCanceledException)
-        {
-            StatusMessage = "Захоплення скасовано.";
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Не вдалося захопити виділений текст");
-            ErrorMessage = "Не вдалося захопити виділений текст.";
+            await CaptureSelectedTextCoreAsync(cancellationToken);
         }
         finally
         {
@@ -102,11 +83,86 @@ public partial class QuickTtsViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Синтезує мовлення та починає відтворення.
+    /// Захоплює виділений текст для гарячої клавіші <c>Alt+Q</c>.
+    /// </summary>
+    /// <param name="cancellationToken">Токен скасування.</param>
+    /// <returns><see langword="true"/>, якщо текст захоплено й записано у <see cref="Text"/>.</returns>
+    /// <remarks>
+    /// Викликається до активації вікна: симуляція <c>Ctrl+C</c> має піти в активне чуже вікно,
+    /// інакше буде скопійовано порожньо. Повторний виклик під час роботи ігнорується.
+    /// </remarks>
+    public async Task<bool> CaptureForHotkeyAsync(CancellationToken cancellationToken = default)
+    {
+        if (IsBusy)
+        {
+            _logger.LogDebug("Захоплення за гарячою клавішею пропущено: вже виконується інша операція");
+            return false;
+        }
+
+        IsBusy = true;
+
+        try
+        {
+            return await CaptureSelectedTextCoreAsync(cancellationToken);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Спільна логіка захоплення виділеного тексту для кнопки та гарячої клавіші.
+    /// </summary>
+    /// <param name="cancellationToken">Токен скасування.</param>
+    /// <returns><see langword="true"/>, якщо текст захоплено й записано у <see cref="Text"/>.</returns>
+    private async Task<bool> CaptureSelectedTextCoreAsync(CancellationToken cancellationToken)
+    {
+        ErrorMessage = null;
+        StatusMessage = null;
+
+        try
+        {
+            var captured = await _clipboard.CaptureSelectedTextAsync(cancellationToken);
+            if (string.IsNullOrWhiteSpace(captured))
+            {
+                StatusMessage = "Нічого не захоплено — виділіть текст в активному вікні.";
+                return false;
+            }
+
+            Text = captured.Trim();
+            StatusMessage = $"Захоплено {Text.Length} {SymbolsWord(Text.Length)}.";
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Захоплення скасовано.";
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Не вдалося захопити виділений текст");
+            ErrorMessage = "Не вдалося захопити виділений текст.";
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Синтезує мовлення та починає відтворення (кнопка «Озвучити»).
     /// </summary>
     /// <param name="cancellationToken">Токен скасування.</param>
     [RelayCommand(CanExecute = nameof(CanSynthesize), IncludeCancelCommand = true)]
-    private async Task SynthesizeAsync(CancellationToken cancellationToken)
+    private Task SynthesizeAsync(CancellationToken cancellationToken) =>
+        SynthesizeCurrentTextAsync(cancellationToken);
+
+    /// <summary>
+    /// Синтезує поточний текст і запускає чергу відтворення.
+    /// </summary>
+    /// <param name="cancellationToken">Токен скасування.</param>
+    /// <remarks>
+    /// Спільна логіка для команди «Озвучити» та автосинтезу після <c>Alt+Q</c>.
+    /// </remarks>
+    public async Task SynthesizeCurrentTextAsync(CancellationToken cancellationToken = default)
     {
         var text = Text.Trim();
         if (text.Length == 0)

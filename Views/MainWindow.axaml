@@ -91,7 +91,7 @@
         </Border>
 
         <!-- Центральна частина: вкладки -->
-        <TabControl Margin="12,8">
+        <TabControl Margin="12,8" SelectedIndex="{Binding SelectedTabIndex}">
             <TabItem Header="Quick TTS">
                 <ContentControl Content="{Binding QuickTts}" />
             </TabItem>

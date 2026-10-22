@@ -2,6 +2,7 @@
 
 using System;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,6 +44,17 @@ public partial class App : Application
 
             var window = new MainWindow { DataContext = viewModel };
             window.Opened += async (_, _) => await viewModel.InitializeAsync();
+
+            // Alt+Q: показати й активувати вікно після успішного захоплення тексту.
+            viewModel.ActivateRequested += (_, _) =>
+            {
+                if (window.WindowState == WindowState.Minimized)
+                {
+                    window.WindowState = WindowState.Normal;
+                }
+
+                window.Activate();
+            };
 
             desktop.MainWindow = window;
             desktop.Exit += (_, _) =>
