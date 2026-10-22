@@ -68,7 +68,8 @@ Base URL: `http://127.0.0.1:5000` (Flask dev server, CORS `Access-Control-Allow-
 - Не ламати CORS-заголовки: браузерне розширення користується цим самим сервером.
 - `/api/convert` приймає `format=mp4`; перевірено на серверному venv: pydub/ffmpeg створює
   audio-only MP4 (AAC, `ftyp isom`). `format=m4a` на цій машині **не працює** — не використовувати.
-  Клієнт поки що цей ендпоінт не викликає; він знадобиться для експорту аудіо (Крок 16).
+  Клієнт викликає цей ендпоінт для експорту MP4 (`TtsApiClient.ConvertAsync`, Крок 16);
+  для WAV конвертація не потрібна — клієнт склеює фрагменти сам.
 - Повний контракт із прикладами `curl`/JSON — **`Doc/API.md`** (створено на Кроці 9.2).
 
 ---
@@ -218,6 +219,8 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
   не покладайся на `ydotool`; SharpHook `EventSimulator` працює.
 - Користувач у групі `input` → `/dev/uinput` доступний для симуляції клавіатури.
 - NuGet-кеш прогрітий, мережа є; `dotnet build` проходить без завантаження.
+- Конфіг користувача — `~/.config/UA_TTS_Client/config.json`; уже містить усі поля Кроків
+  12/17, enum-и зберігаються рядками (`"chunkingMode": "Paragraphs"`, `"exportFormat": "Mp4"`).
 
 ---
 
@@ -287,10 +290,10 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
    (адреса потрібна для `HttpClient.BaseAddress`), далі реєструються сервіси й ViewModel-и.
    `desktop.Exit` звільняє `MainWindowViewModel` і `ServiceProvider`.
 3. **Не «виправляй» `partial`-властивість у Toolkit-моделі.** Форма
-   `[ObservableProperty] public partial string Greeting { get; set; }` — **коректна** для
+   `[ObservableProperty] public partial string Foo { get; set; }` — **коректна** для
    CommunityToolkit.Mvvm 8.x: генератор створює partial-властивість на C# 13 `field`
-   (`get => field;`) і `PropertyChanged` працює. Єдине, що тут лишнє — шаблонне значення
-   `"Welcome to Avalonia!"`.
+   (`get => field;`) і `PropertyChanged` працює. Шаблонну `Greeting` із «Welcome to
+   Avalonia!» із коду вже прибрано — правило лишається.
 4. **`/api/health` тепер є** (додано в `server.py`), але `TtsApiClient` усе одно має fallback на
    `GET /api/voices` для сумісності зі старим сервером. Не видаляй цей fallback.
 5. **Помилки сервера історично неоднорідні** (JSON vs plain text `No file`) — парсер
@@ -300,8 +303,8 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 7. **Імена файлів у `Doc/` потребують екранування в shell**: `Промпт для ллм - Єдина кодова база arch-win11.md`
    (пробіли). Також Linux чутливий до регістру — namespace у XAML (`x:Class`, `x:DataType`)
    має точно збігатися з текстом у `.cs`.
-8. **`.gitignore`**: `Server_py/venv/` ігнорується лише вбудованим `venv/.gitignore` (`*`),
-   а не кореневим правилом — кореневе правило додано вже у поточних (незакомічених) змінах.
+8. **`.gitignore`**: `Server_py/venv/` ігнорується кореневим правилом (`.gitignore:49`)
+   і вбудованим `venv/.gitignore` (`*`) — обидва закомічені.
 9. **`Bass.Init(0, …)` — це пристрій «No sound»**, не пристрій за замовчуванням. Завжди
    використовуй `Bass.DefaultDevice` (-1), інакше синтез проходить (сервер віддає 200),
    але звуку немає взагалі. Перевіряй через `pactl list sink-inputs`.
@@ -334,7 +337,7 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 ## Стан git
 
 Останні коміти: `14fdf31 feat(ui): перемикачі налаштувань, лічильники черги та слайдери`
-(Крок 17) і `docs: фінальна документація ітерації 2` (Крок 18; хеш — див. `git log`).
+(Крок 17) і `93656ca docs: фінальна документація ітерації 2` (Крок 18).
 До них: `076cec5 feat(export)` (Крок 16), `fdb4106 docs` (Крок 15), `41d955d feat(hotkey)`,
 `ae319e1 docs`, `5f35b80 feat(playback)`, `957fbbe feat(text)`, `c8fba32 feat(settings)`.
 
@@ -345,7 +348,8 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 ## План роботи
 
 **Канонічний план — `Doc/Curent_Work_Plan.md`.** Не дублюй його зміст у цьому файлі: там є
-нумерація кроків, поточний стан, контракти й журнал виконання.
+нумерація кроків, поточний стан, контракти й журнал виконання. План ітерації 2 **закритий**
+(усі кроки ✅) — для нових завдань створи план ітерації 3 (архівуй цей файл або додай новий).
 
 Ітерацію 2 **завершено**: **Кроки 10–18 виконано**, ручні сценарії підтверджено
 користувачем. Крок 9.1 (тестовий проєкт) **скасовано** — автотести на цьому етапі
