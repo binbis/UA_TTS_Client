@@ -182,19 +182,29 @@ UA_TTS_Client/
 3. `RefreshServerStatusAsync()` → `GET /api/health` (fallback на `/api/voices` при 404);
 4. фоновий `PeriodicTimer` — health-check кожні 15 с.
 
-### 6.2 `Alt+Q` → захоплення тексту
+### 6.2 `Alt+Q` → автоозвучення
 
 1. `SharpHookGlobalHotkeyService` ловить `Alt+Q` після відпускання **обох** клавіш
    (щоб симульований `Ctrl+C` не став `Ctrl+Alt+C`).
-2. Подія `HotkeyPressed` → `MainWindowViewModel.OnHotkeyPressed` → UI-потік.
-3. `QuickTts.CaptureSelectedTextCommand` → `IClipboardAutomationService.CaptureSelectedTextAsync`.
-4. Сервіс:
+2. Подія `HotkeyPressed` → `MainWindowViewModel.OnHotkeyPressed` → UI-потік →
+   `HandleHotkeyAsync()`.
+3. **Захоплення (завжди перше):** `QuickTts.CaptureForHotkeyAsync` →
+   `IClipboardAutomationService.CaptureSelectedTextAsync`:
    - запам'ятовує поточний буфер;
-   - симулює `Ctrl+C` через SharpHook `EventSimulator` (fallback — `ydotool` CLI);
+   - симулює `Ctrl+C` через SharpHook `EventSimulator`;
    - опитує буфер до 900 мс, доки він не зміниться;
    - на Linux читає `wl-paste --no-newline`, на Windows — `TextCopy`;
    - повертає порожній рядок, якщо буфер не змінився.
-5. Текст потрапляє в `QuickTts.Text`.
+4. Якщо нічого не захоплено — вихід: вікно не активується, синтез не запускається.
+5. Якщо `Settings.ActivateOnHotkey`: `SelectedTabIndex = 0` (Quick TTS) і подія
+   `ActivateRequested` → `App.axaml.cs` викликає `Window.Activate()`
+   (на Wayland композитор може проігнорувати — best effort).
+6. Якщо `Settings.AutoSynthesizeOnHotkey`: `QuickTts.SynthesizeCurrentTextAsync`
+   → черга фрагментів (див. 6.3).
+7. Повторний `Alt+Q` під час захоплення ігнорується (`_hotkeyCaptureInProgress`).
+
+> Порядок кроків критичний: активація вікна до захоплення змусила б `Ctrl+C`
+> піти в сам застосунок, і замість виділеного тексту було б скопійовано порожньо.
 
 ### 6.3 Синтез і відтворення (поточний стан)
 

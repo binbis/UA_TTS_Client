@@ -5,8 +5,9 @@ Avalonia/.NET 10 клієнт (MVVM, CommunityToolkit.Mvvm) для локаль�
 
 **Клієнт у робочому стані.** Реалізовано Кроки 0–9: `Core/` (контракти), `Infrastructure/`
 (API, BASS-аудіо, хук, буфер, JSON-конфіг), ViewModels, Views (XAML), Composition Root
-у `App.axaml.cs` і документація. У новій ітерації виконано підготовчі **Кроки 10–11**
-(документація + відмова від X11-fallback); наступний — **Крок 12**.
+у `App.axaml.cs` і документація. В ітерації 2 виконано **Кроки 10–15** (документація,
+фрагментація, пакетна черга, автоозвучення після `Alt+Q`); наступний — **Крок 16**
+(експорт MP4/WAV).
 
 Канонічний план — **`Doc/Curent_Work_Plan.md`**, карта коду — **`Doc/Project_Structure.md`**.
 
@@ -158,7 +159,7 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 
 ---
 
-## Фрагментація і пакетна черга (Кроки 13–14) — перевірені факти
+## Фрагментація, черга і `Alt+Q` (Кроки 13–15) — перевірені факти
 
 - `IAudioPlayerService.TrackEnded` виникає **лише на природному кінці треку**; `Stop()`
   і заміна потоку його не викликають. Черга фрагментів чекає саме на цю подію.
@@ -172,6 +173,16 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 - `SentenceAwareTextChunker`: три режими (`Paragraphs`, `Sentences`, `MaxLength`),
   скорочення/ініціали не рвуть речення, задовге речення ріжеться по пробілу/комі;
   порожній текст → **0 фрагментів**, а не виняток.
+- `MainWindowViewModel.HandleHotkeyAsync` виконує **захоплення → активація → синтез**.
+  Активація вікна до захоплення зіпсувала б `Ctrl+C` (він пішов би в сам застосунок).
+- Повторний `Alt+Q` під час захоплення ігнорується (`_hotkeyCaptureInProgress`);
+  `QuickTts.CaptureForHotkeyAsync` додатково не стартує, якщо `IsBusy`.
+- Кнопка «Захопити виділене» **не** активує вікно й **не** запускає синтез.
+- `ActivateRequested` → `App.axaml.cs` → `Window.Activate()`. На Wayland композитор може
+  проігнорувати запит (best effort); захоплення й озвучення працюють і без активації.
+- Хук ігнорує **симульовані** події (`IsEventSimulated`), тому `Alt+Q` не перевірити
+  автоматизацією — лише фізичним натисканням. Логіку перевірено harness-ом із фейковими
+  сервісами (25/25 PASS).
 
 ## Середовище цієї машини
 
@@ -271,7 +282,7 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 |---|---|
 | `README.md` (корінь) | **Актуальний**: запуск сервера/клієнта, «Як користуватися», вимоги, обмеження |
 | `Doc/Project_Structure.md` | **Актуальний**: шари, фактичне дерево, контракти, DI, потоки, точки розширення |
-| `Doc/Curent_Work_Plan.md` | **Канонічний план ітерації 2**: кроки 10–18, статуси, журнал. Кроки 10–14 ✅, наступний 15 |
+| `Doc/Curent_Work_Plan.md` | **Канонічний план ітерації 2**: кроки 10–18, статуси, журнал. Кроки 10–15 ✅, наступний 16 |
 | `Doc/API.md` | **Актуальний**: контракт ендпоінтів із прикладами `curl`/JSON |
 | `Doc/Промпт для ллм - Єдина кодова база arch-win11.md` | Цілі та стандарти коду. Варто читати повністю |
 | ~~`Doc/ua_tts_client_arch.md`~~ | **Видалено** (Крок 10): замінено на `Project_Structure.md` |
@@ -284,21 +295,14 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 
 ## Стан git
 
-Останній коміт: `0963cd4 docs: реалізувати Крок 9.2 — README, Doc/API.md і виправлення архітектури`
-(до нього: `2a2cdc6 docs`, `5d547f2 fix(automation)`, `32068fa fix(audio)`, `e7b04a1 feat(ui)`).
+Останній коміт: `41d955d feat(hotkey): автоозвучення після Alt+Q з активацією вікна`
+(до нього: `ae319e1 docs`, `5f35b80 feat(playback)`, `957fbbe feat(text)`,
+`c8fba32 feat(settings)`, `05383a9 docs`).
 
-Після нього в робочому дереві — **ітерація 2, Кроки 10–11**:
-- `Doc/Curent_Work_Plan.md` — переписано під нові завдання;
-- `Doc/Project_Structure.md` — створено; `Doc/ua_tts_client_arch.md` — видалено;
-- `AGENTS.md`, `README.md`, `Doc/API.md` — оновлені посилання й факти;
-- `Infrastructure/Automation/WaylandClipboardAutomationService.cs` — прибрано X11-fallback,
-  Linux читає буфер лише через `wl-paste`, `TextCopy` — лише Windows;
-- **Кроки 12–14**: `Core/` (фрагментація, черга, `AudioExportFormat`), `Infrastructure/Text`,
-  `Infrastructure/Playback`, `TrackEnded` у BASS-сервісі, інтеграція в `SettingsViewModel`,
-  `QuickTtsViewModel`, `PlaybackControlViewModel`, `DesignData` і DI;
-- `Notes_Userstory.md` — нотатки користувача (не комітити без запиту).
+Ітерацію 2, **Кроки 10–15 закомічено**; робоче дерево чисте після коміту документації
+Кроку 15 (`Doc/Curent_Work_Plan.md`, `Doc/Project_Structure.md`, `README.md`, `AGENTS.md`).
 
-Незакомічено — не комітити без запиту.
+`Notes_Userstory.md` — нотатки користувача (не комітити без запиту).
 
 ---
 
@@ -307,9 +311,9 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 **Канонічний план — `Doc/Curent_Work_Plan.md`.** Не дублюй його зміст у цьому файлі: там є
 нумерація кроків, поточний стан, контракти й журнал виконання.
 
-Поточний стан ітерації 2: **Кроки 10–14 виконано**, наступний — **Крок 15** (автоозвучення
-після `Alt+Q` і активація вікна). Крок 9.1 (тестовий проєкт) **скасовано** — автотести
-на цьому етапі не потрібні. Далі за планом: експорт MP4/WAV і UI-полірування.
+Поточний стан ітерації 2: **Кроки 10–15 виконано**, наступний — **Крок 16** (експорт
+MP4/WAV, потім UI-полірування). Крок 9.1 (тестовий проєкт) **скасовано** — автотести
+на цьому етапі не потрібні.
 
 Фактичний стан історії та вимоги — у `Doc/` і `README.md`; **пріоритет має виконуваний код
 і ці два файли**, не документи.
