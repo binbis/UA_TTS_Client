@@ -55,6 +55,9 @@ public sealed class BassAudioPlayerService : IAudioPlayerService, IDisposable
     public event EventHandler<PlaybackState>? StateChanged;
 
     /// <inheritdoc />
+    public event EventHandler? TrackEnded;
+
+    /// <inheritdoc />
     public Task PlayAsync(byte[] wavData, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(wavData);
@@ -255,6 +258,8 @@ public sealed class BassAudioPlayerService : IAudioPlayerService, IDisposable
     /// </remarks>
     private void OnStreamEnded(int syncHandle, int channel, int data, IntPtr user)
     {
+        var ended = false;
+
         lock (_sync)
         {
             if (_disposed || channel != _streamHandle)
@@ -264,6 +269,27 @@ public sealed class BassAudioPlayerService : IAudioPlayerService, IDisposable
 
             _logger.LogDebug("Відтворення завершено");
             SetState(PlaybackState.Stopped);
+            ended = true;
+        }
+
+        if (ended)
+        {
+            RaiseTrackEnded();
+        }
+    }
+
+    /// <summary>
+    /// Повідомляє підписників про природне завершення треку поза блокуванням.
+    /// </summary>
+    private void RaiseTrackEnded()
+    {
+        try
+        {
+            TrackEnded?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Помилка в обробнику події TrackEnded");
         }
     }
 
@@ -374,5 +400,6 @@ public sealed class BassAudioPlayerService : IAudioPlayerService, IDisposable
         }
 
         StateChanged = null;
+        TrackEnded = null;
     }
 }

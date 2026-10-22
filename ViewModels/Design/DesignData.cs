@@ -28,14 +28,16 @@ public static class DesignData
 
     /// <summary>Міні-плеєр із фіктивним аудіосервісом.</summary>
     public static PlaybackControlViewModel Playback { get; } =
-        new(PreviewConfig, new PreviewAudioPlayer(), NullLogger<PlaybackControlViewModel>.Instance);
+        new(PreviewConfig, new PreviewAudioPlayer(), new PreviewFragmentPlaybackService(),
+            NullLogger<PlaybackControlViewModel>.Instance);
 
     /// <summary>Вкладка налаштувань із тестовими голосами.</summary>
     public static SettingsViewModel Settings { get; } = CreateSettings();
 
     /// <summary>Вкладка Quick TTS із тестовим текстом.</summary>
     public static QuickTtsViewModel QuickTts { get; } =
-        new(new PreviewTtsApiClient(), new PreviewClipboard(), Settings, Playback, NullLogger<QuickTtsViewModel>.Instance);
+        new(new PreviewClipboard(), new PreviewTextChunker(), Settings, Playback,
+            NullLogger<QuickTtsViewModel>.Instance);
 
     /// <summary>Головна ViewModel для прев'ю вікна.</summary>
     public static MainWindowViewModel MainWindow { get; } =
@@ -73,6 +75,12 @@ file sealed class PreviewAudioPlayer : IAudioPlayerService
         remove { }
     }
 
+    public event EventHandler? TrackEnded
+    {
+        add { }
+        remove { }
+    }
+
     public Task PlayAsync(byte[] wavData, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     public void Pause()
@@ -90,6 +98,72 @@ file sealed class PreviewAudioPlayer : IAudioPlayerService
     public void SetVolume(double volume)
     {
     }
+}
+
+/// <summary>Фіктивна черга фрагментів для прев'ю.</summary>
+file sealed class PreviewFragmentPlaybackService : IFragmentPlaybackService
+{
+    public event EventHandler<FragmentStartedEventArgs>? FragmentStarted
+    {
+        add { }
+        remove { }
+    }
+
+    public event EventHandler<BatchCompletedEventArgs>? BatchCompleted
+    {
+        add { }
+        remove { }
+    }
+
+    public event EventHandler? QueueCompleted
+    {
+        add { }
+        remove { }
+    }
+
+    public event EventHandler<Exception>? Failed
+    {
+        add { }
+        remove { }
+    }
+
+    public bool HasQueue => false;
+
+    public bool IsBatchPending => false;
+
+    public int CurrentFragment => 0;
+
+    public int TotalFragments => 0;
+
+    public int CurrentBatch => 0;
+
+    public int TotalBatches => 0;
+
+    public Task StartAsync(
+        IReadOnlyList<TextFragment> fragments,
+        SpeechQueueOptions options,
+        CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task ContinueAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public void Pause()
+    {
+    }
+
+    public void Resume()
+    {
+    }
+
+    public void Stop()
+    {
+    }
+}
+
+/// <summary>Фіктивний поділ тексту на фрагменти для прев'ю.</summary>
+file sealed class PreviewTextChunker : ITextChunker
+{
+    public IReadOnlyList<TextFragment> Split(string text, TextChunkingOptions options)
+        => string.IsNullOrWhiteSpace(text) ? [] : [new TextFragment(1, text.Trim())];
 }
 
 /// <summary>Фіктивний клієнт API з двома голосами.</summary>

@@ -18,8 +18,8 @@ namespace UA_TTS_Client.ViewModels.Tabs;
 /// </summary>
 public partial class QuickTtsViewModel : ViewModelBase
 {
-    private readonly ITtsApiClient _apiClient;
     private readonly IClipboardAutomationService _clipboard;
+    private readonly ITextChunker _textChunker;
     private readonly SettingsViewModel _settings;
     private readonly PlaybackControlViewModel _playback;
     private readonly ILogger<QuickTtsViewModel> _logger;
@@ -27,21 +27,21 @@ public partial class QuickTtsViewModel : ViewModelBase
     /// <summary>
     /// Створює ViewModel вкладки Quick TTS.
     /// </summary>
-    /// <param name="apiClient">Клієнт TTS-сервера.</param>
     /// <param name="clipboard">Сервіс захоплення виділеного тексту.</param>
-    /// <param name="settings">Налаштування (голос і швидкість).</param>
-    /// <param name="playback">Міні-плеєр.</param>
+    /// <param name="textChunker">Сервіс поділу тексту на фрагменти.</param>
+    /// <param name="settings">Налаштування (голос, швидкість, режим фрагментації).</param>
+    /// <param name="playback">Міні-плеєр і черга фрагментів.</param>
     /// <param name="logger">Логер.</param>
     /// <exception cref="ArgumentNullException">Один із аргументів дорівнює <see langword="null"/>.</exception>
     public QuickTtsViewModel(
-        ITtsApiClient apiClient,
         IClipboardAutomationService clipboard,
+        ITextChunker textChunker,
         SettingsViewModel settings,
         PlaybackControlViewModel playback,
         ILogger<QuickTtsViewModel> logger)
     {
-        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _clipboard = clipboard ?? throw new ArgumentNullException(nameof(clipboard));
+        _textChunker = textChunker ?? throw new ArgumentNullException(nameof(textChunker));
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _playback = playback ?? throw new ArgumentNullException(nameof(playback));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -114,25 +114,37 @@ public partial class QuickTtsViewModel : ViewModelBase
             return;
         }
 
+        var fragments = _textChunker.Split(text, new TextChunkingOptions
+        {
+            Mode = _settings.SelectedChunkingMode
+        });
+
+        if (fragments.Count == 0)
+        {
+            StatusMessage = "Немає тексту для озвучення.";
+            return;
+        }
+
         ErrorMessage = null;
         IsBusy = true;
-        StatusMessage = "Синтез…";
+        StatusMessage = $"Підготовлено {fragments.Count} фрагментів…";
 
         try
         {
-            var request = new TtsRequestDto
-            {
-                Text = text,
-                Voice = _settings.SelectedVoice,
-                Speed = _settings.Speed,
-                Volume = 1.0,
-                Translate = false
-            };
+            var batchSize = Math.Clamp(
+                _settings.BatchSize,
+                SpeechQueueOptions.MinBatchSize,
+                SpeechQueueOptions.MaxBatchSize);
+            var totalBatches = (int)Math.Ceiling(fragments.Count / (double)batchSize);
 
-            var wav = await _apiClient.SynthesizeAsync(request, cancellationToken);
-            await _playback.PlayAsync(wav, _settings.SelectedVoice, cancellationToken);
+            await _playback.StartQueueAsync(
+                fragments,
+                _settings.SelectedVoice,
+                _settings.Speed,
+                batchSize,
+                cancellationToken);
 
-            StatusMessage = $"Готово: {text.Length} {SymbolsWord(text.Length)}, {wav.Length / 1024} КБ аудіо.";
+            StatusMessage = $"Відтворення: {fragments.Count} фрагментів · пакет 1 з {totalBatches}.";
         }
         catch (OperationCanceledException)
         {

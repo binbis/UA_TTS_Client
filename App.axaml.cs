@@ -12,7 +12,9 @@ using UA_TTS_Client.Core.Models;
 using UA_TTS_Client.Infrastructure.Api;
 using UA_TTS_Client.Infrastructure.Audio;
 using UA_TTS_Client.Infrastructure.Automation;
+using UA_TTS_Client.Infrastructure.Playback;
 using UA_TTS_Client.Infrastructure.Storage;
+using UA_TTS_Client.Infrastructure.Text;
 using UA_TTS_Client.ViewModels;
 using UA_TTS_Client.ViewModels.Components;
 using UA_TTS_Client.ViewModels.Tabs;
@@ -79,6 +81,8 @@ public partial class App : Application
         services.AddSingleton<IAudioPlayerService, BassAudioPlayerService>();
         services.AddSingleton<IClipboardAutomationService, WaylandClipboardAutomationService>();
         services.AddSingleton<IGlobalHotkeyService, SharpHookGlobalHotkeyService>();
+        services.AddSingleton<ITextChunker, SentenceAwareTextChunker>();
+        services.AddSingleton<IFragmentPlaybackService, FragmentPlaybackService>();
 
         var baseAddress = Uri.TryCreate(startupConfig.ServerUrl, UriKind.Absolute, out var parsed)
             ? parsed

@@ -22,6 +22,16 @@ public interface IAudioPlayerService
     event EventHandler<PlaybackState>? StateChanged;
 
     /// <summary>
+    /// Виникає після природного завершення потоку.
+    /// </summary>
+    /// <remarks>
+    /// На відміну від переходу в <see cref="PlaybackState.Stopped"/> через <see cref="Stop"/>,
+    /// ця подія означає, що трек дослухано до кінця. Використовується чергою фрагментів,
+    /// щоб дочекатися завершення поточного фрагмента перед наступним.
+    /// </remarks>
+    event EventHandler? TrackEnded;
+
+    /// <summary>
     /// Завантажує WAV у пам'ять і починає відтворення.
     /// </summary>
     /// <param name="wavData">Повний вміст WAV-файлу.</param>
