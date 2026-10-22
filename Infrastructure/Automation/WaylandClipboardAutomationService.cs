@@ -102,40 +102,37 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
     /// Читає текст із буфера обміну.
     /// </summary>
     /// <remarks>
-    /// У Wayland-сеансі спершу використовується <c>wl-paste</c>: TextCopy на Linux працює
-    /// лише через X11 (<c>xsel</c>) і може повернути застарілий X11-буфер замість свіжого
-    /// Wayland-буфера. Якщо <c>wl-paste</c> недоступний, є fallback на TextCopy та <c>xsel</c>.
+    /// На Linux буфер читається лише через <c>wl-paste</c> (Wayland). X11 не підтримується,
+    /// тому застарілий X11-fallback видалено. На Windows використовується TextCopy
+    /// (Win32 Clipboard), бо <c>wl-paste</c> там недоступний.
     /// </remarks>
     private async Task<string> ReadClipboardAsync(CancellationToken cancellationToken)
     {
-        if (OperatingSystem.IsLinux() && IsWaylandSession())
+        if (OperatingSystem.IsLinux())
         {
+            if (!IsWaylandSession())
+            {
+                _logger.LogWarning("X11-сеанс не підтримується: буфер обміну доступний лише у Wayland через wl-paste");
+                return string.Empty;
+            }
+
             var wayland = await TryRunClipboardCommandAsync("wl-paste", ["--no-newline"], cancellationToken)
                 .ConfigureAwait(false);
-            if (wayland is not null)
+            if (wayland is null)
             {
-                return wayland;
+                _logger.LogWarning("wl-paste недоступний або завершився з помилкою. "
+                                   + "Установіть wl-clipboard (пакет wl-clipboard)");
+                return string.Empty;
             }
+
+            return wayland;
         }
 
-        var textCopy = await ReadWithTextCopyAsync(cancellationToken).ConfigureAwait(false);
-        if (!string.IsNullOrEmpty(textCopy))
-        {
-            return textCopy;
-        }
-
-        if (!OperatingSystem.IsLinux())
-        {
-            return string.Empty;
-        }
-
-        var x11 = await TryRunClipboardCommandAsync("xsel", ["--clipboard", "--output"], cancellationToken)
-            .ConfigureAwait(false);
-        return x11 ?? string.Empty;
+        return await ReadWithTextCopyAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// Читає буфер через TextCopy (на Linux — X11/<c>xsel</c>).
+    /// Читає буфер через TextCopy (використовується лише на Windows).
     /// </summary>
     private async Task<string> ReadWithTextCopyAsync(CancellationToken cancellationToken)
     {

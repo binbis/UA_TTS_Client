@@ -3,12 +3,12 @@
 Avalonia/.NET 10 клієнт (MVVM, CommunityToolkit.Mvvm) для локального Python TTS-сервера
 (`Server_py/`, Flask + StyleTTS2). Цільові ОС: Linux EndeavourOS/Arch (Wayland + PipeWire) та Windows 11.
 
-**Клієнт у процесі розробки.** Реалізовано Кроки 0–9: `Core/` (контракти), `Infrastructure/`
+**Клієнт у робочому стані.** Реалізовано Кроки 0–9: `Core/` (контракти), `Infrastructure/`
 (API, BASS-аудіо, хук, буфер, JSON-конфіг), ViewModels, Views (XAML), Composition Root
-у `App.axaml.cs` і документація (Крок 9.2: `README.md`, `Doc/API.md`,
-`Doc/ua_tts_client_arch.md` під реальність, видалено застарілі `Doc/`-файли).
-**Лишилися тести (Крок 9.1)** — тестовий проєкт не створено. Застосунок запускається
-як повноцінне вікно з чотирма вкладками та міні-плеєром.
+у `App.axaml.cs` і документація. У новій ітерації виконано підготовчі **Кроки 10–11**
+(документація + відмова від X11-fallback); наступний — **Крок 12**.
+
+Канонічний план — **`Doc/Curent_Work_Plan.md`**, карта коду — **`Doc/Project_Structure.md`**.
 
 ---
 
@@ -27,7 +27,6 @@ dotnet run
 
 - Є `UA_TTS_Client.sln` (класичний формат — сумісний з усіма версіями Rider; .NET 10 за
   замовчуванням створює `.slnx`, тому формат задано явно). `dotnet build` з кореня працює.
-- Тестовий проєкт ще не створено (**Крок 9.1** — єдине, що лишилося в плані).
 - Немає lint/format/codegen-конфігурації. Немає CI.
 - SDK: .NET 10.0.113 · Python 3.14.8 (`Server_py/venv`) · torch 2.14.1+cu130, **CUDA доступна**.
 - Запуск сервера ≈45 с (модель `patriotyk/styletts2_ukrainian_multispeaker` ~911 МБ уже в кеші HF).
@@ -66,11 +65,14 @@ Base URL: `http://127.0.0.1:5000` (Flask dev server, CORS `Access-Control-Allow-
 - `/api/convert` і `/api/parse_file` тепер теж повертають JSON `{"error": …}`. Але парсер клієнта
   усе одно терпить і plain text: сервер міг бути не оновлений.
 - Не ламати CORS-заголовки: браузерне розширення користується цим самим сервером.
+- `/api/convert` приймає `format=mp4`; перевірено на серверному venv: pydub/ffmpeg створює
+  audio-only MP4 (AAC, `ftyp isom`). `format=m4a` на цій машині **не працює** — не використовувати.
+  Клієнт поки що цей ендпоінт не викликає; він знадобиться для експорту аудіо (Крок 16).
 - Повний контракт із прикладами `curl`/JSON — **`Doc/API.md`** (створено на Кроці 9.2).
 
 ---
 
-## ManagedBass 4.0.2 — реальний API (у `Doc/ua_tts_client_arch.md` уже виправлено)
+## ManagedBass 4.0.2 — реальний API
 
 Класів `ManagedBass.Playback` / `ManagedBass.Channel` **не існує**. Є лише статичний `ManagedBass.Bass`:
 
@@ -91,7 +93,7 @@ Bass.Volume;                          // double, глобальний
 
 - Делегат: `SyncProcedure(int syncHandle, int channel, int data, IntPtr user)` — **перший параметр
   це дескриптор синхронізації, а не каналу**. Порівнювати з `_streamHandle` треба `channel`.
-  Помилка тут тихо ламає автоперехід у `Stopped` (перевірено на Кроці 4).
+  Помилка тут тихо ламає автоперехід у `Stopped`.
 - У `BassFlags` **немає** прапорця `Memory` — перегрузка `byte[]` обробляє це сама, але масив
   мусить жити весь час відтворення (pin через `GCHandle` або зберігати в полі сервісу).
 - **На Linux `Bass.Init(0, …)` відкриває пристрій «No sound»**, а не пристрій за замовчуванням:
@@ -103,8 +105,7 @@ Bass.Volume;                          // double, глобальний
   `ChannelIsActive` → `Playing`.
 - NuGet-пакет **не містить** нативних бібліотек. Потрібен системний `/usr/lib/libbass.so`.
   AUR-пакет називається **`libbass`** (`yay -S libbass`) — **`bass` з репозиторію `extra` — це
-  гра «Beneath A Steel Sky»**, не бібліотека (у старих `Doc/`-файлах була саме ця помилка;
-  `Doc/ua_tts_client_arch.md` уже виправлено).
+  гра «Beneath A Steel Sky»**, не бібліотека.
 - `libbass.so` на цій машині встановлено.
 
 **Як перевірити API, а не гадати** (ManagedBass/SharpHook/TextCopy не мають нормальних доків):
@@ -143,13 +144,13 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
   на відпусканні обох клавіш, інакше Ctrl+C іде як Ctrl+Alt+C.
 - Гаряча клавіша Alt+Q спрацьовує **після відпускання обох клавіш**. Якщо симулювати `Ctrl+C`
   ще до відпускання фізичного Alt, активне вікно отримує `Ctrl+Alt+C` і нічого не копіює.
-- **TextCopy на Linux працює лише через X11 (`xsel`)** і може віддати застарілий X11-буфер.
-  Тому `WaylandClipboardAutomationService` спершу викликає `wl-paste`, а TextCopy/xsel — лише
-  fallback. Після `Ctrl+C` сервіс опитує буфер до 900 мс і повертає порожній рядок, якщо вміст
+- **На Linux буфер читається лише через `wl-paste`** (`wl-clipboard`); X11 не підтримується,
+  тому застарілий X11-fallback видалено (Крок 11). На Windows використовується `TextCopy`
+  (Win32 Clipboard); на Linux `TextCopy` не викликається.
+- Після `Ctrl+C` сервіс опитує буфер до 900 мс і повертає порожній рядок, якщо вміст
   не змінився (щоб не підсунути старий текст).
-- Перевірено: `wl-paste --no-newline` бачить 1312-байтовий Wayland-буфер, `xsel` у той самий
-  момент повертає 0 байт. Повний ланцюжок «виділення → Ctrl+C → wl-paste» перевірено на
-  `zenity --entry`: захоплено рівно введений маркер.
+- Перевірено: `wl-paste --no-newline` бачить 1312-байтовий Wayland-буфер. Повний ланцюжок
+  «виділення → Ctrl+C → wl-paste» перевірено на `zenity --entry`: захоплено рівно введений маркер.
 - **Термінали копіюють через `Ctrl+Shift+C`, а не `Ctrl+C`**: симуляція `Ctrl+C` у терміналі
   надсилає SIGINT. Захоплення виділеного з термінала не підтримується — там треба скопіювати
   вручну й вставити в поле Quick TTS (`Ctrl+V`).
@@ -159,7 +160,8 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 
 ## Середовище цієї машини
 
-- Wayland (`XDG_SESSION_TYPE=wayland`) + PipeWire; `wl-copy`, `wl-paste`, `ydotool`, `xsel` встановлені.
+- Wayland (`XDG_SESSION_TYPE=wayland`) + PipeWire; `wl-copy`, `wl-paste`, `ydotool` встановлені.
+  Для буфера достатньо `wl-clipboard`; X11-утиліти не потрібні.
 - Демон `ydotool` — **enabled + active** (перевіряй `systemctl --user is-active ydotool`).
   Але в цій сесії `ydotool key/type` завершуються з кодом 0, а події до вікон не доходять
   (у журналі — `unable to find device pointer:ydotoold virtual device`). Для автоматизації UI
@@ -171,8 +173,8 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 
 ## Конвенції коду
 
-Авторитетне джерело: **`Doc/Єдна кодова база linux win11.md`** (розділ зі стандартами).
-Коротко:
+Авторитетне джерело: **`Doc/Промпт для ллм - Єдина кодова база arch-win11.md`**
+(розділ зі стандартами). Коротко:
 
 - `file-scoped namespaces`; `public partial class` для **всіх** ViewModel (інакше згенеруються
   неправильно `[ObservableProperty]`/`[RelayCommand]`).
@@ -186,8 +188,8 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 - Wayland: після симуляції `Ctrl+C` обов'язково `await Task.Delay(80..120)` перед читанням буфера.
 - XML-документація та коментарі — **виключно українською**; `<inheritdoc />` для реалізацій інтерфейсів.
 - DTO — `record`; усе, що можна — primary constructors, collection expressions, `required`.
-- Тести (пізніший етап): xUnit + FluentAssertions + NSubstitute, патерн AAA,
-  іменування `Метод_Умови_ОчікуванийРезультат`.
+- Автотести в ітерації 2 **не створюються** (рішення користувача). Перевірка — ручні
+  сценарії та тимчасові harness-и поза репозиторієм.
 
 ---
 
@@ -231,7 +233,7 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
    `TtsApiClient.ReadErrorMessageAsync` терпить обидва формати. Не звужуй його до JSON.
 6. **BASS `SyncProcedure`**: перший аргумент — дескриптор синхронізації, другий — канал.
    Помилка тут не дає жодної помилки в лозі, просто автозупинка не спрацьовує.
-7. **Імена файлів у `Doc/` потребують екранування в shell**: `Єдина кодова база linux win11.md`
+7. **Імена файлів у `Doc/` потребують екранування в shell**: `Промпт для ллм - Єдина кодова база arch-win11.md`
    (пробіли). Також Linux чутливий до регістру — namespace у XAML (`x:Class`, `x:DataType`)
    має точно збігатися з текстом у `.cs`.
 8. **`.gitignore`**: `Server_py/venv/` ігнорується лише вбудованим `venv/.gitignore` (`*`),
@@ -247,46 +249,50 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 
 ## `Doc/` та `README.md` — що чим є
 
-Стан після **Кроку 9.2**: документи оновлено під реальний код. Старі генеровані файли
-(`implementation_roadmap.md`, `ua_tts_client_architecture(remove).md`, `Doc/Readme.md`)
-**видалено**.
+Стан після **Кроку 10** (ітерація 2): історичний `ua_tts_client_arch.md` видалено,
+замість нього — актуальна карта коду `Project_Structure.md`.
 
 | Файл | Стан |
 |---|---|
-| `README.md` (корінь) | **Актуальний**: реальний запуск сервера/клієнта, розділ «Як користуватися», обмеження терміналу. Перенесено з `Doc/Readme.md` і дописано |
-| `Doc/API.md` | **Актуальний**: контракт ендпоінтів із прикладами `curl`/JSON (перевірено на живому сервері) |
-| `Doc/ua_tts_client_arch.md` | **Виправлено**: фактичне дерево файлів, сигнатури інтерфейсів, реальний ManagedBass 4.0.2, DI, Wayland |
-| `Doc/Final_Plan.md` | **Канонічний план**: нумерація кроків, статуси, журнал виконання |
-| `Doc/Єдина кодова база linux win11.md` | Найнадійніший зі старих — цілі та стандарти коду. Варто читати повністю |
-| `Doc/Запит на архітектуру.md` | Початкові вимоги: 4 вкладки, `Alt+Q`, Wayland-фокус (історичний) |
+| `README.md` (корінь) | **Актуальний**: запуск сервера/клієнта, «Як користуватися», вимоги, обмеження |
+| `Doc/Project_Structure.md` | **Актуальний**: шари, фактичне дерево, контракти, DI, потоки, точки розширення |
+| `Doc/Curent_Work_Plan.md` | **Канонічний план ітерації 2**: кроки 10–18, статуси, журнал. Кроки 10–11 ✅, наступний 12 |
+| `Doc/API.md` | **Актуальний**: контракт ендпоінтів із прикладами `curl`/JSON |
+| `Doc/Промпт для ллм - Єдина кодова база arch-win11.md` | Цілі та стандарти коду. Варто читати повністю |
+| ~~`Doc/ua_tts_client_arch.md`~~ | **Видалено** (Крок 10): замінено на `Project_Structure.md` |
+| ~~`Doc/Запит на архітектуру.md`~~ | **Видалено користувачем** як історичне |
 | ~~`Doc/implementation_roadmap.md`~~ | **Видалено** (Крок 9.2): посилався на неіснуючі `/api/ping` і `/health` |
-| ~~`Doc/ua_tts_client_architecture(remove).md`~~ | **Видалено** (Крок 9.2): конфліктний дубль архітектури |
+| ~~`Doc/ua_tts_client_architecture(remove).md`~~ | **Видалено** (Крок 9.2): конфліктний дубль |
 | ~~`Doc/Readme.md`~~ | **Перенесено** в `README.md` у корінь (Крок 9.2) |
 
 ---
 
 ## Стан git
 
-Останній коміт: `2a2cdc6 docs: оновити AGENTS.md і Final_Plan.md за підсумками Кроків 6–8`
-(до нього: `5d547f2 fix(automation)`, `32068fa fix(audio)`, `e7b04a1 feat(ui)`).
-Після нього в робочому дереві — **Крок 9.2 (документація)**: `README.md` (новий у корені),
-`Doc/API.md` (новий), `Doc/ua_tts_client_arch.md` (переписано під реальність), видалені
-`Doc/Readme.md`, `Doc/implementation_roadmap.md`, `Doc/ua_tts_client_architecture(remove).md`,
-оновлені `AGENTS.md` і `Doc/Final_Plan.md`.
-Незакомічено — не комітити без запиту.
+Останній коміт: `0963cd4 docs: реалізувати Крок 9.2 — README, Doc/API.md і виправлення архітектури`
+(до нього: `2a2cdc6 docs`, `5d547f2 fix(automation)`, `32068fa fix(audio)`, `e7b04a1 feat(ui)`).
 
-План роботи — у `Doc/Final_Plan.md` (актуальніший за цей розділ).
+Після нього в робочому дереві — **ітерація 2, Кроки 10–11**:
+- `Doc/Curent_Work_Plan.md` — переписано під нові завдання;
+- `Doc/Project_Structure.md` — створено; `Doc/ua_tts_client_arch.md` — видалено;
+- `AGENTS.md`, `README.md`, `Doc/API.md` — оновлені посилання й факти;
+- `Infrastructure/Automation/WaylandClipboardAutomationService.cs` — прибрано X11-fallback,
+  Linux читає буфер лише через `wl-paste`, `TextCopy` — лише Windows;
+- `Notes_Userstory.md` — нотатки користувача (не комітити без запиту).
+
+Незакомічено — не комітити без запиту.
 
 ---
 
 ## План роботи
 
-**Канонічний план — `Doc/Final_Plan.md`.** Не дублюй його зміст у цьому файлі: там є
+**Канонічний план — `Doc/Curent_Work_Plan.md`.** Не дублюй його зміст у цьому файлі: там є
 нумерація кроків, поточний стан, контракти й журнал виконання.
 
-Поточний стан: **Кроки 0–9 виконано без тестів**. Єдиний незавершений пункт плану —
-**Крок 9.1** (тестовий проєкт `UA_TTS_Client.Tests`), плюс майбутні ітерації
-(Reader, Character Voice, зміна гарячої клавіші).
+Поточний стан ітерації 2: **Кроки 10–11 виконано**, наступний — **Крок 12** (конфіг і нові
+налаштування). Крок 9.1 (тестовий проєкт) **скасовано** — автотести на цьому етапі не потрібні.
+Далі за планом: фрагментація, пакетна черга, автоозвучення після `Alt+Q`, експорт MP4/WAV,
+UI-полірування.
 
-Фактичний стан історії та вимоги — у `Doc/` і `README.md`; **приоритет має виконуваний код
+Фактичний стан історії та вимоги — у `Doc/` і `README.md`; **пріоритет має виконуваний код
 і ці два файли**, не документи.

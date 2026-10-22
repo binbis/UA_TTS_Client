@@ -7,68 +7,11 @@
 - UI фреймворк: Avalonia UI (XAML, Compiled Bindings)
 - Архітектурний патерн: MVVM (`CommunityToolkit.Mvvm`)
 - Робота зі звуком: `ManagedBass` (відтворення з оперативної пам'яті / Streams без збереження на диск)
-- Глобальні хуки та автоматизація: `SharpHook` (uiohook), `TextCopy` (підтримка `wl-clipboard` / Win32 Clipboard)
+- Глобальні хуки та автоматизація: `SharpHook` (uiohook); буфер обміну — `wl-paste` на Linux, `TextCopy` (Win32 Clipboard) на Windows
 - HTTP/API клієнт: `Microsoft.Extensions.Http` (Typed `HttpClient` з `IHttpClientFactory`)
 - DI-контейнер: `Microsoft.Extensions.DependencyInjection`
 - Серіалізація: `System.Text.Json`
 - Тестування: `xUnit`, `FluentAssertions`, `NSubstitute`
-
-Структура проєкту:
-```text
-UA_TTS_Client/
-├── App.axaml
-├── App.axaml.cs
-├── app.manifest
-├── Program.cs
-├── ViewLocator.cs
-├── UA_TTS_Client.csproj
-├── Assets/
-├── Core/
-│   ├── Enums/
-│   │   ├── PlaybackState.cs              # Playing, Paused, Stopped, Buffering
-│   │   └── ExportFormat.cs               # Wav, Mp3, Ogg
-│   ├── Interfaces/
-│   │   ├── IAudioPlayerService.cs        # Керування звуком (Play, Pause, Stop, Seek)
-│   │   ├── ITtsApiClient.cs              # Взаємодія з Flask-сервером
-│   │   ├── IGlobalHotkeyService.cs       # SharpHook обробник Alt+Q
-│   │   ├── IClipboardAutomationService.cs# Симуляція копіювання та зчитування тексту
-│   │   ├── IDocumentParserService.cs     # Парсинг PDF/Word/ODT/TXT
-│   │   └── ISettingsService.cs           # Збереження/завантаження конфігурації
-│   └── Models/
-│       ├── AppConfig.cs                  # Модель налаштувань (URL, Default Voice, Hotkey)
-│       ├── TtsRequestDto.cs              # Модель запиту на синтез
-│       ├── VerbalizeRequestDto.cs
-│       └── CharacterVoicePreset.cs       # Пресети ігрових персонажів
-├── Infrastructure/
-│   ├── Audio/
-│   │   └── BassAudioPlayerService.cs     # Реалізація через ManagedBass (RAM playback)
-│   ├── Api/
-│   │   └── TtsApiClient.cs               # Typed HttpClient для зв'язку з Python
-│   ├── Automation/
-│   │   ├── SharpHookGlobalHotkeyService.cs   # Фоновий хук клавіш через TaskPoolGlobalHook
-│   │   └── WaylandClipboardAutomationService.cs # Симуляція вводу та затримка буфера
-│   ├── Parsing/
-│   │   └── DocumentParserService.cs      # Робота з документами
-│   └── Storage/
-│       └── JsonSettingsService.cs        # Збереження в ApplicationData (~/.config або %APPDATA%)
-├── ViewModels/
-│   ├── ViewModelBase.cs
-│   ├── MainWindowViewModel.cs            # Головний контролер вкладок та статусу бекенду
-│   ├── Tabs/
-│   │   ├── QuickTtsViewModel.cs          # Швидке озвучення (Alt+Q)
-│   │   ├── ReaderViewModel.cs            # Читання великих документів та навігація
-│   │   ├── CharacterVoiceViewModel.cs    # Ігрова озвучка
-│   │   └── SettingsViewModel.cs          # Налаштування підключення, голосів та аудіо
-│   └── Components/
-│       └── PlaybackControlViewModel.cs   # Компонент міні-плеєра
-└── Views/
-    ├── MainWindow.axaml (.cs)
-    └── Tabs/
-        ├── QuickTtsView.axaml (.cs)
-        ├── ReaderView.axaml (.cs)
-        ├── CharacterVoiceView.axaml (.cs)
-        └── SettingsView.axaml (.cs)
-```
 
 Контекст: [РОЗУМІННЯ ДЕ МИ ТА З ЧОГО СТАРТУЄМО, ПРЕДІСТОРІЯ]
 
@@ -89,7 +32,7 @@ UA_TTS_Client/
 - Впровадження залежностей (DI): Всі сервіси та ViewModel реєструються в `App.axaml.cs` через `ServiceCollection`. Залежності передаються виключно через конструктори (Constructor Injection).
 - Typed HttpClient: Для звернень до Python-сервера реєструй типізований клієнт `services.AddHttpClient<ITtsApiClient, TtsApiClient>(...)` зі збільшеним таймаутом (від 120 секунд) з огляду на генерацію важких аудіомоделей.
 - Керування пам'яттю та звуком: Відтворення аудіо має відбуватися безпосередньо з потоку пам'яті (`byte[]` / `MemoryStream`) без обов'язкового збереження тимчасових `.wav` файлів на диск. Усі некеровані ресурси BASS мають коректно звільнятися (`BASS_StreamFree`) з реалізацією `IDisposable`.
-- Специфіка Wayland та буфера обміну: При емуляції комбінації клавіш (`Ctrl+C` через uinput/SharpHook) для копіювання виділеного тексту обов'язково передбачай асинхронну затримку (`await Task.Delay(80..120)`), щоб композитор Wayland встиг оновити буфер обміну перед читанням через `TextCopy`/`wl-paste`.
+- Специфіка Wayland та буфера обміну: При емуляції комбінації клавіш (`Ctrl+C` через uinput/SharpHook) для копіювання виділеного тексту обов'язково передбачай асинхронну затримку (`await Task.Delay(80..120)`), щоб композитор Wayland встиг оновити буфер обміну перед читанням через `wl-paste`. X11 не підтримується; на Windows використовується `TextCopy`.
 
 2. Стандарти коду JetBrains Rider та сучасний C# (.NET 10):
 
@@ -107,7 +50,7 @@ UA_TTS_Client/
 - MVVM: `CommunityToolkit.Mvvm` (атрибути `[ObservableProperty]`, `[RelayCommand]`, наслідування від `ObservableObject`).
 - Аудіо: `ManagedBass` (підтримка кросплатформних бібліотек `libbass.so` на Arch та `bass.dll` на Windows 11).
 - Глобальні гарячі клавіші: `SharpHook` через фоновий сервіс (`TaskPoolGlobalHook`).
-- Буфер обміну: `TextCopy` (сумісність з `wl-clipboard` на Linux Wayland).
+- Буфер обміну: `wl-paste` (`wl-clipboard`) на Linux Wayland; `TextCopy` — лише Windows.
 - Серіалізація: `System.Text.Json` із налаштуваннями відступів та відповідністю регістру ключів сервера.
 
 4. Документування та Коментарі:
@@ -117,9 +60,9 @@ UA_TTS_Client/
 - Для реалізацій інтерфейсів використовуй тег `<inheritdoc />`.
 - Мова документації та коментарів — виключно Українська.
 
-5. Автоматизоване тестування (Autotests):
+5. Автоматизоване тестування (Autotests; у поточній ітерації 2 свідомо не створюються):
 
-- Фреймворк: xUnit + FluentAssertions + NSubstitute.
+- Фреймворк (на майбутнє): xUnit + FluentAssertions + NSubstitute.
 - Покриття: Модульні тести для бізнес-логіки сервісів, парсерів та ViewModels.
 - Ізоляція: Усі зовнішні взаємодії (робота з диском, HTTP запити до Flask, виклики аудіоплеєра, буфер обміну) мають бути закриті інтерфейсами та замокані через NSubstitute.
 - Патерн: чітка структура AAA (Arrange, Act, Assert), відокремлена порожніми рядками.
