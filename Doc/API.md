@@ -171,8 +171,9 @@ curl -sS -X POST http://127.0.0.1:5000/api/convert \
 **Перевірені формати на цій машині:** `mp3`, `wav`, `mp4` — працюють; `m4a` — **ні**
 (ffmpeg повертає помилку кодування). `mp4` — це аудіо без відео (AAC у контейнері MP4).
 
-> Клієнт поки що цей ендпоінт не викликає; `ITtsApiClient.ConvertAsync` додається для
-> експорту аудіо в MP4 (Крок 16 плану `Doc/Curent_Work_Plan.md`).
+> Клієнт викликає цей ендпоінт під час експорту MP4 (`ITtsApiClient.ConvertAsync`):
+> передає склеєний WAV і `format=mp4`. Для WAV-експорту конвертація не потрібна —
+> клієнт склеює фрагменти сам (`WavAudioConcatenator`).
 
 ---
 
@@ -218,6 +219,8 @@ curl -sS -X POST http://127.0.0.1:5000/api/parse_file \
 | Усі збої транспорту → `TtsApiException` (`StatusCode`, `IsConnectionError`) | `Core/Exceptions/TtsApiException.cs` |
 | Таймаут ≥ 2 хв (фактично 5 хв) | конструктор `TtsApiClient` + `App.axaml.cs` |
 | JSON-властивості DTO збігаються з іменами полів сервера | `Core/Models/TtsRequestDto.cs` та ін. |
+| `/api/synthesize` — **послідовні** запити: один на фрагмент (черга та експорт), без паралельних запитів до GPU | `FragmentPlaybackService`, `AudioExportService` |
+| `/api/convert` — один запит на експорт MP4 (склеєний WAV → `mp4`); для WAV не викликається | `AudioExportService` + `TtsApiClient.ConvertAsync` |
 
 ## Швидка перевірка сервера
 

@@ -1,6 +1,6 @@
 # План робіт UA_TTS_Client — ітерація 2
 
-> **Статус:** активний. Оновлено 2026-10-22. Кроки 10–17 виконано; наступний — **Крок 18**.
+> **Статус:** завершено. Оновлено 2026-10-22. Ітерація 2: **Кроки 10–18 виконано** (усі ✅).
 > **Джерело вимог:** нотатки користувача після ручного користування робочою версією
 > (`Notes_Userstory.md` видалено на Кроці 16, вимоги перенесено в цей план).
 > **База:** робоча версія після Кроків 0–9; автотести свідомо **не** створюються.
@@ -15,9 +15,9 @@
 ## 1. Стан на вході
 
 - Кроки 0–9 виконано; застосунок запускається, синтез і відтворення працюють.
-- **Кроки 10–17 виконано** (документація, X11-fallback, конфіг, фрагментація,
+- **Кроки 10–18 виконано** (документація, X11-fallback, конфіг, фрагментація,
   пакетна черга, автоозвучення після `Alt+Q`, експорт MP4/WAV, UI-перемикачі
-  та лічильники) — див. журнал.
+  та лічильники, фінальна перевірка) — див. журнал.
 - Крок 9.1 (тестовий проєкт) **закривається як неактуальний** — на цьому етапі автотести не потрібні.
 - Виявлені користувачем UI/UX-потреби:
   1. після `Alt+Q` текст захоплюється, але озвучення треба запускати вручну;
@@ -172,10 +172,13 @@ Doc/
 ```csharp
 public bool AutoSynthesizeOnHotkey { get; init; } = true;
 public bool ActivateOnHotkey { get; init; } = false;
-public TextChunkingMode ChunkingMode { get; init; } = TextChunkingMode.MaxLength;
+public TextChunkingMode ChunkingMode { get; init; } = TextChunkingMode.Paragraphs;
 public int BatchSize { get; init; } = 5;              // 1..10
 public AudioExportFormat ExportFormat { get; init; } = AudioExportFormat.Mp4;
 ```
+
+- Типовий режим фрагментації змінено з `MaxLength` на `Paragraphs` («Абзаци») у Кроці 17;
+  тоді ж додано `PauseAfterEachBatch` (див. §6.1).
 
 - Старі `config.json` без цих полів читаються з типовими значеннями.
 - `JsonSettingsService`: додати `JsonStringEnumConverter` (режим фрагментації й формат експорту зберігаються рядками, а не числами).
@@ -597,7 +600,16 @@ ComboBox режиму фрагментації (`ChunkingModeOption` + `Selected
 
 ---
 
-### Крок 18 — Перевірка та фінальна документація
+### Крок 18 — Перевірка та фінальна документація ✅
+
+**Виконано (2026-10-22):** `dotnet build` — 0 warnings / 0 errors. Ручні сценарії
+(§4, 23 пункти) підтверджено користувачем під час живої роботи із застосунком:
+`Alt+Q` з автоозвученням і активацією, порожнє виділення, режими фрагментації,
+пакети та «Пауза після кожного пакета», пауза/стоп, слайдери з кроком 0.1, експорт
+MP4/WAV і скасування. Оновлено `Doc/API.md` (послідовні `/api/synthesize`,
+`/api/convert` для MP4), §5–6 цього плану, `README.md`, `AGENTS.md`,
+`Doc/Project_Structure.md`. Відоме обмеження: Windows runtime не перевірено
+(шлях `TextCopy` збережено).
 
 **Збірка:** `dotnet build` — 0 warnings / 0 errors.
 
@@ -646,8 +658,9 @@ ComboBox режиму фрагментації (`ChunkingModeOption` + `Selected
 [✓] Озвучувати автоматично після Alt+Q
 [ ] Активувати вікно й переходити на Quick TTS після Alt+Q
 
-Режим фрагментації: [До 250 символів (розумне пакування) ▼]
+Режим фрагментації: [Абзаци ▼]
 Фрагментів у пакеті: [ 5 ▲▼]   (1–10)
+[✓] Пауза після кожного пакета (кнопка «Наступний пакет»)
 Формат збереження аудіо: [MP4 (аудіо, типово) ▼]  /  [WAV (без стиснення)]
 
 Швидкість мовлення  [────●────] 1.0
@@ -675,8 +688,9 @@ ComboBox режиму фрагментації (`ChunkingModeOption` + `Selected
 ```csharp
 public bool AutoSynthesizeOnHotkey { get; init; } = true;
 public bool ActivateOnHotkey { get; init; } = false;
-public TextChunkingMode ChunkingMode { get; init; } = TextChunkingMode.MaxLength;
+public TextChunkingMode ChunkingMode { get; init; } = TextChunkingMode.Paragraphs;
 public int BatchSize { get; init; } = 5;              // 1..10
+public bool PauseAfterEachBatch { get; init; } = true;
 public AudioExportFormat ExportFormat { get; init; } = AudioExportFormat.Mp4;
 ```
 
@@ -742,20 +756,20 @@ event EventHandler? TrackEnded;
 | 2026-10-22 | **Крок 16 виконано:** `ConvertAsync`, `WavAudioConcatenator`, `AudioExportService`, `AvaloniaFileSaveDialogService`, кнопка «Зберегти аудіо…» з прогресом; harness 49 перевірок + живий експорт WAV/MP4 (pydub: 4.64/4.65 с) — ALL PASSED |
 | 2026-10-22 | **Крок 17 виконано:** чекбокси та ComboBox у налаштуваннях (`ChunkingModeOption`, `ExportFormatOption`), `NumericUpDown` для пакета, слайдери з кроком 0.1; лічильники черги й прев'ю фрагмента в Quick TTS, кнопка «Наступний пакет», подія `QueueFailed` → `ErrorMessage`; harness 46/46 PASS |
 | 2026-10-22 | **Крок 17, уточнення після ручного тестування:** чекбокс «Пауза після кожного пакета» (`PauseAfterEachBatch`; вимкнено — пакети грають підряд без `BatchCompleted`), типовий режим фрагментації — «Абзаци»; harness 64/64 PASS |
+| 2026-10-22 | **Крок 18 виконано:** build 0/0; ручні сценарії (23 пункти) підтверджено користувачем; фінальна документація (`API.md`, план §5–6, `README`, `AGENTS`, `Project_Structure`); **ітерацію 2 завершено** |
 | | |
 
 ---
 
 ## 9. Як продовжити роботу
 
-1. Прочитати `AGENTS.md`, `Doc/Project_Structure.md`, цей план.
-2. Перевірити `git status` і `dotnet build`.
-3. Виконувати кроки по порядку; зараз залишився **Крок 18** — після нього оновити
-   статус і журнал.
-4. Крок 18 — ручні сценарії разом із користувачем (Alt+Q, пакети, режими фрагментації,
-   експорт) плюс фінальна документація; логіку перевіряють harness-и.
-5. Не комітити чужі незакомічені зміни без запиту.
-6. Перед фінальним звітом — повний чеклист §4/Крок 18.
+1. Ітерацію 2 **завершено**: усі кроки 10–18 ✅; історія — у журналі вище.
+2. Для наступної ітерації створити новий план (архівувати цей файл або додати новий
+   розділ), спираючись на `README.md`, `Doc/Project_Structure.md` і `AGENTS.md`.
+3. Не комітити чужі незакомічені зміни без запиту.
+4. Відомі обмеження: Windows runtime не перевірено; MP4-експорт залежить від `ffmpeg`
+   на сервері; довгі тексти під час експорту тримаються в пам'яті; активація вікна
+   на Wayland — best effort.
 
 ---
 
