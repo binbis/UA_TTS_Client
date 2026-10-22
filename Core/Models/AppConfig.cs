@@ -1,5 +1,7 @@
 #nullable enable
 
+using UA_TTS_Client.Core.Enums;
+
 namespace UA_TTS_Client.Core.Models;
 
 /// <summary>
@@ -27,4 +29,19 @@ public sealed record AppConfig
 
     /// <summary>Гаряча клавіша захоплення виділеного тексту.</summary>
     public string Hotkey { get; init; } = DefaultHotkey;
+
+    /// <summary>Чи запускати озвучення автоматично після захоплення тексту за <c>Alt+Q</c>.</summary>
+    public bool AutoSynthesizeOnHotkey { get; init; } = true;
+
+    /// <summary>Чи активувати вікно й перемикатися на Quick TTS після <c>Alt+Q</c>.</summary>
+    public bool ActivateOnHotkey { get; init; }
+
+    /// <summary>Режим поділу тексту на фрагменти.</summary>
+    public TextChunkingMode ChunkingMode { get; init; } = TextChunkingMode.MaxLength;
+
+    /// <summary>Кількість фрагментів у пакеті (від 1 до 10).</summary>
+    public int BatchSize { get; init; } = SpeechQueueOptions.DefaultBatchSize;
+
+    /// <summary>Формат збереження озвученого тексту.</summary>
+    public AudioExportFormat ExportFormat { get; init; } = AudioExportFormat.Mp4;
 }

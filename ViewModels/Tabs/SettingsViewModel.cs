@@ -11,6 +11,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using UA_TTS_Client.Core.Enums;
 using UA_TTS_Client.Core.Exceptions;
 using UA_TTS_Client.Core.Interfaces;
 using UA_TTS_Client.Core.Models;
@@ -87,6 +88,26 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     /// <summary>Гаряча клавіша захоплення виділеного тексту.</summary>
     [ObservableProperty]
     public partial string Hotkey { get; set; } = AppConfig.DefaultHotkey;
+
+    /// <summary>Чи запускати озвучення автоматично після <c>Alt+Q</c>.</summary>
+    [ObservableProperty]
+    public partial bool AutoSynthesizeOnHotkey { get; set; } = true;
+
+    /// <summary>Чи активувати вікно й перемикатися на Quick TTS після <c>Alt+Q</c>.</summary>
+    [ObservableProperty]
+    public partial bool ActivateOnHotkey { get; set; }
+
+    /// <summary>Режим поділу тексту на фрагменти.</summary>
+    [ObservableProperty]
+    public partial TextChunkingMode SelectedChunkingMode { get; set; } = TextChunkingMode.MaxLength;
+
+    /// <summary>Кількість фрагментів у пакеті (від 1 до 10).</summary>
+    [ObservableProperty]
+    public partial int BatchSize { get; set; } = SpeechQueueOptions.DefaultBatchSize;
+
+    /// <summary>Формат збереження озвученого тексту.</summary>
+    [ObservableProperty]
+    public partial AudioExportFormat SelectedExportFormat { get; set; } = AudioExportFormat.Mp4;
 
     /// <summary>Повідомлення про успішну дію.</summary>
     [ObservableProperty]
@@ -170,13 +191,22 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        var speed = RoundToStep(Math.Clamp(Speed, MinSpeed, MaxSpeed));
+        var volume = RoundToStep(Math.Clamp(Volume, 0d, 1d));
+        var batchSize = Math.Clamp(BatchSize, SpeechQueueOptions.MinBatchSize, SpeechQueueOptions.MaxBatchSize);
+
         var config = new AppConfig
         {
             ServerUrl = uri.ToString().TrimEnd('/'),
             SelectedVoice = SelectedVoice,
-            Speed = Math.Clamp(Speed, MinSpeed, MaxSpeed),
-            Volume = Math.Clamp(Volume, 0d, 1d),
-            Hotkey = string.IsNullOrWhiteSpace(Hotkey) ? AppConfig.DefaultHotkey : Hotkey
+            Speed = speed,
+            Volume = volume,
+            Hotkey = string.IsNullOrWhiteSpace(Hotkey) ? AppConfig.DefaultHotkey : Hotkey,
+            AutoSynthesizeOnHotkey = AutoSynthesizeOnHotkey,
+            ActivateOnHotkey = ActivateOnHotkey,
+            ChunkingMode = SelectedChunkingMode,
+            BatchSize = batchSize,
+            ExportFormat = SelectedExportFormat
         };
 
         IsBusy = true;
@@ -185,6 +215,9 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             await _settingsService.SaveAsync(config, cancellationToken);
 
             ServerUrl = config.ServerUrl;
+            Speed = speed;
+            Volume = volume;
+            BatchSize = batchSize;
             StatusMessage = "Збережено. Нову адресу сервера буде застосовано після перезапуску.";
         }
         catch (OperationCanceledException)
@@ -209,10 +242,18 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     {
         ServerUrl = config.ServerUrl;
         SelectedVoice = config.SelectedVoice;
-        Speed = double.IsFinite(config.Speed) ? Math.Clamp(config.Speed, MinSpeed, MaxSpeed) : 1.0;
-        Volume = double.IsFinite(config.Volume) ? Math.Clamp(config.Volume, 0d, 1d) : 1.0;
+        Speed = double.IsFinite(config.Speed) ? RoundToStep(Math.Clamp(config.Speed, MinSpeed, MaxSpeed)) : 1.0;
+        Volume = double.IsFinite(config.Volume) ? RoundToStep(Math.Clamp(config.Volume, 0d, 1d)) : 1.0;
         Hotkey = string.IsNullOrWhiteSpace(config.Hotkey) ? AppConfig.DefaultHotkey : config.Hotkey;
+        AutoSynthesizeOnHotkey = config.AutoSynthesizeOnHotkey;
+        ActivateOnHotkey = config.ActivateOnHotkey;
+        SelectedChunkingMode = config.ChunkingMode;
+        BatchSize = Math.Clamp(config.BatchSize, SpeechQueueOptions.MinBatchSize, SpeechQueueOptions.MaxBatchSize);
+        SelectedExportFormat = config.ExportFormat;
     }
+
+    /// <summary>Округлює значення до кроку 0.1.</summary>
+    private static double RoundToStep(double value) => Math.Round(value, 1, MidpointRounding.AwayFromZero);
 
     /// <summary>Передає зміну гучності міні-плеєру.</summary>
     partial void OnVolumeChanged(double value)
