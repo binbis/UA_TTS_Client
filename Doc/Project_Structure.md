@@ -3,7 +3,7 @@
 > **Призначення:** карта коду для агента й розробника: де що лежить, як пов'язані шари,
 > куди додавати нове. Це не історія архітектури й не план робіт.
 >
-> **Актуально на:** 2026-10-22 (після Кроків 10–11).
+> **Актуально на:** 2026-10-22 (після Кроків 10–14).
 > **План робіт:** `Doc/Curent_Work_Plan.md`. **Перевірені факти й пастки:** `AGENTS.md`.
 > **Контракт сервера:** `Doc/API.md`.
 
@@ -64,22 +64,31 @@ UA_TTS_Client/
 ├── Core/
 │   ├── Enums/
 │   │   ├── PlaybackState.cs      ← Idle, Playing, Paused, Stopped, Error
-│   │   └── ServerStatus.cs       ← Unknown, Online, Offline, Error
+│   │   ├── ServerStatus.cs       ← Unknown, Online, Offline, Error
+│   │   ├── TextChunkingMode.cs   ← Paragraphs, Sentences, MaxLength
+│   │   └── AudioExportFormat.cs  ← Mp4, Wav
 │   ├── Exceptions/
 │   │   └── TtsApiException.cs    ← StatusCode, IsConnectionError
 │   ├── Models/
-│   │   ├── AppConfig.cs          ← ServerUrl, SelectedVoice, Speed, Volume, Hotkey
+│   │   ├── AppConfig.cs          ← ServerUrl, Voice, Speed, Volume, Hotkey + нові поля
 │   │   ├── TtsRequestDto.cs      ← text, voice, speed, volume, translate
 │   │   ├── VerbalizeRequestDto.cs
 │   │   ├── TextResponseDto.cs
 │   │   ├── ApiErrorResponse.cs
-│   │   └── ServerHealth.cs
+│   │   ├── ServerHealth.cs
+│   │   ├── TextChunkingOptions.cs ← режим + MaxChunkLength = 250
+│   │   ├── TextFragment.cs       ← Index + Text
+│   │   ├── SpeechQueueOptions.cs ← Voice, Speed, BatchSize (1–10)
+│   │   ├── FragmentStartedEventArgs.cs
+│   │   └── BatchCompletedEventArgs.cs
 │   └── Interfaces/
 │       ├── ITtsApiClient.cs
 │       ├── ISettingsService.cs
 │       ├── IAudioPlayerService.cs
 │       ├── IClipboardAutomationService.cs
-│       └── IGlobalHotkeyService.cs
+│       ├── IGlobalHotkeyService.cs
+│       ├── ITextChunker.cs
+│       └── IFragmentPlaybackService.cs
 ├── Infrastructure/
 │   ├── Api/
 │   │   └── TtsApiClient.cs       ← typed HttpClient
@@ -88,6 +97,10 @@ UA_TTS_Client/
 │   ├── Automation/
 │   │   ├── SharpHookGlobalHotkeyService.cs
 │   │   └── WaylandClipboardAutomationService.cs
+│   ├── Text/
+│   │   └── SentenceAwareTextChunker.cs ← поділ на абзаци/речення/до 250
+│   ├── Playback/
+│   │   └── FragmentPlaybackService.cs  ← пакетна черга фрагментів
 │   └── Storage/
 │       └── JsonSettingsService.cs
 ├── ViewModels/
@@ -111,9 +124,9 @@ UA_TTS_Client/
         └── CharacterVoiceView.axaml(.cs)
 ```
 
-> Наступна ітерація додасть нові файли (`TextChunker`, `FragmentPlaybackService`,
-> `AudioExportService`, `WavAudioConcatenator`, `IFileSaveDialogService` тощо).
-> Їхній перелік і порядок — у `Doc/Curent_Work_Plan.md`; цей файл оновлюється після реалізації.
+> Наступні кроки ітерації додадуть файли експорту аудіо (`AudioExportService`,
+> `WavAudioConcatenator`, `IAudioFileDialogService` тощо). Їхній перелік і порядок —
+> у `Doc/Curent_Work_Plan.md`; цей файл оновлюється після реалізації.
 
 ---
 
@@ -126,6 +139,8 @@ UA_TTS_Client/
 | `IAudioPlayerService` | `Audio/BassAudioPlayerService.cs` | BASS: play/pause/resume/stop/volume, `StateChanged` |
 | `IClipboardAutomationService` | `Automation/WaylandClipboardAutomationService.cs` | симуляція `Ctrl+C` + читання буфера |
 | `IGlobalHotkeyService` | `Automation/SharpHookGlobalHotkeyService.cs` | глобальний `Alt+Q`, подія `HotkeyPressed` |
+| `ITextChunker` | `Text/SentenceAwareTextChunker.cs` | поділ тексту на фрагменти (абзаци/речення/250) |
+| `IFragmentPlaybackService` | `Playback/FragmentPlaybackService.cs` | синтез + пакетна черга + пауза/стоп |
 
 `ITtsApiClient` реєструється як typed `HttpClient` з `BaseAddress` з конфігу та таймаутом 5 хв.
 `IClipboardAutomationService` на Linux читає буфер лише через `wl-paste`; на Windows
@@ -143,7 +158,7 @@ UA_TTS_Client/
    - `AddLogging` (консоль, фільтр шумних `HttpClient`-логів);
    - `AppConfig` як singleton;
    - `ISettingsService`, `IAudioPlayerService`, `IClipboardAutomationService`,
-     `IGlobalHotkeyService`;
+     `IGlobalHotkeyService`, `ITextChunker`, `IFragmentPlaybackService`;
    - `AddHttpClient<ITtsApiClient, TtsApiClient>()`;
    - `PlaybackControlViewModel`, `SettingsViewModel`, `QuickTtsViewModel`,
      `MainWindowViewModel` — singletons.
@@ -183,15 +198,21 @@ UA_TTS_Client/
 
 ### 6.3 Синтез і відтворення (поточний стан)
 
-1. `QuickTts.SynthesizeCommand` бере `Text`, `Settings.SelectedVoice`, `Settings.Speed`.
-2. `ITtsApiClient.SynthesizeAsync` → `POST /api/synthesize` → WAV `byte[]`.
-3. `PlaybackControlViewModel.PlayAsync` → `BassAudioPlayerService.PlayAsync`:
+1. `QuickTts.SynthesizeCommand` бере `Text` і ріже його `ITextChunker` за
+   `Settings.SelectedChunkingMode`.
+2. `PlaybackControlViewModel.StartQueueAsync` → `FragmentPlaybackService.StartAsync`:
+   - синтез фрагментів послідовно (`ITtsApiClient.SynthesizeAsync` → `POST /api/synthesize`);
+   - один фрагмент синтезується наперед, поки грає поточний;
+   - пакети по `Settings.BatchSize` (1–10); між пакетами — очікування `ContinueAsync`.
+3. `BassAudioPlayerService.PlayAsync`:
    - `Bass.Init(Bass.DefaultDevice, …)`;
    - `Bass.CreateStream(byte[], …)`;
-   - `Bass.ChannelSetSync(End)` → `StateChanged = Stopped`;
+   - `Bass.ChannelSetSync(End)` → `StateChanged = Stopped` + `TrackEnded`;
    - `Bass.ChannelPlay`.
-4. `StateChanged` оновлює міні-плеєр через `ViewModelBase.OnUiThread`.
-5. Пауза/продовження/стоп/гучність — методи `IAudioPlayerService`.
+4. `TrackEnded` завершує очікування поточного фрагмента; `FragmentStarted`,
+   `BatchCompleted`, `QueueCompleted` оновлюють лічильники через `OnUiThread`.
+5. Пауза/продовження/стоп черги — методи `IFragmentPlaybackService`; гучність —
+   `IAudioPlayerService.SetVolume`.
 
 ### 6.4 Налаштування
 
