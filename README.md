@@ -1,55 +1,45 @@
 # UA_TTS_Client
 
-Кросплатформний десктопний клієнт для **локального** TTS-сервера на StyleTTS2:
-озвучення українських текстів 31 голосом, із захопленням виділеного тексту та
-глобальною гарячою клавішею `Alt+Q`.
+Cross-platform desktop client for a **local** StyleTTS2 TTS server: speech synthesis of Ukrainian texts with 31 voices, capture of selected text, and a global `Alt+Q` hotkey.
 
-Цільові ОС: **Linux (EndeavourOS/Arch, Wayland + PipeWire)** та **Windows 11**.
+Target OS: **Linux (EndeavourOS/Arch, Wayland + PipeWire)** and **Windows 11**.
 
-| Частина | Стек | Каталог |
+| Part | Stack | Directory |
 |---|---|---|
-| Сервер синтезу мовлення | Python, Flask, StyleTTS2, CUDA | `Server_py/` |
-| Клієнт (вікно, плеєр, хук) | .NET 10, Avalonia 12, CommunityToolkit.Mvvm, ManagedBass | корінь репозиторію |
+| Speech synthesis server | Python, Flask, StyleTTS2, CUDA | `Server_py/` |
+| Client (window, player, hook) | .NET 10, Avalonia 12, CommunityToolkit.Mvvm, ManagedBass | repository root |
 
 ---
 
-## Вимоги
+## Requirements
 
-**Сервер**
+**Server**
 
-- Python 3.10+ (перевірено на 3.14) та GPU із CUDA. Без CUDA сервер запускається на
-  `cpu`, але синтез помітно повільніший.
-- Залежності — `Server_py/requirements.txt`.
+- Python 3.10+ (tested on 3.14) and a GPU with CUDA. Without CUDA the server runs on `cpu`, but synthesis is noticeably slower.
+- Dependencies: `Server_py/requirements.txt`.
 
-**Клієнт**
+**Client**
 
 - .NET SDK 10.
 - **Linux:**
-  - системна бібліотека BASS — `yay -S libbass` (AUR-пакет саме **`libbass`**;
-    `bass` з репозиторію `extra` — це гра «Beneath A Steel Sky», не бібліотека);
-  - `sudo pacman -S wl-clipboard` — для роботи з буфером обміну (достатньо `wl-paste`);
-  - користувач має бути в групі `input` (`sudo usermod -aG input $USER` + перелогін),
-    демон `systemctl --user enable --now ydotool` — для симуляції клавіатури.
-- **Windows:** NuGet-пакет `ManagedBass` містить лише managed-обгортку, тому
-  поруч із бінарником має бути `bass.dll` (BASS 2.4, un4seen.com). На цьому
-  репозиторії перевірялося лише Linux — збірка під Windows не тестувалася.
+  - the system BASS library: `yay -S libbass` (the AUR package is **`libbass`**; `bass` from the `extra` repository is the game «Beneath A Steel Sky», not a library);
+  - `sudo pacman -S wl-clipboard` — for clipboard access (`wl-paste` is enough);
+  - the user must be in the `input` group (`sudo usermod -aG input $USER` + log out and back in), and the `ydotool` daemon must run: `systemctl --user enable --now ydotool` — for keyboard simulation.
+- **Windows:** the `ManagedBass` NuGet package contains only the managed wrapper, so `bass.dll` must sit next to the binary (BASS 2.4, un4seen.com). This repository has been tested only on Linux; the Windows build has not been tested.
 
 ---
 
-## Запуск сервера
+## Starting the server
 
-`server.py` використовує відносні шляхи (`voices/*.pt`, `dictionary.json`),
-тому **запускати його можна тільки з каталогу `Server_py/`**. Запуск із кореня
-репозиторію мовчки дасть 0 голосів і порожній словник.
+`server.py` uses relative paths (`voices/*.pt`, `dictionary.json`), so **it can only be started from the `Server_py/` directory**. Starting it from the repository root silently yields 0 voices and an empty dictionary.
 
 ### Linux
 
 ```bash
-./Server_py/run_server.sh        # скрипт сам переходить у Server_py/ і бере venv/
+./Server_py/run_server.sh        # the script changes into Server_py/ itself and uses venv/
 ```
 
-Перший запуск завантажує модель (~911 МБ із кешу HuggingFace) — до першого запиту
-йде ≈45 с. Перевірка:
+The first launch loads the model (~911 MB from the HuggingFace cache) — the first request takes ≈45 s. Check:
 
 ```bash
 curl -sS http://127.0.0.1:5000/api/health
@@ -67,119 +57,77 @@ python -m pip install -r requirements.txt
 python server.py
 ```
 
-Повний перелік залежностей і драйвер CUDA — у `Server_py/requirements.txt`.
+Full list of dependencies and the CUDA driver: `Server_py/requirements.txt`.
 
 ---
 
-## Запуск клієнта
+## Starting the client
 
-Сервер має бути запущений **до** старту клієнта (інакше статус-бар показуватиме
-«Офлайн», але застосунок не падає — статус перевіряється кожні 15 с).
+The server must be running **before** the client starts (otherwise the status bar shows «Офлайн» (Offline), but the app does not crash — the status is checked every 15 s).
 
 ```bash
 dotnet build    # 0 warnings / 0 errors
-dotnet run      # або запуск UA_TTS_Client.sln у Rider
+dotnet run      # or open UA_TTS_Client.sln in Rider
 ```
 
 ---
 
-## 📖 Як користуватися
+## 📖 How to use
 
-### Статус-бар (верх вікна)
+### Status bar (top of the window)
 
-Зелений крапка — сервер онлайн (червоний — офлайн); текст поруч показує пристрій
-обчислень і кількість голосів, напр. `Онлайн · cuda · 31 голосів`. Наведення на текст
-показує деталі, кнопка **«Перевірити»** примусово оновлює статус.
+A green dot means the server is online (red means offline). The text next to it shows the compute device and the number of voices, e.g. `Онлайн · cuda · 31 голосів` (Online · cuda · 31 voices). Hovering over the text shows details; the **«Перевірити»** (Check) button forces a status refresh.
 
-### Вкладка Quick TTS — швидке озвучення
+### Quick TTS tab — quick speech
 
-1. Вставте текст у поле (або натисніть **«Захопити виділене»** — сервіс симулює
-   `Ctrl+C` у активному вікні та читає системний буфер обміну).
-2. Натисніть **«Озвучити»**: текст ділиться на фрагменти (абзаци / речення / до 250
-   символів — режим у налаштуваннях), синтез іде послідовно, міні-плеєр переходить
-   у стан `Playing`.
-3. Відтворення йде **пакетами по 5 фрагментів** (розмір пакета налаштовується, 1–10).
-   Під кнопками видно позицію («Фрагмент 2 з 5 · пакет 1 з 3») і початок поточного
-   фрагмента. Якщо увімкнено **«Пауза після кожного пакета»** (типово), після пакета
-   звук зупиняється — натисніть **▶** у міні-плеєрі або кнопку **«Наступний пакет (X з Y)»**;
-   інакше всі пакети грають один за одним без ручного втручання.
-4. **«Скасувати»** перериває тривалий синтез; помилки показуються текстом, а не
-   винятком.
-5. **«Зберегти аудіо…»** зберігає **весь** текст із поля в один файл: **MP4** (аудіо AAC
-   без відео, типово) або **WAV** (24 кГц, моно, 16-bit PCM). Формат вибирається в
-   налаштуваннях
-   («Формат збереження») і зберігається в `config.json`. Перед експортом відтворення
-   зупиняється, видно прогрес («Експорт: синтез 3 із 12…»), а **«Скасувати експорт»**
-   перериває операцію — файл при цьому не створюється.
+1. Paste the text into the field, or click **«Захопити виділене»** (Capture selection) — the service simulates `Ctrl+C` in the active window and reads the system clipboard.
+2. Click **«Озвучити»** (Speak): the text is split into fragments (paragraphs / sentences / up to 250 characters — the mode is set in the settings), synthesis runs sequentially, and the mini player switches to the `Playing` state.
+3. Playback runs in **batches of 5 fragments** (batch size is configurable, 1–10). Below the buttons you see the position («Фрагмент 2 з 5 · пакет 1 з 3») (Fragment 2 of 5 · batch 1 of 3) and the start of the current fragment. If **«Пауза після кожного пакета»** (Pause after each batch) is enabled (default), the sound stops after each batch — press **▶** in the mini player or the **«Наступний пакет (X з Y)»** (Next batch (X of Y)) button. Otherwise all batches play one after another without manual intervention.
+4. **«Скасувати»** (Cancel) interrupts long synthesis; errors are shown as text, not as an exception.
+5. **«Зберегти аудіо…»** (Save audio…) saves the **entire** text from the field into one file: **MP4** (AAC audio without video, default) or **WAV** (24 kHz, mono, 16-bit PCM). The format is chosen in the settings («Формат збереження») (Save format) and stored in `config.json`. Before export, playback stops, progress is shown («Експорт: синтез 3 із 12…») (Export: synthesis 3 of 12…), and **«Скасувати експорт»** (Cancel export) interrupts the operation — no file is created in that case.
 
-> **Якщо MP4 не створюється** (на сервері немає робочого `ffmpeg`), збережіть у **WAV** —
-> цей формат клієнт склеює самостійно, без конвертації на сервері.
+> **If MP4 is not created** (the server has no working `ffmpeg`), save as **WAV** — the client assembles this format itself, without conversion on the server.
 
-**Глобальна гаряча клавіша `Alt+Q`** робить усе це з будь-якого вікна: захоплює
-виділене, за потреби активує вікно й перемикається на Quick TTS, після чого одразу
-запускає озвучення. Поведінка керується перемикачами у вкладці «Налаштування»
-(«Озвучувати автоматично після Alt+Q» — типово увімкнено, «Активувати вікно й
-переходити на Quick TTS» — типово вимкнено) і полями `autoSynthesizeOnHotkey` /
-`activateOnHotkey` у `config.json`. Спрацьовує після відпускання **обох** клавіш, тому
-симульований `Ctrl+C` не «злипається» з фізичним Alt.
+**Global hotkey `Alt+Q`** does all of this from any window: it captures the selection, activates the window and switches to Quick TTS if needed, then immediately starts speech. The behavior is controlled by the toggles in the «Налаштування» (Settings) tab — «Озвучувати автоматично після Alt+Q» (Auto-speak after Alt+Q), enabled by default, and «Активувати вікно й переходити на Quick TTS» (Activate window and switch to Quick TTS), disabled by default — and by the `autoSynthesizeOnHotkey` / `activateOnHotkey` fields in `config.json`. It fires after **both** keys are released, so the simulated `Ctrl+C` does not get merged with the physical Alt.
 
-> **Wayland:** активація вікна — best effort; композитор може не дозволити викрадення
-> фокуса. Захоплення й озвучення при цьому все одно працюють.
+> **Wayland:** window activation is best effort; the compositor may refuse to let an app take focus. Capture and speech still work.
 
-> **Обмеження терміналів:** у терміналах копіювання — це `Ctrl+Shift+C`, а
-> `Ctrl+C` надсилає SIGINT. Тому із термінала скопіюйте текст вручну
-> (`Ctrl+Shift+C`) і вставте в поле Quick TTS (`Ctrl+V`).
+> **Terminal limitation:** in terminals, copy is `Ctrl+Shift+C`, and `Ctrl+C` sends SIGINT. So copy the text from a terminal manually (`Ctrl+Shift+C`) and paste it into the Quick TTS field (`Ctrl+V`).
 
-### Міні-плеєр (низ вікна)
+### Mini player (bottom of the window)
 
-Play/Pause, стоп, регулятор гучності (крок 0.1), поточний стан (`Idle / Playing /
-Paused / Stopped`), назва активного голосу та позиція у черзі («Фрагмент 2 з 5 ·
-пакет 1 з 3»). Стан синхронізований із вкладкою налаштувань. Коли пакет фрагментів
-завершено, **▶** запускає наступний пакет; **■** зупиняє всю чергу й скидає лічильники.
+Play/Pause, stop, volume slider (step 0.1), the current state (`Idle / Playing / Paused / Stopped`), the name of the active voice, and the position in the queue («Фрагмент 2 з 5 · пакет 1 з 3»). The state is synchronized with the settings tab. When a batch of fragments completes, **▶** starts the next batch; **■** stops the whole queue and resets the counters.
 
-### Вкладка «Налаштування»
+### Settings tab
 
-- **Адреса сервера** — зміна застосовується **після перезапуску** застосунку
-  (адреса фіксується на старті для `HttpClient.BaseAddress`).
-- **Голос** — вибір із 31 голосу, кнопка «Оновити голоси» перечитує `GET /api/voices`.
-- **Швидкість мовлення** (0.5–2.0) і **гучність** (0–1) — крок 0.1, гучність
-  синхронізована з міні-плеєром в обидва боки.
-- **Фрагментація тексту** — режим поділу (абзаци — типово / речення / до 250 символів),
-  «Фрагментів у пакеті» (1–10, типово 5) і «Пауза після кожного пакета» (типово увімкнено;
-  вимкніть, щоб пакети відтворювалися один за одним без зупинки).
-- **Експорт аудіо** — формат збереження (MP4 / WAV).
-- **Гаряча клавіша** — наразі довідково (`Alt+Q`), зміна з'явиться в наступній ітерації;
-  чекбокси автозапуску й активації вікна після `Alt+Q`.
-- **«Зберегти»** пише конфіг у `~/.config/UA_TTS_Client/config.json`
-  (Linux) / `%APPDATA%\UA_TTS_Client\config.json` (Windows). Зміни в UI діють одразу,
-  кнопка лише записує їх на диск (адреса сервера — виняток, після перезапуску).
+- **Server address** — a change takes effect **after restarting** the app (the address is fixed at startup for `HttpClient.BaseAddress`).
+- **Voice** — choose from 31 voices; the «Оновити голоси» (Refresh voices) button re-reads `GET /api/voices`.
+- **Speech rate** (0.5–2.0) and **volume** (0–1) — step 0.1; volume is synchronized with the mini player in both directions.
+- **Text chunking** — split mode (paragraphs — default / sentences / up to 250 characters), «Фрагментів у пакеті» (Fragments per batch) (1–10, default 5), and «Пауза після кожного пакета» (Pause after each batch) (enabled by default; turn it off to play batches one after another without stopping).
+- **Audio export** — save format (MP4 / WAV).
+- **Hotkey** — currently informational only (`Alt+Q`); changing it will come in the next iteration. Checkboxes for auto-start and window activation after `Alt+Q`.
+- **«Зберегти»** (Save) writes the config to `~/.config/UA_TTS_Client/config.json` (Linux) / `%APPDATA%\UA_TTS_Client\config.json` (Windows). UI changes take effect immediately; the button only writes them to disk. The server address is the exception: it applies after restart.
 
-### Вкладки Reader і Character Voice
+### Reader and Character Voice tabs
 
-Заглушки (наступні ітерації): озвучення книг/документів і набори голосів персонажів.
+Placeholders for the next iterations: speech for books/documents and character voice sets.
 
 ---
 
-## Стан проєкту
+## Project status
 
-Робоча версія після **Кроків 0–9**. Ітерацію 2 **завершено**: виконано **Кроки 10–18** —
-документація, відмова від X11-fallback, нові налаштування, фрагментація тексту, пакетна
-черга відтворення, автоозвучення після `Alt+Q`, експорт аудіо MP4/WAV, UI-перемикачі,
-лічильники фрагментів і слайдери; ручні сценарії підтверджено користувачем.
+Working version after **Steps 0–9**. Iteration 2 is **completed**: **Steps 10–18** are done — documentation, removal of the X11 fallback, new settings, text chunking, the batch playback queue, auto-speech after `Alt+Q`, MP4/WAV audio export, UI toggles, fragment counters and sliders. Manual scenarios were confirmed by the user.
 
-Відомі обмеження: Windows runtime не перевірено (шлях `TextCopy` збережено);
-MP4-експорт залежить від `ffmpeg` на сервері (запасний варіант — WAV); активація вікна
-на Wayland — best effort; довгі тексти під час експорту тримаються в пам'яті.
+Known limitations: the Windows runtime is not verified (the `TextCopy` path is kept); MP4 export depends on `ffmpeg` on the server (fallback: WAV); window activation on Wayland is best effort; long texts are kept in memory during export.
 
-Деталі, статуси та журнал — **`Doc/Curent_Work_Plan.md`**. Автотести в цій ітерації
-свідомо не створюються (Крок 9.1 скасовано).
+Details, statuses and the journal are in **`Doc/Curent_Work_Plan.md`**. Autotests are deliberately not created in this iteration (Step 9.1 cancelled).
 
-## Документація
+## Documentation
 
-| Файл | Зміст |
+| File | Contents |
 |---|---|
-| `Doc/Curent_Work_Plan.md` | Канонічний план ітерації 2: що і в якому порядку робити |
-| `Doc/Project_Structure.md` | Карта коду: шари, файли, DI, потоки, точки розширення |
-| `AGENTS.md` | Перевірені факти API та підводні камені (читати перед роботою) |
-| `Doc/API.md` | Точний контракт ендпоінтів сервера з прикладами |
-| `Doc/Промпт для ллм - Єдина кодова база arch-win11.md` | Цілі та стандарти коду |
+| `Doc/Curent_Work_Plan.md` | Canonical iteration 2 plan: what to do and in what order |
+| `Doc/Project_Structure.md` | Code map: layers, files, DI, threads, extension points |
+| `AGENTS.md` | Verified API facts and pitfalls (read before working) |
+| `Doc/API.md` | Exact server endpoint contract with examples |
+| `Doc/Промпт для ллм - Єдина кодова база arch-win11.md` | Goals and code standards |

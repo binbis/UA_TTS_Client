@@ -1,72 +1,72 @@
-### .NET 10.0 (C#, Єдина кодова база: Linux EndeavourOS/Arch + Windows 11):
+### .NET 10.0 (C#, single codebase: Linux EndeavourOS/Arch + Windows 11):
 
-Технічний стек:
-- ОС цільові: Linux (EndeavourOS / Arch Linux, Wayland + PipeWire) та Windows 11 (WASAPI)
-- Середовище розробки: JetBrains Rider
-- Платформа: .NET 10.0 (C# 13+)
-- UI фреймворк: Avalonia UI (XAML, Compiled Bindings)
-- Архітектурний патерн: MVVM (`CommunityToolkit.Mvvm`)
-- Робота зі звуком: `ManagedBass` (відтворення з оперативної пам'яті / Streams без збереження на диск)
-- Глобальні хуки та автоматизація: `SharpHook` (uiohook); буфер обміну — `wl-paste` на Linux, `TextCopy` (Win32 Clipboard) на Windows
-- HTTP/API клієнт: `Microsoft.Extensions.Http` (Typed `HttpClient` з `IHttpClientFactory`)
-- DI-контейнер: `Microsoft.Extensions.DependencyInjection`
-- Серіалізація: `System.Text.Json`
-- Тестування: `xUnit`, `FluentAssertions`, `NSubstitute`
+Technology stack:
+- Target OS: Linux (EndeavourOS / Arch Linux, Wayland + PipeWire) and Windows 11 (WASAPI)
+- Development environment: JetBrains Rider
+- Platform: .NET 10.0 (C# 13+)
+- UI framework: Avalonia UI (XAML, Compiled Bindings)
+- Architectural pattern: MVVM (`CommunityToolkit.Mvvm`)
+- Audio: `ManagedBass` (playback from RAM / streams without saving to disk)
+- Global hooks and automation: `SharpHook` (uiohook); clipboard — `wl-paste` on Linux, `TextCopy` (Win32 Clipboard) on Windows
+- HTTP/API client: `Microsoft.Extensions.Http` (typed `HttpClient` with `IHttpClientFactory`)
+- DI container: `Microsoft.Extensions.DependencyInjection`
+- Serialization: `System.Text.Json`
+- Testing: `xUnit`, `FluentAssertions`, `NSubstitute`
 
-Контекст: [РОЗУМІННЯ ДЕ МИ ТА З ЧОГО СТАРТУЄМО, ПРЕДІСТОРІЯ]
+Context: [WHERE WE ARE AND WHERE WE START FROM, BACKGROUND]
 
-Мета: [ГЛОБАЛЬНА МЕТА ОНОВЛЕННЯ ЧИ СТВОРЕННЯ ФІЧІ]
+Goal: [GLOBAL GOAL OF THE UPDATE OR FEATURE]
 
-Завдання: [ОПИШИ ТУТ СВОЄ КОНКРЕТНЕ ЗАВДАННЯ ДЛЯ LLM]
+Task: [DESCRIBE YOUR SPECIFIC TASK FOR THE LLM HERE]
 
-Важливо зауважити:
-- [ЯКІСЬ КОНКРЕТНІ УТОЧНЕННЯ АБО ОБМЕЖЕННЯ]
-- У відповіді очікую лише змінені або новостворені файли/фрагменти коду, які треба замінити, без надлишкового дублювання всього файлу, якщо в цьому немає потреби.
+Important notes:
+- [SOME SPECIFIC CLARIFICATIONS OR CONSTRAINTS]
+- In the answer I expect only the changed or newly created files/code fragments that must be replaced, without unnecessary duplication of entire files, unless there is a need for it.
 
-При виконанні завдання суворо дотримуйся наступних інженерних та архітектурних стандартів:
+When performing the task, strictly follow these engineering and architectural standards:
 
-1. Архітектурні підходи, Кросплатформність та Clean Code:
+1. Architectural approaches, cross-platform support and Clean Code:
 
-- Кросплатформні шляхи: Код ПОВИНЕН гарантовано працювати як на Linux, так і на Windows 11. Для конфігураційних файлів використовуй `Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)` (`~/.config/UA_TTS_Client` на Linux, `%APPDATA%\UA_TTS_Client` на Windows). Завжди використовуй `Path.Combine` або `Path.Join`, пам'ятай про чутливість Linux до регістру (case-sensitivity).
-- Принципи проєктування: Дотримуйся SOLID, DRY, KISS та YAGNI. Відокремлюй чисті інтерфейси в `Core/Interfaces` від сторонніх бібліотек в `Infrastructure/`.
-- Впровадження залежностей (DI): Всі сервіси та ViewModel реєструються в `App.axaml.cs` через `ServiceCollection`. Залежності передаються виключно через конструктори (Constructor Injection).
-- Typed HttpClient: Для звернень до Python-сервера реєструй типізований клієнт `services.AddHttpClient<ITtsApiClient, TtsApiClient>(...)` зі збільшеним таймаутом (від 120 секунд) з огляду на генерацію важких аудіомоделей.
-- Керування пам'яттю та звуком: Відтворення аудіо має відбуватися безпосередньо з потоку пам'яті (`byte[]` / `MemoryStream`) без обов'язкового збереження тимчасових `.wav` файлів на диск. Усі некеровані ресурси BASS мають коректно звільнятися (`BASS_StreamFree`) з реалізацією `IDisposable`.
-- Специфіка Wayland та буфера обміну: При емуляції комбінації клавіш (`Ctrl+C` через uinput/SharpHook) для копіювання виділеного тексту обов'язково передбачай асинхронну затримку (`await Task.Delay(80..120)`), щоб композитор Wayland встиг оновити буфер обміну перед читанням через `wl-paste`. X11 не підтримується; на Windows використовується `TextCopy`.
+- Cross-platform paths: the code MUST work reliably on both Linux and Windows 11. For configuration files use `Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)` (`~/.config/UA_TTS_Client` on Linux, `%APPDATA%\UA_TTS_Client` on Windows). Always use `Path.Combine` or `Path.Join`, and remember that Linux is case-sensitive.
+- Design principles: follow SOLID, DRY, KISS and YAGNI. Keep clean interfaces in `Core/Interfaces`, separate from third-party libraries in `Infrastructure/`.
+- Dependency injection (DI): all services and ViewModels are registered in `App.axaml.cs` via `ServiceCollection`. Dependencies are passed exclusively through constructors (Constructor Injection).
+- Typed HttpClient: to call the Python server, register a typed client `services.AddHttpClient<ITtsApiClient, TtsApiClient>(...)` with an increased timeout (at least 120 seconds), given the heavy audio model generation.
+- Memory and sound management: audio playback must happen directly from a memory stream (`byte[]` / `MemoryStream`), without mandatory saving of temporary `.wav` files to disk. All unmanaged BASS resources must be released correctly (`BASS_StreamFree`), implementing `IDisposable`.
+- Wayland and clipboard specifics: when simulating a key combination (`Ctrl+C` via uinput/SharpHook) to copy selected text, always account for an asynchronous delay (`await Task.Delay(80..120)`), so that the Wayland compositor has time to update the clipboard before it is read via `wl-paste`. X11 is not supported; on Windows `TextCopy` is used.
 
-2. Стандарти коду JetBrains Rider та сучасний C# (.NET 10):
+2. JetBrains Rider code standards and modern C# (.NET 10):
 
-- Стиль коду Rider: Використовуй файлові простори імен (`file-scoped namespaces`, наприклад: `namespace UA_TTS_Client.Core.Interfaces;`) для запобігання зайвої вкладеності відступів.
-- Source Generators у Rider: При роботі з `CommunityToolkit.Mvvm` усі класи ViewModel ОБОВ'ЯЗКОВО оголошуй як `public partial class`, щоб Roslyn-генератори та аналізатор Rider коректно будували залежності без помилок інспекції.
-- Compiled Bindings в Avalonia: У всіх XAML-файлах (`Views`, `UserControls`) обов'язково декларуй `x:DataType="vm:НазваViewModel"`. Це дозволяє Rider проводити повну компіляційну перевірку зв'язування даних та забезпечує інтелектуальне автодоповнення.
-- Сучасні фічі C#: Використовуй primary constructors для впровадження залежностей у класах, collection expressions `[]`, pattern matching, record types для DTO моделей, вирази switch та `required` властивості, де це доречно.
-- Надійність: У всьому коді має бути увімкнено `#nullable enable`. Жодних неконтрольованих `NullReferenceException`.
-- Асинхронність: Усі операції I/O, виклики мережі та робота з аудіо повинні бути суто асинхронними (`async/await`) з передачею `CancellationToken`.
-- Обробка помилок та логування: Використовуй безпечні Guard Clauses та структуроване логування через `ILogger<T>`.
+- Rider code style: use file-scoped namespaces (e.g. `namespace UA_TTS_Client.Core.Interfaces;`) to avoid unnecessary indentation nesting.
+- Rider source generators: when working with `CommunityToolkit.Mvvm`, ALL ViewModel classes MUST be declared as `public partial class`, so that the Roslyn generators and the Rider analyzer build dependencies correctly without inspection errors.
+- Compiled Bindings in Avalonia: in ALL XAML files (`Views`, `UserControls`) you MUST declare `x:DataType="vm:ViewModelName"`. This lets Rider perform full compile-time checking of data bindings and provides intelligent autocompletion.
+- Modern C# features: use primary constructors for dependency injection in classes, collection expressions `[]`, pattern matching, record types for DTO models, switch expressions, and `required` properties where appropriate.
+- Reliability: `#nullable enable` must be enabled throughout the code. No uncontrolled `NullReferenceException`s.
+- Asynchrony: all I/O operations, network calls and audio work must be purely asynchronous (`async/await`), with `CancellationToken` passed through.
+- Error handling and logging: use safe Guard Clauses and structured logging via `ILogger<T>`.
 
-3. Бібліотеки та Екосистема:
+3. Libraries and ecosystem:
 
-- UI: Avalonia UI (без Windows-специфічних WinForms/WPF залежностей).
-- MVVM: `CommunityToolkit.Mvvm` (атрибути `[ObservableProperty]`, `[RelayCommand]`, наслідування від `ObservableObject`).
-- Аудіо: `ManagedBass` (підтримка кросплатформних бібліотек `libbass.so` на Arch та `bass.dll` на Windows 11).
-- Глобальні гарячі клавіші: `SharpHook` через фоновий сервіс (`TaskPoolGlobalHook`).
-- Буфер обміну: `wl-paste` (`wl-clipboard`) на Linux Wayland; `TextCopy` — лише Windows.
-- Серіалізація: `System.Text.Json` із налаштуваннями відступів та відповідністю регістру ключів сервера.
+- UI: Avalonia UI (no Windows-specific WinForms/WPF dependencies).
+- MVVM: `CommunityToolkit.Mvvm` (attributes `[ObservableProperty]`, `[RelayCommand]`, inheritance from `ObservableObject`).
+- Audio: `ManagedBass` (support for cross-platform native libraries: `libbass.so` on Arch and `bass.dll` on Windows 11).
+- Global hotkeys: `SharpHook` via a background service (`TaskPoolGlobalHook`).
+- Clipboard: `wl-paste` (`wl-clipboard`) on Linux Wayland; `TextCopy` — Windows only.
+- Serialization: `System.Text.Json` with indentation settings and key-name casing that matches the server.
 
-4. Документування та Коментарі:
+4. Documentation and comments:
 
-- На початку кожного файлу додай короткий описовий блок у стилі JSDoc (`/** ... */`), який пояснює роль модуля в системі.
-- Додай вичерпну XML-документацію (`/// <summary>`, `<param>`, `<returns>`) до всіх публічних інтерфейсів, класів та методів.
-- Для реалізацій інтерфейсів використовуй тег `<inheritdoc />`.
-- Мова документації та коментарів — виключно Українська.
+- At the beginning of every file, add a short descriptive block in JSDoc style (`/** ... */`) that explains the module's role in the system.
+- Add thorough XML documentation (`/// <summary>`, `<param>`, `<returns>`) to all public interfaces, classes and methods.
+- For interface implementations use the `<inheritdoc />` tag.
+- The language of documentation and comments is English only.
 
-5. Автоматизоване тестування (Autotests; у поточній ітерації 2 свідомо не створюються):
+5. Automated testing (autotests; deliberately not created in the current iteration 2):
 
-- Фреймворк (на майбутнє): xUnit + FluentAssertions + NSubstitute.
-- Покриття: Модульні тести для бізнес-логіки сервісів, парсерів та ViewModels.
-- Ізоляція: Усі зовнішні взаємодії (робота з диском, HTTP запити до Flask, виклики аудіоплеєра, буфер обміну) мають бути закриті інтерфейсами та замокані через NSubstitute.
-- Патерн: чітка структура AAA (Arrange, Act, Assert), відокремлена порожніми рядками.
-- Іменування: `НазваМетоду_ВхідніУмови_ОчікуванийРезультат`.
-- Перевіряй як успішні сценарії, так і граничні випадки (null, відсутність з'єднання з бекендом, скасування через CancellationToken).
+- Framework (for the future): xUnit + FluentAssertions + NSubstitute.
+- Coverage: unit tests for the business logic of services, parsers and ViewModels.
+- Isolation: all external interactions (disk access, HTTP requests to Flask, audio player calls, clipboard) must be behind interfaces and mocked via NSubstitute.
+- Pattern: a clear AAA structure (Arrange, Act, Assert), separated by blank lines.
+- Naming: `MethodName_InputConditions_ExpectedResult`.
+- Check both successful scenarios and edge cases (null, no connection to the backend, cancellation via CancellationToken).
 
-Згенеруй чистий, кросплатформний, протестований та готовий до підтримки код для JetBrains Rider.
+Generate clean, cross-platform, tested and maintainable code that is ready for JetBrains Rider.

@@ -1,173 +1,166 @@
-# План робіт UA_TTS_Client — ітерація 2
+# UA_TTS_Client work plan — iteration 2
 
-> **Статус:** завершено. Оновлено 2026-10-22. Ітерація 2: **Кроки 10–18 виконано** (усі ✅).
-> **Джерело вимог:** нотатки користувача після ручного користування робочою версією
-> (`Notes_Userstory.md` видалено на Кроці 16, вимоги перенесено в цей план).
-> **База:** робоча версія після Кроків 0–9; автотести свідомо **не** створюються.
-> **Перед початком роботи прочитати:**
-> 1. `AGENTS.md` — перевірені факти, точні API, підводні камені;
-> 2. `Doc/Project_Structure.md` — фактична карта коду й точки розширення (створено на Кроці 10).
+> **Status:** completed. Updated 2026-10-22. Iteration 2: **Steps 10–18 done** (all ✅).
+> **Source of requirements:** the user's notes after manual use of the working version (`Notes_Userstory.md` was deleted in Step 16; the requirements were moved into this plan).
+> **Baseline:** working version after Steps 0–9; autotests are deliberately **not** created.
+> **Read before starting:**
+> 1. `AGENTS.md` — verified facts, exact APIs, pitfalls;
+> 2. `Doc/Project_Structure.md` — actual code map and extension points (created in Step 10).
 >
-> Цей файл відповідає на *«що і в якому порядку»*. `AGENTS.md` — на *«як саме»*.
+> This file answers *"what, and in what order"*. `AGENTS.md` answers *"how exactly"*.
 
 ---
 
-## 1. Стан на вході
+## 1. State at the start
 
-- Кроки 0–9 виконано; застосунок запускається, синтез і відтворення працюють.
-- **Кроки 10–18 виконано** (документація, X11-fallback, конфіг, фрагментація,
-  пакетна черга, автоозвучення після `Alt+Q`, експорт MP4/WAV, UI-перемикачі
-  та лічильники, фінальна перевірка) — див. журнал.
-- Крок 9.1 (тестовий проєкт) **закривається як неактуальний** — на цьому етапі автотести не потрібні.
-- Виявлені користувачем UI/UX-потреби:
-  1. після `Alt+Q` текст захоплюється, але озвучення треба запускати вручну;
-  2. весь текст іде на сервер одним запитом — потрібна фрагментація;
-  3. потрібні налаштування режиму фрагментації та автозапуску;
-  4. у Quick TTS немає лічильника фрагментів;
-  5. пауза/продовження має працювати з фрагментами;
-  6. після `Alt+Q` вікно має активуватися / перемикатися на Quick TTS (за бажанням);
-  7. повзунки швидкості й гучності мають крок `0.1` і нормальний формат чисел;
-  8. потрібне збереження всього озвученого тексту у файл `.mp4` (типово) або `.wav`;
-     вибір формату — в налаштуваннях.
-- X11 більше не підтримується: для буфера на Wayland достатньо `wl-clipboard`.
-  `TextCopy` залишається в проєкті **лише для Windows 11**.
+- Steps 0–9 done; the app starts, synthesis and playback work.
+- **Steps 10–18 done** (documentation, X11 fallback removal, config, chunking, batch queue, auto-speech after `Alt+Q`, MP4/WAV export, UI toggles and counters, final check) — see the journal.
+- Step 9.1 (test project) is **closed as obsolete** — autotests are not needed at this stage.
+- UI/UX needs identified by the user:
+  1. after `Alt+Q` the text is captured, but speech has to be started manually;
+  2. all text goes to the server in one request — chunking is needed;
+  3. settings for the chunking mode and auto-start are needed;
+  4. Quick TTS has no fragment counter;
+  5. pause/resume must work with fragments;
+  6. after `Alt+Q` the window should activate / switch to Quick TTS (optional);
+  7. the speed and volume sliders must have a step of `0.1` and a proper number format;
+  8. saving the whole spoken text to a `.mp4` file (default) or `.wav` is needed; the format choice goes into settings.
+- X11 is no longer supported: on Wayland `wl-clipboard` is enough for the clipboard. `TextCopy` stays in the project **only for Windows 11**.
 
 ---
 
-## 2. Зафіксовані рішення
+## 2. Recorded decisions
 
-| # | Рішення | Обґрунтування |
+| # | Decision | Rationale |
 |---|---|---|
-| R7 | **Фрагментація виконується на клієнті**, сервер не змінюється | Сервер приймає один `text`; клієнт сам ріже текст і робить послідовні запити |
-| R8 | **Пакетний режим:** текст ділиться на фрагменти, фрагменти — на пакети по N (1–10, типово 5). Після пакета відтворення зупиняється; далі — вручну | Вибір користувача: «пакетами по N», без автоматичного продовження |
-| R9 | **Автоозвучення після `Alt+Q` — увімкнено типово**; активація вікна — **вимкнена типово** | Швидкий сценарій «виділив → почув», але без несподіваного перехоплення фокуса |
-| R10 | **Типовий режим фрагментації — «до 250 символів»** (розумне пакування речень). Режими: абзаци / речення / до 250 | Компроміс між якістю TTS і швидкістю; усе налаштовується |
-| R11 | **Застарілий X11-fallback видаляється з коду й документації.** Linux — тільки `wl-paste`; Windows — `TextCopy` | X11 більше не цільова платформа; зайва залежність і плутанина |
-| R12 | **`Doc/ua_tts_client_arch.md` видаляється**, замість нього — `Doc/Project_Structure.md` | Потрібна карта коду для агента, а не історичний документ архітектури |
-| R13 | **Тестовий проєкт не створюється** | Рішення користувача; перевірка — ручні сценарії + тимчасові harness-и поза репозиторієм |
-| R14 | **Reader і Character Voice — поза ітерацією** | Не входять у поточні потреби |
-| R15 | **Один чекбокс «Активувати вікно після Alt+Q»** керує і активацією вікна, і переходом на вкладку Quick TTS | Активація без переходу на потрібну вкладку не має сенсу |
-| R16 | **Експорт усього тексту** з поля Quick TTS: кнопка «Зберегти аудіо…», формати **MP4 (типово)** і **WAV**; MP4 робить серверний `/api/convert` | У сервері вже є pydub + ffmpeg; клієнту не потрібна нова нативна залежність |
-| R17 | **MP4 — це аудіо без відео** (AAC у контейнері MP4), а не відеоролик | Вимога — зберегти звук; відеоряд не потрібен |
-| R18 | Під час експорту поточне відтворення **зупиняється**, експорт іде окремим послідовним синтезом | Уникнути конкуренції за GPU й плутанини з чергою |
+| R7 | **Chunking is done on the client**; the server is not changed | The server accepts one `text`; the client splits the text itself and makes sequential requests |
+| R8 | **Batch mode:** text is split into fragments, fragments into batches of N (1–10, default 5). Playback stops after a batch; the rest is started manually | The user's choice: "in batches of N", no automatic continuation |
+| R9 | **Auto-speech after `Alt+Q` is enabled by default**; window activation is **disabled by default** | A quick scenario "select → hear it", without unexpected focus stealing |
+| R10 | **Default chunking mode is "up to 250 characters"** (smart sentence packing). Modes: paragraphs / sentences / up to 250 | A compromise between TTS quality and speed; everything is configurable |
+| R11 | **The obsolete X11 fallback is removed from the code and documentation.** Linux — only `wl-paste`; Windows — `TextCopy` | X11 is no longer a target platform; an extra dependency and confusion |
+| R12 | **`Doc/ua_tts_client_arch.md` is deleted**, replaced by `Doc/Project_Structure.md` | A code map is needed for the agent, not a historical architecture document |
+| R13 | **No test project is created** | The user's decision; verification — manual scenarios + temporary harnesses outside the repository |
+| R14 | **Reader and Character Voice are out of this iteration** | Not part of the current needs |
+| R15 | **One checkbox "Activate window after Alt+Q"** controls both the window activation and the switch to the Quick TTS tab | Activation without switching to the needed tab makes no sense |
+| R16 | **Export of the whole text** from the Quick TTS field: the «Зберегти аудіо…» (Save audio…) button, formats **MP4 (default)** and **WAV**; MP4 is produced by the server's `/api/convert` | The server already has pydub + ffmpeg; the client does not need a new native dependency |
+| R17 | **MP4 is audio without video** (AAC in an MP4 container), not a video clip | The requirement is to keep the sound; no video track is needed |
+| R18 | During export the current playback **is stopped**; export runs as a separate sequential synthesis | Avoid competing for the GPU and confusion with the queue |
 
 ---
 
-## 3. Цільове дерево (нові та змінені файли)
+## 3. Target tree (new and changed files)
 
 ```text
 Core/
 ├── Enums/
-│   ├── TextChunkingMode.cs              ← новий: Paragraphs | Sentences | MaxLength
-│   └── AudioExportFormat.cs             ← новий: Mp4 | Wav
+│   ├── TextChunkingMode.cs              ← new: Paragraphs | Sentences | MaxLength
+│   └── AudioExportFormat.cs             ← new: Mp4 | Wav
 ├── Models/
-│   ├── AppConfig.cs                     ← нові поля (див. §6.1)
-│   ├── TextChunkingOptions.cs           ← новий: режим + MaxChunkLength = 250
-│   ├── TextFragment.cs                  ← новий: record (Index 1-based, Text)
-│   ├── SpeechQueueOptions.cs            ← новий: Voice, Speed, BatchSize
-│   ├── AudioExportRequest.cs            ← новий: текст, голос, швидкість, чанкінг, формат, шлях
-│   └── AudioExportProgress.cs           ← новий: етап + виконано/всього фрагментів
+│   ├── AppConfig.cs                     ← new fields (see §6.1)
+│   ├── TextChunkingOptions.cs           ← new: mode + MaxChunkLength = 250
+│   ├── TextFragment.cs                  ← new: record (Index 1-based, Text)
+│   ├── SpeechQueueOptions.cs            ← new: Voice, Speed, BatchSize
+│   ├── AudioExportRequest.cs            ← new: text, voice, speed, chunking, format, path
+│   └── AudioExportProgress.cs           ← new: stage + completed/total fragments
 ├── Interfaces/
-│   ├── ITextChunker.cs                  ← новий
-│   ├── IFragmentPlaybackService.cs      ← новий
-│   ├── IAudioExportService.cs           ← новий
-│   ├── IFileSaveDialogService.cs        ← новий
-│   └── ITtsApiClient.cs                 ← + ConvertAsync (MP4/WAV через сервер)
+│   ├── ITextChunker.cs                  ← new
+│   ├── IFragmentPlaybackService.cs      ← new
+│   ├── IAudioExportService.cs           ← new
+│   ├── IFileSaveDialogService.cs        ← new
+│   └── ITtsApiClient.cs                 ← + ConvertAsync (MP4/WAV via the server)
 
 Infrastructure/
 ├── Text/
-│   └── SentenceAwareTextChunker.cs      ← новий: чиста реалізація ITextChunker
+│   └── SentenceAwareTextChunker.cs      ← new: pure implementation of ITextChunker
 ├── Playback/
-│   └── FragmentPlaybackService.cs       ← новий: синтез + черга + пакети
+│   └── FragmentPlaybackService.cs       ← new: synthesis + queue + batches
 ├── Audio/
-│   ├── BassAudioPlayerService.cs        ← + подія TrackEnded (природний кінець)
-│   ├── WavAudioConcatenator.cs          ← новий: склеювання WAV у пам'яті
-│   └── AudioExportService.cs            ← новий: синтез усіх фрагментів → WAV/MP4
+│   ├── BassAudioPlayerService.cs        ← + TrackEnded event (natural end)
+│   ├── WavAudioConcatenator.cs          ← new: in-memory WAV concatenation
+│   └── AudioExportService.cs            ← new: synthesis of all fragments → WAV/MP4
 ├── Automation/
-│   └── WaylandClipboardAutomationService.cs ← прибрано X11-fallback; TextCopy лише Windows
+│   └── WaylandClipboardAutomationService.cs ← X11 fallback removed; TextCopy only on Windows
 ├── Api/
 │   └── TtsApiClient.cs                  ← + ConvertAsync (multipart /api/convert)
 └── Storage/
     └── JsonSettingsService.cs           ← JsonStringEnumConverter
 
 ViewModels/
-├── MainWindowViewModel.cs               ← SelectedTabIndex, ActivateRequested, новий hotkey-флоу
+├── MainWindowViewModel.cs               ← SelectedTabIndex, ActivateRequested, new hotkey flow
 ├── Components/
-│   └── PlaybackControlViewModel.cs      ← черга, лічильники, пауза/продовження пакетів
+│   └── PlaybackControlViewModel.cs      ← queue, counters, batch pause/resume
 ├── Tabs/
-│   ├── QuickTtsViewModel.cs             ← фрагментація, автосинтез, експорт, статуси
-│   └── SettingsViewModel.cs             ← нові налаштування, формат експорту, крок 0.1
+│   ├── QuickTtsViewModel.cs             ← chunking, auto-synthesis, export, statuses
+│   └── SettingsViewModel.cs             ← new settings, export format, step 0.1
 └── Design/
-    └── DesignData.cs                    ← фейкові ITextChunker / IFragmentPlaybackService /
+    └── DesignData.cs                    ← fakes for ITextChunker / IFragmentPlaybackService /
                                              IAudioExportService / IFileSaveDialogService
 
 Views/
-├── MainWindow.axaml(.cs)                ← SelectedIndex, лічильник фрагментів
+├── MainWindow.axaml(.cs)                ← SelectedIndex, fragment counter
 ├── Services/
-│   └── AvaloniaFileSaveDialogService.cs ← новий: SaveFilePickerAsync (UI-шар)
+│   └── AvaloniaFileSaveDialogService.cs ← new: SaveFilePickerAsync (UI layer)
 └── Tabs/
-    ├── QuickTtsView.axaml               ← лічильник, «Наступний пакет», «Зберегти аудіо…»
-    └── SettingsView.axaml               ← чекбокси, ComboBox, NumericUpDown, слайдери
+    ├── QuickTtsView.axaml               ← counter, «Наступний пакет», «Зберегти аудіо…»
+    └── SettingsView.axaml               ← checkboxes, ComboBox, NumericUpDown, sliders
 
-App.axaml.cs                             ← реєстрація нових сервісів, ActivateRequested
+App.axaml.cs                             ← registration of new services, ActivateRequested
 Doc/
-├── Project_Structure.md                 ← новий (замість ua_tts_client_arch.md)
-├── Curent_Work_Plan.md                  ← цей план
-└── ua_tts_client_arch.md                ← видалено (замінено на Project_Structure.md)
+├── Project_Structure.md                 ← new (replaces ua_tts_client_arch.md)
+├── Curent_Work_Plan.md                  ← this plan
+└── ua_tts_client_arch.md                ← deleted (replaced by Project_Structure.md)
 ```
 
 ---
 
-## 4. Кроки
+## 4. Steps
 
-### Крок 10 — Документаційна гігієна ✅
+### Step 10 — Documentation hygiene ✅
 
-**Мета:** прибрати історичний документ і дати агенту актуальну карту коду.
+**Goal:** remove the historical document and give the agent an up-to-date code map.
 
-| # | Дія | Стан |
+| # | Action | Status |
 |---|---|---|
-| 10.1 | Створити `Doc/Project_Structure.md`: шари, фактичне дерево, ключові типи, DI, потоки, точки розширення, платформні відмінності | ✅ |
-| 10.2 | Видалити `Doc/ua_tts_client_arch.md` | ✅ |
-| 10.3 | Переписати цей план під ітерацію 2 | ✅ |
-| 10.4 | Оновити посилання в `AGENTS.md`, `README.md`, `Doc/API.md` | ✅ |
+| 10.1 | Create `Doc/Project_Structure.md`: layers, actual tree, key types, DI, flows, extension points, platform differences | ✅ |
+| 10.2 | Delete `Doc/ua_tts_client_arch.md` | ✅ |
+| 10.3 | Rewrite this plan for iteration 2 | ✅ |
+| 10.4 | Update the references in `AGENTS.md`, `README.md`, `Doc/API.md` | ✅ |
 
-`Project_Structure.md` не дублює `AGENTS.md`: там факти й пастки, тут — **де що лежить і куди додавати нове**.
+`Project_Structure.md` does not duplicate `AGENTS.md`: there are facts and pitfalls there, here — **where things are and where to add new ones**.
 
 ---
 
-### Крок 11 — Прибрати застарілий X11-fallback, залишити `TextCopy` для Windows ✅
+### Step 11 — Remove the obsolete X11 fallback, keep `TextCopy` for Windows ✅
 
-**Мета:** Linux-шлях читання буфера — тільки `wl-paste`; на Windows — `TextCopy`.
+**Goal:** the Linux clipboard path uses only `wl-paste`; on Windows — `TextCopy`.
 
-**Зміни в `WaylandClipboardAutomationService.cs` (виконано):**
+**Changes in `WaylandClipboardAutomationService.cs` (done):**
 
 1. `ReadClipboardAsync`:
-   - Linux: якщо `WaylandSession` — `wl-paste --no-newline`; якщо `wl-paste` недоступний → порожній рядок + `LogWarning`.
-   - Linux без Wayland: порожній рядок + `LogWarning` (X11 не підтримується).
-   - Windows (і інші ОС): `TextCopy.ClipboardService.GetTextAsync`.
-2. Видалено X11-гілку та згадки про неї з XML-документації.
-3. `TextCopy` **не викликається на Linux**.
-4. Симуляція `Ctrl+C` і 900-мс опитування буфера не змінилися.
+   - Linux: if `WaylandSession` — `wl-paste --no-newline`; if `wl-paste` is unavailable → empty string + `LogWarning`.
+   - Linux without Wayland: empty string + `LogWarning` (X11 is not supported).
+   - Windows (and other OS): `TextCopy.ClipboardService.GetTextAsync`.
+2. The X11 branch and mentions of it were removed from the XML documentation.
+3. `TextCopy` is **not called on Linux**.
+4. Simulated `Ctrl+C` and the 900 ms clipboard polling were not changed.
 
-**Перевірка:**
-- `dotnet build` — 0 warnings / 0 errors (перевірено 2026-10-22).
-- У коді й користувацькій документації не залишилося згадок застарілого пакета.
-- Запуск із `PATH`, де немає застарілого пакета, але є `wl-paste` → `Alt+Q` захоплює текст (перевірити в сесії з живим вікном).
-- Windows-шлях компілюється; runtime на Windows не перевіряється (немає середовища) — зафіксувати в звіті.
+**Verification:**
+- `dotnet build` — 0 warnings / 0 errors (verified 2026-10-22).
+- No mentions of the obsolete package remain in the code or user documentation.
+- Run with a `PATH` that has no obsolete package but has `wl-paste` → `Alt+Q` captures the text (check in a session with a live window).
+- The Windows path compiles; runtime on Windows is not checked (no environment) — record this in the report.
 
-**Документація:** `README.md` — вимога `sudo pacman -S wl-clipboard`; `AGENTS.md` — «TextCopy лише Windows».
+**Documentation:** `README.md` — requirement `sudo pacman -S wl-clipboard`; `AGENTS.md` — "TextCopy Windows only".
 
 ---
 
-### Крок 12 — Конфіг і нові налаштування ✅
+### Step 12 — Config and new settings ✅
 
-**Мета:** додати поля, які керують новою поведінкою, зі зворотною сумісністю.
+**Goal:** add the fields that control the new behavior, with backward compatibility.
 
-**Виконано:** `AppConfig` розширено (`AutoSynthesizeOnHotkey`, `ActivateOnHotkey`, `ChunkingMode`,
-`BatchSize`, `ExportFormat`); `JsonSettingsService` зберігає enum-и рядками; `SettingsViewModel`
-має нові властивості, клампить `BatchSize` (1–10) і округлює швидкість/гучність до `0.1`.
+**Done:** `AppConfig` extended (`AutoSynthesizeOnHotkey`, `ActivateOnHotkey`, `ChunkingMode`, `BatchSize`, `ExportFormat`); `JsonSettingsService` stores enums as strings; `SettingsViewModel` has new properties, clamps `BatchSize` (1–10) and rounds speed/volume to `0.1`.
 
-#### 12.1 Нові поля `AppConfig`
+#### 12.1 New `AppConfig` fields
 
 ```csharp
 public bool AutoSynthesizeOnHotkey { get; init; } = true;
@@ -177,31 +170,26 @@ public int BatchSize { get; init; } = 5;              // 1..10
 public AudioExportFormat ExportFormat { get; init; } = AudioExportFormat.Mp4;
 ```
 
-- Типовий режим фрагментації змінено з `MaxLength` на `Paragraphs` («Абзаци») у Кроці 17;
-  тоді ж додано `PauseAfterEachBatch` (див. §6.1).
+- The default chunking mode was changed from `MaxLength` to `Paragraphs` ("Абзаци") in Step 17; `PauseAfterEachBatch` was added at the same time (see §6.1).
 
-- Старі `config.json` без цих полів читаються з типовими значеннями.
-- `JsonSettingsService`: додати `JsonStringEnumConverter` (режим фрагментації й формат експорту зберігаються рядками, а не числами).
-- `SettingsViewModel`: нові `[ObservableProperty]` (`AutoSynthesizeOnHotkey`, `ActivateOnHotkey`,
-  `SelectedChunkingMode`, `BatchSize`, `SelectedExportFormat`) + валідація `BatchSize` (clamp 1–10)
-  і `Math.Round(Speed/Volume, 1)`.
-- `SettingsViewModel.SaveAsync` зберігає нові поля.
-- `SettingsViewModel.ApplyConfig` округлює швидкість/гучність до `0.1`.
-- Нові налаштування діють **одразу** після зміни (не тільки після «Зберегти»); «Зберегти» лише пише на диск.
+- Old `config.json` files without these fields are read with default values.
+- `JsonSettingsService`: add `JsonStringEnumConverter` (the chunking mode and export format are stored as strings, not numbers).
+- `SettingsViewModel`: new `[ObservableProperty]` (`AutoSynthesizeOnHotkey`, `ActivateOnHotkey`, `SelectedChunkingMode`, `BatchSize`, `SelectedExportFormat`) + `BatchSize` validation (clamp 1–10) and `Math.Round(Speed/Volume, 1)`.
+- `SettingsViewModel.SaveAsync` saves the new fields.
+- `SettingsViewModel.ApplyConfig` rounds speed/volume to `0.1`.
+- New settings take effect **immediately** after a change (not only after «Зберегти» (Save)); «Зберегти» only writes to disk.
 
-**Перевірка:** старий конфіг завантажується; новий зберігається; після перезапуску значення зберігаються.
+**Verification:** an old config loads; a new one is saved; after restart the values persist.
 
 ---
 
-### Крок 13 — Фрагментація тексту ✅
+### Step 13 — Text chunking ✅
 
-**Мета:** розбити текст на логічні фрагменти без обривання речень посередині.
+**Goal:** split the text into logical fragments without cutting sentences in the middle.
 
-**Виконано:** `ITextChunker` + `SentenceAwareTextChunker`; три режими; обробка скорочень
-та ініціалів; задовгі речення ріжуться по останньому пробілу/комі; порожній текст → 0 фрагментів.
-Перевірено тимчасовим harness-ом поза репозиторієм (14/14 PASS).
+**Done:** `ITextChunker` + `SentenceAwareTextChunker`; three modes; handling of abbreviations and initials; over-long sentences are cut at the last space or comma; empty text → 0 fragments. Verified with a temporary harness outside the repository (14/14 PASS).
 
-**Нові типи:**
+**New types:**
 
 ```csharp
 public enum TextChunkingMode { Paragraphs, Sentences, MaxLength }
@@ -213,7 +201,7 @@ public sealed record TextChunkingOptions
     public int MaxChunkLength { get; init; } = DefaultMaxChunkLength;
 }
 
-public sealed record TextFragment(int Index, string Text); // Index з 1
+public sealed record TextFragment(int Index, string Text); // Index starts at 1
 
 public interface ITextChunker
 {
@@ -221,51 +209,48 @@ public interface ITextChunker
 }
 ```
 
-**Алгоритм `SentenceAwareTextChunker`:**
+**`SentenceAwareTextChunker` algorithm:**
 
-1. Нормалізація: `\r\n` → `\n`, зайві пробіли/таби всередині абзацу згортаються, порожні рядки зберігаються як межі абзаців.
-2. Розбиття на речення: після `.`, `!`, `?`, `…`, якщо далі пробіл/кінець і наступний символ — велика літера, лапка або цифра.
-3. Мінімальний список скорочень, після яких **не** ріжемо: `т.д.`, `т.п.`, `і т.ін.`, `р.`, `м.`, `вул.`, `ім.`, `проф.`, `акад.`, ініціали (`І. І.`). Якщо сумнівно — краще не різати.
-4. Режими:
-   - `Paragraphs` — абзаци; абзац довший за `MaxChunkLength` додатково ріжеться по реченнях.
-   - `Sentences` — одне речення = один фрагмент; занадто довге речення ріжеться по останньому пробілу/комі до ліміту.
-   - `MaxLength` (типово) — послідовні речення пакуються до `250` символів; речення не ріжеться, якщо вміщується; якщо одне речення > 250 — різка по останньому пробілу/комі, в крайньому разі — жорстко.
-5. Порожні/пробільні фрагменти відкидаються; дуже короткі (< 20 символів) за можливості приєднуються до сусіднього.
-6. `Index` присвоюється після фільтрації, з 1.
+1. Normalization: `\r\n` → `\n`; redundant spaces and tabs inside a paragraph are collapsed; empty lines are kept as paragraph boundaries.
+2. Splitting into sentences: after `.`, `!`, `?`, `…`, if followed by a space or the end and the next character is an uppercase letter, a quote, or a digit.
+3. A minimal list of abbreviations after which we do **not** cut: `т.д.` (etc.), `т.п.` (etc.), `і т.ін.` (and so on), `р.` (year), `м.` (city), `вул.` (street), `ім.` (named after), `проф.` (professor), `акад.` (academician), and initials (`І. І.`). If in doubt — better not to cut.
+4. Modes:
+   - `Paragraphs` — paragraphs; a paragraph longer than `MaxChunkLength` is additionally split by sentences.
+   - `Sentences` — one sentence = one fragment; an over-long sentence is cut at the last space or comma before the limit.
+   - `MaxLength` (default) — consecutive sentences are packed up to `250` characters; a sentence is not cut if it fits; if one sentence is longer than 250, it is cut at the last space or comma, and as a last resort — hard-cut.
+5. Empty or whitespace-only fragments are discarded; very short ones (< 20 characters) are merged with a neighbor where possible.
+6. `Index` is assigned after filtering, starting at 1.
 
-**Перевірка:** тимчасовий harness поза репозиторієм (`/tmp/opencode/...`) на 5–6 текстах:
-- кілька абзаців;
-- довге речення > 250;
-- текст без розділових знаків;
-- скорочення `т.д.` / ініціали;
-- список із переносами рядків;
-- порожній/пробільний текст → 0 фрагментів.
+**Verification:** a temporary harness outside the repository (`/tmp/opencode/...`) on 5–6 texts:
+- several paragraphs;
+- a long sentence over 250 characters;
+- text without punctuation;
+- abbreviations `т.д.` and initials;
+- a list with line breaks;
+- empty or whitespace-only text → 0 fragments.
 
-Очікування: жоден фрагмент не перевищує 250 символів, крім випадку, коли розбити нема де; речення не обірване посередині без потреби.
+Expected: no fragment exceeds 250 characters unless there is nowhere to split; a sentence is not cut in the middle without need.
 
 **DI:** `services.AddSingleton<ITextChunker, SentenceAwareTextChunker>();`
 
 ---
 
-### Крок 14 — Пакетна черга відтворення ✅
+### Step 14 — Batch playback queue ✅
 
-**Мета:** синтезувати й відтворювати фрагменти послідовно, пакетами по N, із паузою між пакетами.
+**Goal:** synthesize and play fragments sequentially, in batches of N, with a pause between batches.
 
-**Виконано:** `IAudioPlayerService.TrackEnded`; `IFragmentPlaybackService` + `FragmentPlaybackService`
-(передзавантаження на один фрагмент, пакети, пауза/продовження, стоп, лічильники);
-`PlaybackControlViewModel` інтегровано; `QuickTtsViewModel` тепер ріже текст і запускає чергу.
-Перевірено на живому сервері: 5 фрагментів / 3 пакети, пауза/продовження, стоп — ALL PASSED.
+**Done:** `IAudioPlayerService.TrackEnded`; `IFragmentPlaybackService` + `FragmentPlaybackService` (prefetch of one fragment, batches, pause/resume, stop, counters); `PlaybackControlViewModel` integrated; `QuickTtsViewModel` now splits the text and starts the queue. Verified on a live server: 5 fragments / 3 batches, pause/resume, stop — ALL PASSED.
 
-#### 14.1 `IAudioPlayerService`: подія природного завершення
+#### 14.1 `IAudioPlayerService`: natural completion event
 
 ```csharp
-/// <summary>Виникає після природного завершення потоку (не після Stop()).</summary>
+/// <summary>Raised after the stream ends naturally (not after Stop()).</summary>
 event EventHandler? TrackEnded;
 ```
 
-- `BassAudioPlayerService.OnStreamEnded` після перевірки `channel == _streamHandle` виставляє `Stopped` і повідомляє `TrackEnded`.
-- Подія не спрацьовує на `Stop()` / заміну потоку.
-- Обробники не блокують потік BASS: черга завершує `TaskCompletionSource` з `RunContinuationsAsynchronously`.
+- `BassAudioPlayerService.OnStreamEnded`, after checking `channel == _streamHandle`, sets `Stopped` and raises `TrackEnded`.
+- The event does not fire on `Stop()` or on stream replacement.
+- Handlers do not block the BASS thread: the queue completes a `TaskCompletionSource` created with `RunContinuationsAsynchronously`.
 
 #### 14.2 `IFragmentPlaybackService`
 
@@ -298,92 +283,84 @@ public interface IFragmentPlaybackService
 
 `SpeechQueueOptions`: `Voice`, `Speed`, `BatchSize` (clamp 1–10).
 
-`FragmentStartedEventArgs`: фрагмент, номер пакета, всього пакетів.
-`BatchCompletedEventArgs`: завершений пакет, всього пакетів, чи є наступний.
+`FragmentStartedEventArgs`: the fragment, the batch number, the total number of batches.
+`BatchCompletedEventArgs`: the completed batch, the total number of batches, whether there is a next one.
 
 #### 14.3 `FragmentPlaybackService` (Infrastructure/Playback)
 
-- Залежності: `ITtsApiClient`, `IAudioPlayerService`, `ILogger`.
+- Dependencies: `ITtsApiClient`, `IAudioPlayerService`, `ILogger`.
 - `StartAsync`:
-  - зупиняє попередню чергу й аудіо;
-  - створює внутрішній `CancellationTokenSource`, зв'язаний із зовнішнім;
-  - запускає фоновий pipeline і **повертається, щойно перший фрагмент почав грати** (щоб UI не був «busy» весь час);
-  - якщо перший фрагмент не вдався — кидає `TtsApiException` назовні.
-- Pipeline одного пакета:
-  1. синтезує фрагмент `i`;
-  2. поки він грає, заздалегідь синтезує `i+1` (один крок попереду — «імітація безшовності»);
-  3. `PlayAsync(wav)` → чекає `TrackEnded` → наступний;
-  4. після `BatchSize` фрагментів або кінця тексту — зупиняється.
-- Між пакетами:
+  - stops the previous queue and audio;
+  - creates an internal `CancellationTokenSource` linked to the external one;
+  - starts a background pipeline and **returns as soon as the first fragment has started playing** (so the UI is not "busy" the whole time);
+  - if the first fragment fails — throws `TtsApiException` outward.
+- Pipeline of one batch:
+  1. synthesize fragment `i`;
+  2. while it plays, pre-synthesize `i+1` (one step ahead — "seamless imitation");
+  3. `PlayAsync(wav)` → waits for `TrackEnded` → next;
+  4. stops after `BatchSize` fragments or at the end of the text.
+- Between batches:
   - `IsBatchPending = true`, `BatchCompleted`;
-  - аудіо вже `Stopped`, черга не рухається;
-  - `ContinueAsync` запускає наступний пакет з того самого місця.
+  - the audio is already `Stopped`, the queue does not advance;
+  - `ContinueAsync` starts the next batch from the same place.
 - `Pause`/`Resume`:
-  - `Pause` → `_audio.Pause()` і прапорець паузи; pipeline не починає новий фрагмент;
-  - `Resume` → `_audio.Resume()` і зняття прапорця;
-  - якщо пауза настала між фрагментами — новий фрагмент не стартує до `Resume`.
+  - `Pause` → `_audio.Pause()` and the pause flag; the pipeline does not start a new fragment;
+  - `Resume` → `_audio.Resume()` and clears the flag;
+  - if the pause happened between fragments — a new fragment does not start until `Resume`.
 - `Stop`:
-  - скасовує CTS, зупиняє аудіо, скидає `IsBatchPending` і лічильники;
-  - `StartAsync`/`ContinueAsync` коректно завершуються без винятку.
-- Помилки після старту (мережа, 500) → `Failed`, черга зупиняється; UI показує текст.
-- Синтез запити **послідовні** (не паралельні), щоб не перевантажувати GPU.
+  - cancels the CTS, stops the audio, resets `IsBatchPending` and the counters;
+  - `StartAsync`/`ContinueAsync` finish cleanly without an exception.
+- Errors after start (network, 500) → `Failed`, the queue stops; the UI shows the text.
+- Synthesis requests are **sequential** (not parallel) so as not to overload the GPU.
 
 #### 14.4 `PlaybackControlViewModel`
 
-- Додати залежність `IFragmentPlaybackService`.
-- Проксіювати лічильники:
-  - `FragmentPositionText` — `"Фрагмент 2 з 5 · пакет 1 з 3"`;
-  - `IsBatchPending`, `ContinueButtonText` — `"Наступний пакет (2 з 3)"`.
+- Add the `IFragmentPlaybackService` dependency.
+- Proxy the counters:
+  - `FragmentPositionText` — `"Фрагмент 2 з 5 · пакет 1 з 3"` (Fragment 2 of 5 · batch 1 of 3);
+  - `IsBatchPending`, `ContinueButtonText` — `"Наступний пакет (2 з 3)"` (Next batch (2 of 3)).
 - `TogglePlayPause`:
-  - якщо `IsBatchPending` → `ContinueAsync()`;
-  - якщо грає/пауза → відповідно `Pause()`/`Resume()`.
-- `Stop` → `_fragmentPlayback.Stop()` (якщо є черга), інакше `_audioPlayer.Stop()`.
-- `PlayAsync(byte[])` залишити для майбутнього Reader (одиночний WAV).
-- Підписки на події черги оновлюють властивості через `OnUiThread`.
+  - if `IsBatchPending` → `ContinueAsync()`;
+  - if playing or paused → `Pause()` / `Resume()` respectively.
+- `Stop` → `_fragmentPlayback.Stop()` (if there is a queue), otherwise `_audioPlayer.Stop()`.
+- Keep `PlayAsync(byte[])` for the future Reader (a single WAV).
+- Subscriptions to queue events update the properties via `OnUiThread`.
 
 **DI:** `services.AddSingleton<IFragmentPlaybackService, FragmentPlaybackService>();`
 
 ---
 
-### Крок 15 — `Alt+Q`: автоозвучення та активація вікна ✅
+### Step 15 — `Alt+Q`: auto-speech and window activation ✅
 
-**Мета:** після гарячої клавіші не треба вручну тиснути «Озвучити».
+**Goal:** after the hotkey, you do not need to press "Speak" manually.
 
-**Виконано:** `QuickTtsViewModel` отримав `CaptureForHotkeyAsync` і
-`SynthesizeCurrentTextAsync` (команда делегує їм); `MainWindowViewModel` виконує
-`HandleHotkeyAsync` у порядку захоплення → активація → синтез, має `SelectedTabIndex`,
-подію `ActivateRequested` і захист від повторного `Alt+Q`; `MainWindow.axaml` прив'язує
-`SelectedIndex`; `App.axaml.cs` активує вікно. Перевірено harness-ом із фейковими
-сервісами (25/25 PASS): порядок дій, обидва перемикачі, невдале захоплення, кнопка без
-активації, ігнорування повторного `Alt+Q`. Фізичний `Alt+Q` потребує ручної перевірки
-користувачем: хук ігнорує симульовані події.
+**Done:** `QuickTtsViewModel` got `CaptureForHotkeyAsync` and `SynthesizeCurrentTextAsync` (the command delegates to them); `MainWindowViewModel` runs `HandleHotkeyAsync` in the order capture → activation → synthesis, has `SelectedTabIndex`, the `ActivateRequested` event and protection against a repeated `Alt+Q`; `MainWindow.axaml` binds `SelectedIndex`; `App.axaml.cs` activates the window. Verified with a harness with fake services (25/25 PASS): order of actions, both toggles, failed capture, button without activation, ignoring a repeated `Alt+Q`. A physical `Alt+Q` requires manual verification by the user, because the hook ignores simulated events.
 
-**Порядок дій (критично):**
+**Order of actions (critical):**
 
-1. Захопити виділений текст (симуляція `Ctrl+C` йде в **активне чуже** вікно).
-2. Якщо захоплення невдале — нічого не активувати й не озвучувати.
-3. Якщо `Settings.ActivateOnHotkey`:
+1. Capture the selected text (the simulated `Ctrl+C` goes to the **active foreign** window).
+2. If the capture fails — do not activate anything and do not speak.
+3. If `Settings.ActivateOnHotkey`:
    - `SelectedTabIndex = 0` (Quick TTS);
    - `ActivateRequested?.Invoke(...)`.
-4. Якщо `Settings.AutoSynthesizeOnHotkey` — запустити синтез першого пакета.
+4. If `Settings.AutoSynthesizeOnHotkey` — start synthesis of the first batch.
 
-**Не можна активувати вікно до кроку 1** — інакше `Ctrl+C` піде в сам застосунок і нічого не скопіює.
+**The window must not be activated before step 1** — otherwise `Ctrl+C` goes to the app itself and copies nothing.
 
-**Зміни:**
+**Changes:**
 
 - `QuickTtsViewModel`:
-  - виділити `CaptureSelectedTextCoreAsync` (спільний для кнопки й хука);
-  - `CaptureSelectedTextCommand` — лише захоплення (без автосинтезу);
-  - публічний `Task<bool> CaptureForHotkeyAsync(CancellationToken)`;
-  - публічний `Task SynthesizeCurrentTextAsync(CancellationToken)` (команда делегує йому).
+  - extract `CaptureSelectedTextCoreAsync` (shared by the button and the hook);
+  - `CaptureSelectedTextCommand` — capture only (no auto-synthesis);
+  - public `Task<bool> CaptureForHotkeyAsync(CancellationToken)`;
+  - public `Task SynthesizeCurrentTextAsync(CancellationToken)` (the command delegates to it).
 - `MainWindowViewModel`:
   - `[ObservableProperty] int SelectedTabIndex`;
   - `event EventHandler? ActivateRequested`;
-  - `OnHotkeyPressed` → на UI-потоці `HandleHotkeyAsync()`:
-    capture → activate (за налаштуванням) → synthesize (за налаштуванням);
-  - захист від повторного `Alt+Q`: якщо вже йде захоплення — ігнорувати.
+  - `OnHotkeyPressed` → on the UI thread `HandleHotkeyAsync()`: capture → activate (per settings) → synthesize (per settings);
+  - protection against a repeated `Alt+Q`: if a capture is already running — ignore.
 - `MainWindow.axaml`: `TabControl SelectedIndex="{Binding SelectedTabIndex}"`.
-- `App.axaml.cs`: підписка на `ActivateRequested`:
+- `App.axaml.cs`: subscription to `ActivateRequested`:
   ```csharp
   viewModel.ActivateRequested += (_, _) =>
   {
@@ -394,61 +371,50 @@ public interface IFragmentPlaybackService
       window.Activate();
   };
   ```
-- Кнопка «Захопити виділене» **не** активує вікно й **не** запускає автосинтез.
+- The «Захопити виділене» (Capture selection) button does **not** activate the window and does **not** start auto-synthesis.
 
-**Відоме обмеження:** на Wayland композитор може заблокувати викрадення фокуса. `Activate()` — best effort; у README зазначити, що поведінка залежить від композитора.
+**Known limitation:** on Wayland the compositor may block focus stealing. `Activate()` is best effort; the README should note that the behavior depends on the compositor.
 
 ---
 
-### Крок 16 — Експорт аудіо (MP4 / WAV) ✅
+### Step 16 — Audio export (MP4 / WAV) ✅
 
-**Мета:** зберегти весь текст із поля Quick TTS в один файл `.mp4` (типово) або `.wav`.
+**Goal:** save the whole text from the Quick TTS field into a single `.mp4` (default) or `.wav` file.
 
-**Виконано:** `ITtsApiClient.ConvertAsync` (multipart `file` + `format`),
-`WavAudioConcatenator` (перевірка RIFF/fmt/data і склеювання PCM-чанків),
-`IAudioExportService` + `AudioExportService` (послідовний синтез → склеювання →
-конвертація → атомарний запис, прогрес `AudioExportProgress`),
-`IFileSaveDialogService` + `AvaloniaFileSaveDialogService`, кнопка «Зберегти аудіо…»
-з прогресом у `QuickTtsView`, реєстрація в DI. Перевірено: build 0/0; harness із
-фейковими сервісами (49 перевірок) — заголовки/порядок/помилки формату, етапи прогресу,
-MP4 через `ConvertAsync`, скасування без файлів, перезапис, флоу ViewModel; живий сервер
-(голос «Вероніка Дорош», 3 речення) — WAV 4.64 с і MP4 4.65 с (AAC, `ftyp isom`),
-обидва декодуються pydub.
+**Done:** `ITtsApiClient.ConvertAsync` (multipart `file` + `format`), `WavAudioConcatenator` (RIFF/fmt/data validation and concatenation of PCM chunks), `IAudioExportService` + `AudioExportService` (sequential synthesis → concatenation → conversion → atomic write, progress `AudioExportProgress`), `IFileSaveDialogService` + `AvaloniaFileSaveDialogService`, the «Зберегти аудіо…» (Save audio…) button with progress in `QuickTtsView`, DI registration. Verified: build 0/0; a harness with fake services (49 checks: headers, order, format errors, progress stages, MP4 via `ConvertAsync`, cancellation without files, overwriting, ViewModel flow); a live server (voice «Вероніка Дорош», 3 sentences) — WAV 4.64 s and MP4 4.65 s (AAC, `ftyp isom`), both decoded by pydub.
 
-**Семантика:**
-- експортується **весь поточний текст** із поля Quick TTS, а не лише прослухані пакети;
-- експорт не залежить від черги й може виконуватися без попереднього прослуховування;
-- перед стартом експорту поточне відтворення/черга **зупиняється** (R18);
-- експорт — окремий послідовний синтез усіх фрагментів, без паралельних запитів до GPU.
+**Semantics:**
+
+- the **entire current text** from the Quick TTS field is exported, not just the batches that were listened to;
+- export does not depend on the queue and can run without listening first;
+- before export starts, the current playback and queue are **stopped** (R18);
+- export is a separate sequential synthesis of all fragments, with no parallel requests to the GPU.
 
 #### 16.1 `ITtsApiClient.ConvertAsync`
 
 ```csharp
-/// <summary>Конвертує WAV у вказаний формат через POST /api/convert.</summary>
+/// <summary>Converts WAV to the given format via POST /api/convert.</summary>
 Task<byte[]> ConvertAsync(
     byte[] wavData,
     string format,
     CancellationToken cancellationToken = default);
 ```
 
-- `TtsApiClient`: multipart `file` (WAV) + `format` (`"mp4"` / `"wav"`), читає відповідь як `byte[]`.
-- Помилки — через існуючий `SendAsync`/`ReadErrorMessageAsync` (JSON або plain text).
-- `PreviewTtsApiClient` у `DesignData` — повертає `Array.Empty<byte>()`.
+- `TtsApiClient`: multipart `file` (WAV) + `format` (`"mp4"` / `"wav"`), reads the response as `byte[]`.
+- Errors — via the existing `SendAsync` / `ReadErrorMessageAsync` (JSON or plain text).
+- `PreviewTtsApiClient` in `DesignData` — returns `Array.Empty<byte>()`.
 
-**Перевірено на серверному venv:** `pydub.AudioSegment.export(format="mp4")` створює
-audio-only MP4 (`ftyp isom`, AAC). `format="m4a"` на цій машині **не працює** — не використовувати.
-Серверний `/api/convert` уже приймає `mp4`; клієнт лише передає формат. Для MP4 на сервері
-потрібен `ffmpeg` (у `Server_py/requirements.txt` уже є `static-ffmpeg`).
+**Verified on the server venv:** `pydub.AudioSegment.export(format="mp4")` creates an audio-only MP4 (`ftyp isom`, AAC). `format="m4a"` **does not work** on this machine — do not use it. The server's `/api/convert` already accepts `mp4`; the client only passes the format. For MP4 the server needs `ffmpeg` (`static-ffmpeg` is already in `Server_py/requirements.txt`).
 
 #### 16.2 `WavAudioConcatenator` (Infrastructure/Audio)
 
-- Вхід: `IReadOnlyList<byte[]>` WAV-фрагментів (24 кГц, моно, 16-bit PCM).
-- Вихід: один WAV `byte[]`.
-- Розбір RIFF: перевірити `RIFF`/`WAVE`, знайти `fmt ` і `data`, перевірити однакові `audioFormat=1`, `channels=1`, `sampleRate=24000`, `bitsPerSample=16`; інакше — `InvalidDataException` з поясненням.
-- Склеювання: усі `data`-чанки підряд + новий коректний заголовок (`RIFF size = 36 + totalData`, `data size = totalData`).
-- Зайві чанки джерела ігноруються; порядок фрагментів зберігається.
-- Додаткового штучного gaps не вставляємо: експорт має звучати так само, як послідовне відтворення.
-- Чистий синхронний клас, без залежностей від BASS/HTTP.
+- Input: `IReadOnlyList<byte[]>` of WAV fragments (24 kHz, mono, 16-bit PCM).
+- Output: one WAV `byte[]`.
+- RIFF parsing: check `RIFF`/`WAVE`, find `fmt ` and `data`, check that all have `audioFormat=1`, `channels=1`, `sampleRate=24000`, `bitsPerSample=16`; otherwise — `InvalidDataException` with an explanation.
+- Concatenation: all `data` chunks back to back plus a new correct header (`RIFF size = 36 + totalData`, `data size = totalData`).
+- Extra source chunks are ignored; the fragment order is preserved.
+- No artificial gaps are inserted: the export must sound the same as sequential playback.
+- A pure synchronous class, with no dependencies on BASS or HTTP.
 
 #### 16.3 `IAudioExportService` + `AudioExportService`
 
@@ -479,17 +445,17 @@ public interface IAudioExportService
 }
 ```
 
-**Алгоритм `AudioExportService`:**
+**`AudioExportService` algorithm:**
 
-1. `ITextChunker.Split(request.Text, request.Chunking)`; порожній результат → `ArgumentException("Немає тексту для збереження.")`.
-2. Для кожного фрагмента послідовно: `ITtsApiClient.SynthesizeAsync(TtsRequestDto { Text, Voice, Speed, Volume = 1.0, Translate = false })`; збирати WAV у `List<byte[]>`; повідомляти `Synthesizing (i, N)`.
-3. `WavAudioConcatenator.Concat(list)`; повідомити `Concatenating`.
-4. `Wav` → писати WAV-байти; `Mp4` → `ConvertAsync(wav, "mp4")`, повідомити `Converting`, писати результат.
-5. Запис атомарний: тимчасовий файл у тому ж каталозі → `File.Move(temp, destination, overwrite: true)`; при скасуванні/помилці тимчасовий файл видаляється.
-6. `IOException`/`UnauthorizedAccessException` не ковтати — ViewModel показує зрозуміле повідомлення.
-7. Пам'ять: усі WAV-фрагменти тримаються в пам'яті (24 кГц/16-bit ≈ 48 КБ/с). Для типових виділень це прийнятно; для дуже довгих книг — майбутня оптимізація (стрім у тимчасовий файл), зараз не робимо.
+1. `ITextChunker.Split(request.Text, request.Chunking)`; an empty result → `ArgumentException("Немає тексту для збереження.")` (no text to save).
+2. For each fragment, sequentially: `ITtsApiClient.SynthesizeAsync(TtsRequestDto { Text, Voice, Speed, Volume = 1.0, Translate = false })`; collect the WAVs in a `List<byte[]>`; report `Synthesizing (i, N)`.
+3. `WavAudioConcatenator.Concat(list)`; report `Concatenating`.
+4. `Wav` → write the WAV bytes; `Mp4` → `ConvertAsync(wav, "mp4")`, report `Converting`, write the result.
+5. The write is atomic: a temporary file in the same directory → `File.Move(temp, destination, overwrite: true)`; on cancel or error the temporary file is deleted.
+6. `IOException` and `UnauthorizedAccessException` are not swallowed — the ViewModel shows a clear message.
+7. Memory: all WAV fragments are kept in memory (24 kHz / 16-bit ≈ 48 KB/s). This is acceptable for typical selections; for very long books it is a future optimization (streaming to a temporary file), not done now.
 
-#### 16.4 Файловий діалог
+#### 16.4 File dialog
 
 ```csharp
 public interface IFileSaveDialogService
@@ -501,158 +467,143 @@ public interface IFileSaveDialogService
 }
 ```
 
-- Реалізація `AvaloniaFileSaveDialogService` (`Views/Services` — єдиний UI-специфічний сервіс,
-  щоб `Infrastructure` не залежала від Avalonia):
-  - бере `IStorageProvider` з `Application.Current.ApplicationLifetime` → `MainWindow`;
-  - `SaveFilePickerAsync` з `FilePickerSaveOptions`:
+- Implementation `AvaloniaFileSaveDialogService` (`Views/Services` — the only UI-specific service, so that `Infrastructure` does not depend on Avalonia):
+  - takes `IStorageProvider` from `Application.Current.ApplicationLifetime` → `MainWindow`;
+  - `SaveFilePickerAsync` with `FilePickerSaveOptions`:
     - `SuggestedFileName = "UA_TTS_yyyy-MM-dd_HH-mm"`;
-    - `DefaultExtension` і `FileTypeChoices` за вибраним форматом (`.mp4` або `.wav`);
+    - `DefaultExtension` and `FileTypeChoices` according to the selected format (`.mp4` or `.wav`);
     - `ShowOverwritePrompt = true`.
-  - повертає локальний шлях або `null`, якщо користувач скасував.
-- Реєстрація в `App.axaml.cs`; у `DesignData` — фейк, що повертає `null`.
-- Діалог викликається лише з UI-потоку.
+  - returns a local path, or `null` if the user cancelled.
+- Registration in `App.axaml.cs`; in `DesignData` — a fake that returns `null`.
+- The dialog is called only from the UI thread.
 
 **DI:**
+
 ```csharp
 services.AddSingleton<IAudioExportService, AudioExportService>();
 services.AddSingleton<IFileSaveDialogService, AvaloniaFileSaveDialogService>();
 ```
 
-#### 16.5 QuickTts: кнопка й прогрес
+#### 16.5 QuickTts: button and progress
 
-- Кнопка **«Зберегти аудіо…»** поруч з «Озвучити».
+- The **«Зберегти аудіо…»** (Save audio…) button next to «Озвучити» (Speak).
 - `ExportCommand` (`IncludeCancelCommand = true`), `IsExporting`, `ExportProgressText`, `ExportProgressPercent`.
 - `CanExport => !IsBusy && !IsExporting && !string.IsNullOrWhiteSpace(Text)`.
-- Під час експорту `CanCapture`/`CanSynthesize` = `false`, щоб текст не змінився посеред операції.
-- Флоу:
-  1. формат береться з `Settings.ExportFormat`;
-  2. `IFileSaveDialogService.PickSavePathAsync(...)`; скасування → вихід без змін;
-  3. `_playback.Stop()` (якщо грає);
-  4. `AudioExportRequest` з поточним текстом, голосом, швидкістю та `ChunkingMode`;
-  5. `_audioExport.ExportAsync(...)`, прогрес у статусі:
-     - `"Експорт: синтез 12 із 30…"`;
-     - `"Експорт: склеювання…"`;
-     - `"Експорт: конвертація в MP4…"`;
-     - `"Збережено: /path/file.mp4"`;
-  6. скасування → `"Експорт скасовано."`, файл не створюється.
-- Помилка конвертації MP4 → показати текст сервера; підказка в README: спробуйте WAV.
+- During export `CanCapture` / `CanSynthesize` = `false`, so the text does not change in the middle of the operation.
+- Flow:
+  1. the format is taken from `Settings.ExportFormat`;
+  2. `IFileSaveDialogService.PickSavePathAsync(...)`; cancel → exit without changes;
+  3. `_playback.Stop()` (if playing);
+  4. an `AudioExportRequest` with the current text, voice, speed and `ChunkingMode`;
+  5. `_audioExport.ExportAsync(...)`, progress shown in the status:
+     - `"Експорт: синтез 12 із 30…"` (Export: synthesis 12 of 30…);
+     - `"Експорт: склеювання…"` (Export: concatenating…);
+     - `"Експорт: конвертація в MP4…"` (Export: converting to MP4…);
+     - `"Збережено: /path/file.mp4"` (Saved: /path/file.mp4);
+  6. cancel → `"Експорт скасовано."` (Export cancelled.), no file is created.
+- An MP4 conversion error → show the server's text; a hint in the README: try WAV.
 
 ---
 
-### Крок 17 — UI: налаштування, лічильники, слайдери ✅
+### Step 17 — UI: settings, counters, sliders ✅
 
-**Виконано:** у налаштуваннях — чекбокси `AutoSynthesizeOnHotkey`/`ActivateOnHotkey`,
-ComboBox режиму фрагментації (`ChunkingModeOption` + `SelectedChunkingMode`; типово —
-«Абзаци»), `NumericUpDown` «Фрагментів у пакеті» (1–10, крок 1), чекбокс
-«Пауза після кожного пакета» (`PauseAfterEachBatch`; вимкнено — `FragmentPlaybackService`
-сам запускає наступний пакет), ComboBox формату експорту (`ExportFormatOption`),
-слайдери швидкості/гучності з кроком 0.1 і форматом `0.0`; у Quick TTS — позиція
-«Фрагмент N з M · пакет X з Y», прев'ю поточного фрагмента (до 60 символів), кнопка
-«Наступний пакет (X з Y)» при `IsBatchPending`, статуси підготовки/завершення пакета/
-завершення черги з правильним відмінюванням; у міні-плеєрі — позиція у черзі та
-гучність із кроком 0.1. Помилки черги тепер доходять до `ErrorMessage` Quick TTS
-(подія `Playback.QueueFailed`). Перевірено: build 0/0; harness — 64/64 PASS.
+**Done:** in settings — checkboxes `AutoSynthesizeOnHotkey` / `ActivateOnHotkey`, a ComboBox for the chunking mode (`ChunkingModeOption` + `SelectedChunkingMode`; default «Абзаци» (Paragraphs)), a `NumericUpDown` «Фрагментів у пакеті» (Fragments per batch) (1–10, step 1), a checkbox «Пауза після кожного пакета» (Pause after each batch) (`PauseAfterEachBatch`; when it is off, `FragmentPlaybackService` starts the next batch itself), a ComboBox for the export format (`ExportFormatOption`), and speed/volume sliders with a step of 0.1 and the `0.0` format. In Quick TTS — the position «Фрагмент N з M · пакет X з Y» (Fragment N of M · batch X of Y), a preview of the current fragment (up to 60 characters), the «Наступний пакет (X з Y)» (Next batch (X of Y)) button when `IsBatchPending` is set, and statuses for preparation, batch completion and queue completion with correct Ukrainian plural forms; in the mini player — the position in the queue and the volume with a step of 0.1. Queue errors now reach `ErrorMessage` in Quick TTS (the `Playback.QueueFailed` event). Verified: build 0/0; harness — 64/64 PASS.
 
 #### 17.1 SettingsView
 
-- Чекбокс **«Озвучувати автоматично після Alt+Q»** → `AutoSynthesizeOnHotkey` (типово ✅).
-- Чекбокс **«Активувати вікно й переходити на Quick TTS після Alt+Q»** → `ActivateOnHotkey` (типово ☐).
-- ComboBox **«Режим фрагментації»**:
-  - «Абзаци» — типово (уточнено після ручного тестування);
-  - «Речення»;
-  - «До 250 символів (розумне пакування)».
-  - Реалізація: список `ChunkingModeOption(Mode, Title)` + `SelectedChunkingMode`, без магічних індексів.
-- `NumericUpDown` **«Фрагментів у пакеті»**: min 1, max 10, increment 1, типово 5.
-- Чекбокс **«Пауза після кожного пакета»** → `PauseAfterEachBatch` (типово ✅; вимкнено —
-  усі пакети грають один за одним без кнопки «Наступний пакет»).
-- ComboBox **«Формат збереження аудіо»**:
-  - «MP4 (аудіо, типово)»;
-  - «WAV (без стиснення)».
-  - Реалізація: `ExportFormatOption(Format, Title)` + `SelectedExportFormat`.
-- Слайдери:
+- Checkbox **«Озвучувати автоматично після Alt+Q»** (Auto-speak after Alt+Q) → `AutoSynthesizeOnHotkey` (default ✅).
+- Checkbox **«Активувати вікно й переходити на Quick TTS після Alt+Q»** (Activate window and switch to Quick TTS after Alt+Q) → `ActivateOnHotkey` (default ☐).
+- ComboBox **«Режим фрагментації»** (Chunking mode):
+  - «Абзаци» (Paragraphs) — default (clarified after manual testing);
+  - «Речення» (Sentences);
+  - «До 250 символів (розумне пакування)» (Up to 250 characters (smart packing)).
+  - Implementation: a list of `ChunkingModeOption(Mode, Title)` + `SelectedChunkingMode`, without magic indexes.
+- `NumericUpDown` **«Фрагментів у пакеті»** (Fragments per batch): min 1, max 10, increment 1, default 5.
+- Checkbox **«Пауза після кожного пакета»** (Pause after each batch) → `PauseAfterEachBatch` (default ✅; when off, all batches play one after another without the «Наступний пакет» (Next batch) button).
+- ComboBox **«Формат збереження аудіо»** (Audio save format):
+  - «MP4 (аудіо, типово)» (MP4 (audio, default));
+  - «WAV (без стиснення)» (WAV (uncompressed)).
+  - Implementation: `ExportFormatOption(Format, Title)` + `SelectedExportFormat`.
+- Sliders:
   - `TickFrequency="0.1"`, `IsSnapToTickEnabled="True"`;
-  - відображення `StringFormat='{}{0:0.0}'` (без «тисячних»);
+  - display `StringFormat='{}{0:0.0}'` (no thousandths);
   - `Speed` 0.5–2.0; `Volume` 0.0–1.0;
-  - у міні-плеєрі гучність теж із кроком 0.1 і тим самим форматом.
-- Підказка, що нові налаштування діють одразу, а URL сервера — після перезапуску.
+  - in the mini player the volume also uses a step of 0.1 and the same format.
+- A hint that the new settings take effect immediately, while the server URL takes effect after restart.
 
 #### 17.2 QuickTtsView
 
-- Під кнопками або в статусі: `"Фрагмент 2 з 5 · пакет 1 з 3"` (`Playback.FragmentPositionText`).
-- Показ поточного фрагмента (перші ~60 символів) — за бажанням, щоб було видно, що саме читається.
-- Кнопка **«Наступний пакет (2 з 3)»** — видима, коли `Playback.IsBatchPending`.
-- Кнопка **«Зберегти аудіо…»** — поруч з «Озвучити»; під час експорту показується прогрес і «Скасувати експорт».
-- Статуси:
-  - `"Підготовлено 12 фрагментів · пакет 1 з 3"`;
-  - `"Пакет 1 з 3 завершено. Натисніть ▶ або «Наступний пакет»"`;
-  - `"Готово: 3 пакети, 12 фрагментів"`;
-  - `"Експорт: синтез 12 із 30…"` / `"Збережено: …/file.mp4"`.
-- Помилка черги або експорту → `ErrorMessage` у Quick TTS.
+- Below the buttons or in the status: `"Фрагмент 2 з 5 · пакет 1 з 3"` (Fragment 2 of 5 · batch 1 of 3) (`Playback.FragmentPositionText`).
+- Display of the current fragment (first ~60 characters) — optional, so it is visible what is being read.
+- The **«Наступний пакет (2 з 3)»** (Next batch (2 of 3)) button — visible when `Playback.IsBatchPending` is set.
+- The **«Зберегти аудіо…»** (Save audio…) button — next to «Озвучити» (Speak); during export the progress and «Скасувати експорт» (Cancel export) are shown.
+- Statuses:
+  - `"Підготовлено 12 фрагментів · пакет 1 з 3"` (Prepared 12 fragments · batch 1 of 3);
+  - `"Пакет 1 з 3 завершено. Натисніть ▶ або «Наступний пакет»"` (Batch 1 of 3 completed. Press ▶ or “Next batch”);
+  - `"Готово: 3 пакети, 12 фрагментів"` (Done: 3 batches, 12 fragments);
+  - `"Експорт: синтез 12 із 30…"` / `"Збережено: …/file.mp4"` (Export: synthesis 12 of 30… / Saved: …/file.mp4).
+- A queue or export error → `ErrorMessage` in Quick TTS.
 
-#### 17.3 MainWindow (міні-плеєр)
+#### 17.3 MainWindow (mini player)
 
-- Додати `Playback.FragmentPositionText` поруч зі станом/голосом.
-- Кнопка ▶/⏸:
-  - під час гри — пауза;
-  - під час паузи — продовження;
-  - коли пакет завершено — запуск наступного пакета.
-- Кнопка ■ — повна зупинка черги й скидання лічильників.
+- Add `Playback.FragmentPositionText` next to the state and the voice.
+- The ▶/⏸ button:
+  - while playing — pause;
+  - while paused — resume;
+  - when a batch is complete — start the next batch.
+- The ■ button — a full stop of the queue and reset of the counters.
 
 ---
 
-### Крок 18 — Перевірка та фінальна документація ✅
+### Step 18 — Verification and final documentation ✅
 
-**Виконано (2026-10-22):** `dotnet build` — 0 warnings / 0 errors. Ручні сценарії
-(§4, 23 пункти) підтверджено користувачем під час живої роботи із застосунком:
-`Alt+Q` з автоозвученням і активацією, порожнє виділення, режими фрагментації,
-пакети та «Пауза після кожного пакета», пауза/стоп, слайдери з кроком 0.1, експорт
-MP4/WAV і скасування. Оновлено `Doc/API.md` (послідовні `/api/synthesize`,
-`/api/convert` для MP4), §5–6 цього плану, `README.md`, `AGENTS.md`,
-`Doc/Project_Structure.md`. Відоме обмеження: Windows runtime не перевірено
-(шлях `TextCopy` збережено).
+**Done (2026-10-22):** `dotnet build` — 0 warnings / 0 errors. Manual scenarios (§4, 23 items) confirmed by the user during live work with the app: `Alt+Q` with auto-speech and activation, empty selection, chunking modes, batches and "Pause after each batch", pause/stop, sliders with step 0.1, export MP4/WAV and cancellation. Updated `Doc/API.md` (sequential `/api/synthesize`, `/api/convert` for MP4), §5–6 of this plan, `README.md`, `AGENTS.md`, `Doc/Project_Structure.md`. Known limitation: Windows runtime not verified (the `TextCopy` path is kept).
 
-**Збірка:** `dotnet build` — 0 warnings / 0 errors.
+**Build:** `dotnet build` — 0 warnings / 0 errors.
 
-**Ручні сценарії (обов'язково):**
+**Manual scenarios (mandatory):**
 
-| # | Сценарій | Очікування |
+| # | Scenario | Expected |
 |---|---|---|
-| 1 | `Alt+Q` у браузері, автоозвучення ✅ | текст захоплено, перший пакет грає без натискання «Озвучити» |
-| 2 | `Alt+Q` з активацією ✅ | спершу захоплено текст, потім вікно активне, відкрита вкладка Quick TTS, грає звук |
-| 3 | Активація ☐ | вікно не краде фокус, але текст захоплено й озвучено |
-| 4 | Порожнє виділення | статус «Нічого не захоплено», вікно не активується |
-| 5 | Режим «Абзаци» | фрагменти відповідають абзацам; довгі абзаци додатково порізані |
-| 6 | Режим «Речення» | один фрагмент = одне речення, без обривів |
-| 7 | Режим «До 250» | жоден фрагмент > 250 символів (крім нероздільних випадків) |
-| 8 | Пакет 5, текст на 12 фрагментів | пакет 1 (1–5) грає, далі пауза; ▶/«Наступний пакет» → 6–10; потім 11–12 |
-| 9 | Пакет 1 і пакет 10 | межі пакетів працюють, лічильники не збиваються |
-| 10 | Пауза посередині фрагмента | звук зупиняється, ▶ продовжує з того ж місця |
-| 11 | Пауза між фрагментами | наступний фрагмент не стартує до ▶ |
-| 12 | Стоп під час пакета | звук і черга зупиняються, лічильники скидаються |
-| 13 | Новий `Alt+Q` під час відтворення | попередня черга зупиняється, стартує нова |
-| 14 | Слайдери | крок 0.1, значення `1.0`, `0.7`, без `0.30000000000000004` |
-| 15 | `PATH` без X11-утиліт | захоплення через `wl-paste` працює, застарілий fallback не викликається |
-| 16 | Старий `config.json` | завантажується, нові поля = типові значення |
-| 17 | Перезапуск | нові налаштування збережені й застосовані |
-| 18 | Експорт MP4 (типово) | після вибору шляху створюється `.mp4`, який відтворюється плеєром; звук = весь текст |
-| 19 | Експорт WAV | створюється коректний WAV (24 кГц, моно, 16-bit), тривалість ≈ сума фрагментів |
-| 20 | Скасування експорту | тимчасовий/цільовий файл не залишається, статус «Експорт скасовано» |
-| 21 | Експорт під час відтворення | відтворення зупиняється, експорт починається, після завершення файл на місці |
-| 22 | Експорт тексту з 1 фрагмента | MP4/WAV створюються коректно (без порожніх заголовків) |
-| 23 | MP4 не конвертується (немає ffmpeg) | показується помилка сервера; WAV усе одно зберігається |
+| 1 | `Alt+Q` in a browser, auto-speech ✅ | text captured, the first batch plays without pressing «Озвучити» |
+| 2 | `Alt+Q` with activation ✅ | text is captured first, then the window is active, the Quick TTS tab is open, sound plays |
+| 3 | Activation ☐ | the window does not steal focus, but the text is captured and spoken |
+| 4 | Empty selection | status «Нічого не захоплено» (Nothing captured), the window does not activate |
+| 5 | "Абзаци" (Paragraphs) mode | fragments match paragraphs; long paragraphs are additionally split |
+| 6 | "Речення" (Sentences) mode | one fragment = one sentence, no cut-offs |
+| 7 | "До 250" (Up to 250) mode | no fragment over 250 characters (except indivisible cases) |
+| 8 | Batch 5, text of 12 fragments | batch 1 (1–5) plays, then a pause; ▶ or «Наступний пакет» → 6–10; then 11–12 |
+| 9 | Batch 1 and batch 10 | batch boundaries work, counters do not get out of sync |
+| 10 | Pause in the middle of a fragment | sound stops, ▶ resumes from the same place |
+| 11 | Pause between fragments | the next fragment does not start until ▶ |
+| 12 | Stop during a batch | sound and queue stop, counters reset |
+| 13 | New `Alt+Q` during playback | the previous queue stops, a new one starts |
+| 14 | Sliders | step 0.1, values `1.0`, `0.7`, no `0.30000000000000004` |
+| 15 | `PATH` without X11 utilities | capture via `wl-paste` works, the obsolete fallback is not called |
+| 16 | Old `config.json` | loads, new fields = default values |
+| 17 | Restart | new settings are saved and applied |
+| 18 | MP4 export (default) | after choosing a path an `.mp4` is created that plays in a player; sound = the whole text |
+| 19 | WAV export | a valid WAV is created (24 kHz, mono, 16-bit), duration ≈ sum of fragments |
+| 20 | Export cancellation | no temporary or target file remains, status «Експорт скасовано» (Export cancelled) |
+| 21 | Export during playback | playback stops, export starts, after completion the file is in place |
+| 22 | Export of text from 1 fragment | MP4/WAV are created correctly (no empty headers) |
+| 23 | MP4 not converted (no ffmpeg) | the server error is shown; WAV is still saved |
 
-**Документація після перевірки:**
-- `README.md`: нові можливості, налаштування, пакети, експорт MP4/WAV (MP4 — аудіо без відео), обмеження активації на Wayland, вимоги: лише `wl-clipboard`.
-- `AGENTS.md`: нові факти (TrackEnded, пакетна черга, порядок «capture → activate → synth», `pydub mp4` працює, `m4a` — ні, WAV-склеювання), оновлена таблиця `Doc/`, стан git.
-- `Doc/Project_Structure.md`: нові файли й потоки, зокрема експорт.
-- `Doc/API.md`: примітка, що клієнт робить **послідовні** запити `/api/synthesize` — один на фрагмент; для MP4 — один `POST /api/convert`.
-- Цей план: статуси кроків + журнал.
+**Documentation after verification:**
+
+- `README.md`: new features, settings, batches, MP4/WAV export (MP4 — audio without video), limitations of activation on Wayland, requirements: only `wl-clipboard`.
+- `AGENTS.md`: new facts (TrackEnded, batch queue, order "capture → activate → synth", `pydub mp4` works, `m4a` does not, WAV concatenation), updated `Doc/` table, git state.
+- `Doc/Project_Structure.md`: new files and flows, including export.
+- `Doc/API.md`: a note that the client makes **sequential** `/api/synthesize` requests — one per fragment; for MP4 — one `POST /api/convert`.
+- This plan: step statuses and journal.
 
 ---
 
-## 5. UX-специфікація (коротко)
+## 5. UX specification (brief)
 
-### Налаштування
+The labels in the blocks below are the actual Ukrainian UI texts.
+
+### Settings
 
 ```text
 [✓] Озвучувати автоматично після Alt+Q
@@ -667,21 +618,21 @@ MP4/WAV і скасування. Оновлено `Doc/API.md` (послідов
 Гучність відтворення [──────●──] 0.8
 ```
 
-### Стани Quick TTS
+### Quick TTS states
 
-| Стан | Текст |
+| State | Text (UI) |
 |---|---|
-| Підготовка | `Підготовлено 12 фрагментів · пакет 1 з 3` |
-| Грає | `Фрагмент 2 з 5 · пакет 1 з 3` |
-| Пауза | `Пауза · фрагмент 2 з 5` |
-| Кінець пакета | `Пакет 1 з 3 завершено. Натисніть ▶ або «Наступний пакет»` |
-| Кінець тексту | `Готово: 3 пакети, 12 фрагментів` |
-| Експорт | `Експорт: синтез 12 із 30…` → `Збережено: …/file.mp4` |
-| Помилка | текст `TtsApiException` у червоному рядку |
+| Preparing | `Підготовлено 12 фрагментів · пакет 1 з 3` |
+| Playing | `Фрагмент 2 з 5 · пакет 1 з 3` |
+| Paused | `Пауза · фрагмент 2 з 5` |
+| End of batch | `Пакет 1 з 3 завершено. Натисніть ▶ або «Наступний пакет»` |
+| End of text | `Готово: 3 пакети, 12 фрагментів` |
+| Export | `Експорт: синтез 12 із 30…` → `Збережено: …/file.mp4` |
+| Error | `TtsApiException` text in a red line |
 
 ---
 
-## 6. Контракти (зведення)
+## 6. Contracts (summary)
 
 ### 6.1 `AppConfig`
 
@@ -696,7 +647,7 @@ public AudioExportFormat ExportFormat { get; init; } = AudioExportFormat.Mp4;
 
 ### 6.2 `IAudioPlayerService`
 
-Додається лише:
+Only this is added:
 
 ```csharp
 event EventHandler? TrackEnded;
@@ -704,81 +655,78 @@ event EventHandler? TrackEnded;
 
 ### 6.3 `IFragmentPlaybackService`
 
-Див. §14.2. Ключове: `StartAsync` повертається після старту першого фрагмента; пакет завершується подією `BatchCompleted`; `ContinueAsync` — наступний пакет.
+See §14.2. Key points: `StartAsync` returns after the first fragment starts; a batch completes with the `BatchCompleted` event; `ContinueAsync` starts the next batch.
 
 ### 6.4 `ITextChunker`
 
-Див. §13. Чистий, синхронний, без залежностей від Avalonia/HTTP/BASS.
+See §13. A pure, synchronous class with no dependencies on Avalonia, HTTP or BASS.
 
 ### 6.5 `ITtsApiClient.ConvertAsync`
 
-Див. §16.1. Використовує наявний серверний `POST /api/convert`; формати `mp4` і `wav`.
+See §16.1. Uses the existing server `POST /api/convert`; formats `mp4` and `wav`.
 
 ### 6.6 `IAudioExportService`
 
-Див. §16.3. Експортує **весь текст**, послідовно синтезує фрагменти, склеює WAV і за потреби конвертує в MP4.
+See §16.3. Exports **the whole text**: synthesizes fragments sequentially, concatenates the WAVs and, if needed, converts to MP4.
 
 ---
 
-## 7. Ризики та мітигація
+## 7. Risks and mitigation
 
-| Ризик | Ймовірність | Мітигація |
+| Risk | Likelihood | Mitigation |
 |---|---|---|
-| Wayland не дає активувати вікно (focus stealing) | середня | `Activate()` best effort; налаштування типово вимкнене; описати в README |
-| Активація до захоплення зламає `Ctrl+C` | висока (якщо переплутати порядок) | Жорсткий порядок: capture → activate → synth; тест №2 |
-| Між фрагментами чутна пауза | середня | Prefetch одного фрагмента наперед; BASS-потік створюється швидко |
-| Пауза під час синтезу наступного фрагмента | середня | Pause gate: не стартувати новий фрагмент до `Resume` |
-| Гонки `Stop`/`TrackEnded`/нового `Start` | середня | Один внутрішній CTS, `TaskCompletionSource` з `RunContinuationsAsynchronously`, блокування стану |
-| `TrackEnded` приходить із потоку BASS | висока | Не оновлювати UI напряму; `OnUiThread` у ViewModel |
-| Старий конфіг без нових полів | низька | Значення за замовчуванням; `JsonStringEnumConverter` |
-| Наївне розбиття на речення ламає скорочення | середня | Мінімальний список скорочень; краще не різати, ніж різати неправильно |
-| `wl-paste` відсутній | низька | `LogWarning`, порожній результат; вимога `wl-clipboard` у README |
-| `StringFormat` у compiled bindings | низька | Перевірити `dotnet build`; за потреби — computed-властивість `SpeedText` |
-| MP4-конвертація залежить від ffmpeg на сервері | середня | Серверний `/api/convert` повертає помилку — показати її; запропонувати WAV |
-| Різні формати WAV-фрагментів | низька | `WavAudioConcatenator` перевіряє `fmt ` і кидає зрозумілий `InvalidDataException` |
-| Пам'ять під час експорту довгого тексту | низька | Типові виділення ≤ кількох МБ; для книг — майбутній стрім на диск |
-| Неправильне розширення у файловому діалозі | низька | `DefaultExtension` + `FileTypeChoices`; ім'я формується з вибраного формату |
-| Windows runtime не перевірено | висока | `TextCopy`-шлях збережено; зафіксувати як неперевірене в звіті |
+| Wayland does not allow activating the window (focus stealing) | medium | `Activate()` is best effort; the setting is disabled by default; describe it in the README |
+| Activation before capture breaks `Ctrl+C` | high (if the order is mixed up) | Strict order: capture → activate → synth; test №2 |
+| An audible pause between fragments | medium | Prefetch one fragment ahead; the BASS stream is created quickly |
+| Pause during synthesis of the next fragment | medium | Pause gate: do not start a new fragment until `Resume` |
+| Race of `Stop` / `TrackEnded` / a new `Start` | medium | One internal CTS, a `TaskCompletionSource` with `RunContinuationsAsynchronously`, state locking |
+| `TrackEnded` arrives from the BASS thread | high | Do not update the UI directly; `OnUiThread` in the ViewModel |
+| Old config without the new fields | low | Default values; `JsonStringEnumConverter` |
+| A naive sentence split breaks abbreviations | medium | A minimal abbreviation list; better not to cut than to cut wrongly |
+| `wl-paste` missing | low | `LogWarning`, empty result; the `wl-clipboard` requirement in the README |
+| `StringFormat` in compiled bindings | low | Check with `dotnet build`; if needed — a computed `SpeedText` property |
+| MP4 conversion depends on ffmpeg on the server | medium | The server's `/api/convert` returns an error — show it; suggest WAV |
+| Different formats of WAV fragments | low | `WavAudioConcatenator` checks `fmt ` and throws a clear `InvalidDataException` |
+| Memory during export of a long text | low | Typical selections are a few MB at most; for books — future streaming to disk |
+| Wrong extension in the file dialog | low | `DefaultExtension` + `FileTypeChoices`; the name is built from the chosen format |
+| Windows runtime not verified | high | `TextCopy` path kept; record it as unverified in the report |
 
 ---
 
-## 8. Журнал виконання (ітерація 2)
+## 8. Execution journal (iteration 2)
 
-| Дата | Що зроблено |
+| Date | What was done |
 |---|---|
-| 2026-10-22 | Сформовано план ітерації 2 на основі `Notes_Userstory.md`; зафіксовано рішення R7–R18 |
-| 2026-10-22 | **Крок 10 виконано:** створено `Doc/Project_Structure.md`; `Doc/ua_tts_client_arch.md` видалено; оновлено `AGENTS.md`, `README.md`, `Doc/API.md` |
-| 2026-10-22 | **Крок 11 виконано:** `WaylandClipboardAutomationService` читає буфер на Linux лише через `wl-paste`; `TextCopy` залишено для Windows; `dotnet build` — 0 warnings / 0 errors |
-| 2026-10-22 | **Крок 12 виконано:** нові поля `AppConfig`, `JsonStringEnumConverter`, нові властивості `SettingsViewModel` з валідацією та округленням до 0.1 |
-| 2026-10-22 | **Крок 13 виконано:** `TextChunkingMode`, `TextChunkingOptions`, `TextFragment`, `ITextChunker`, `SentenceAwareTextChunker`; harness — 14/14 PASS |
-| 2026-10-22 | **Крок 14 виконано:** `TrackEnded` у BASS-сервісі, `IFragmentPlaybackService` + `FragmentPlaybackService`, інтеграція в `PlaybackControlViewModel` і `QuickTtsViewModel`; harness на живому сервері (пакети, пауза/продовження, стоп) — ALL PASSED |
-| 2026-10-22 | **Крок 15 виконано:** `CaptureForHotkeyAsync`/`SynthesizeCurrentTextAsync`, `HandleHotkeyAsync` (захоплення → активація → синтез), `SelectedTabIndex` + `ActivateRequested`; harness із фейковими сервісами — 25/25 PASS |
-| 2026-10-22 | **Крок 16 виконано:** `ConvertAsync`, `WavAudioConcatenator`, `AudioExportService`, `AvaloniaFileSaveDialogService`, кнопка «Зберегти аудіо…» з прогресом; harness 49 перевірок + живий експорт WAV/MP4 (pydub: 4.64/4.65 с) — ALL PASSED |
-| 2026-10-22 | **Крок 17 виконано:** чекбокси та ComboBox у налаштуваннях (`ChunkingModeOption`, `ExportFormatOption`), `NumericUpDown` для пакета, слайдери з кроком 0.1; лічильники черги й прев'ю фрагмента в Quick TTS, кнопка «Наступний пакет», подія `QueueFailed` → `ErrorMessage`; harness 46/46 PASS |
-| 2026-10-22 | **Крок 17, уточнення після ручного тестування:** чекбокс «Пауза після кожного пакета» (`PauseAfterEachBatch`; вимкнено — пакети грають підряд без `BatchCompleted`), типовий режим фрагментації — «Абзаци»; harness 64/64 PASS |
-| 2026-10-22 | **Крок 18 виконано:** build 0/0; ручні сценарії (23 пункти) підтверджено користувачем; фінальна документація (`API.md`, план §5–6, `README`, `AGENTS`, `Project_Structure`); **ітерацію 2 завершено** |
-| | |
+| 2026-10-22 | Plan for iteration 2 drafted based on `Notes_Userstory.md`; decisions R7–R18 recorded |
+| 2026-10-22 | **Step 10 done:** `Doc/Project_Structure.md` created; `Doc/ua_tts_client_arch.md` deleted; `AGENTS.md`, `README.md`, `Doc/API.md` updated |
+| 2026-10-22 | **Step 11 done:** `WaylandClipboardAutomationService` reads the clipboard on Linux only through `wl-paste`; `TextCopy` kept for Windows; `dotnet build` — 0 warnings / 0 errors |
+| 2026-10-22 | **Step 12 done:** new `AppConfig` fields, `JsonStringEnumConverter`, new `SettingsViewModel` properties with validation and rounding to 0.1 |
+| 2026-10-22 | **Step 13 done:** `TextChunkingMode`, `TextChunkingOptions`, `TextFragment`, `ITextChunker`, `SentenceAwareTextChunker`; harness — 14/14 PASS |
+| 2026-10-22 | **Step 14 done:** `TrackEnded` in the BASS service, `IFragmentPlaybackService` + `FragmentPlaybackService`, integration into `PlaybackControlViewModel` and `QuickTtsViewModel`; harness on a live server (batches, pause/resume, stop) — ALL PASSED |
+| 2026-10-22 | **Step 15 done:** `CaptureForHotkeyAsync` / `SynthesizeCurrentTextAsync`, `HandleHotkeyAsync` (capture → activate → synth), `SelectedTabIndex` + `ActivateRequested`; harness with fake services — 25/25 PASS |
+| 2026-10-22 | **Step 16 done:** `ConvertAsync`, `WavAudioConcatenator`, `AudioExportService`, `AvaloniaFileSaveDialogService`, the «Зберегти аудіо…» button with progress; harness 49 checks + live WAV/MP4 export (pydub: 4.64/4.65 s) — ALL PASSED |
+| 2026-10-22 | **Step 17 done:** checkboxes and ComboBoxes in settings (`ChunkingModeOption`, `ExportFormatOption`), `NumericUpDown` for the batch size, sliders with step 0.1; queue counters and fragment preview in Quick TTS, the «Наступний пакет» button, `QueueFailed` event → `ErrorMessage`; harness 46/46 PASS |
+| 2026-10-22 | **Step 17, clarification after manual testing:** checkbox «Пауза після кожного пакета» (`PauseAfterEachBatch`; when off, batches play back to back without `BatchCompleted`); default chunking mode is «Абзаци» (Paragraphs); harness 64/64 PASS |
+| 2026-10-22 | **Step 18 done:** build 0/0; manual scenarios (23 items) confirmed by the user; final documentation (`API.md`, plan §5–6, `README`, `AGENTS`, `Project_Structure`); **iteration 2 completed** |
+| | | |
 
 ---
 
-## 9. Як продовжити роботу
+## 9. How to continue
 
-1. Ітерацію 2 **завершено**: усі кроки 10–18 ✅; історія — у журналі вище.
-2. Для наступної ітерації створити новий план (архівувати цей файл або додати новий
-   розділ), спираючись на `README.md`, `Doc/Project_Structure.md` і `AGENTS.md`.
-3. Не комітити чужі незакомічені зміни без запиту.
-4. Відомі обмеження: Windows runtime не перевірено; MP4-експорт залежить від `ffmpeg`
-   на сервері; довгі тексти під час експорту тримаються в пам'яті; активація вікна
-   на Wayland — best effort.
+1. Iteration 2 is **completed**: all steps 10–18 ✅; the history is in the journal above.
+2. For the next iteration create a new plan (archive this file or add a new section), based on `README.md`, `Doc/Project_Structure.md` and `AGENTS.md`.
+3. Do not commit other people's uncommitted changes without a request.
+4. Known limitations: Windows runtime not verified; MP4 export depends on `ffmpeg` on the server; long texts are kept in memory during export; window activation on Wayland is best effort.
 
 ---
 
-## 10. Поза межами ітерації
+## 10. Out of scope for the iteration
 
-- Тестовий проєкт `UA_TTS_Client.Tests` (свідомо).
-- Reader і Character Voice.
-- Редактор гарячої клавіші (залишається `Alt+Q`).
-- Зміни `server.py` / API (використовується наявний `/api/convert`).
-- Runtime-перевірка Windows 11.
-- Автоматичне продовження пакетів без участі користувача.
-- Відеоряд у MP4 (експортується лише аудіодоріжка).
+- Test project `UA_TTS_Client.Tests` (deliberately).
+- Reader and Character Voice.
+- Hotkey editor (stays `Alt+Q`).
+- Changes to `server.py` / API (the existing `/api/convert` is used).
+- Runtime verification of Windows 11.
+- Automatic continuation of batches without user participation.
+- Video track in MP4 (only the audio track is exported).

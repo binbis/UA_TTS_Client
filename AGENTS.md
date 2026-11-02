@@ -1,116 +1,96 @@
 # AGENTS.md — UA_TTS_Client
 
-Avalonia/.NET 10 клієнт (MVVM, CommunityToolkit.Mvvm) для локального Python TTS-сервера
-(`Server_py/`, Flask + StyleTTS2). Цільові ОС: Linux EndeavourOS/Arch (Wayland + PipeWire) та Windows 11.
+Avalonia/.NET 10 client (MVVM, CommunityToolkit.Mvvm) for the local Python TTS server
+(`Server_py/`, Flask + StyleTTS2). Target OSes: Linux EndeavourOS/Arch (Wayland + PipeWire) and Windows 11.
 
-**Клієнт у робочому стані.** Реалізовано Кроки 0–9: `Core/` (контракти), `Infrastructure/`
-(API, BASS-аудіо, хук, буфер, JSON-конфіг), ViewModels, Views (XAML), Composition Root
-у `App.axaml.cs` і документація. Ітерацію 2 **завершено**: виконано **Кроки 10–18**
-(документація, фрагментація, пакетна черга, автоозвучення після `Alt+Q`, експорт MP4/WAV,
-UI-перемикачі та лічильники, фінальна перевірка).
+**The client is in working condition.** Steps 0–9 are implemented: `Core/` (contracts), `Infrastructure/`
+(API, BASS audio, hook, clipboard, JSON config), ViewModels, Views (XAML), the Composition Root
+in `App.axaml.cs`, and documentation. Iteration 2 is **completed**: **Steps 10–18 done**
+(documentation, chunking, batch queue, auto-speech after `Alt+Q`, MP4/WAV export,
+UI toggles and counters, final check).
 
-Канонічний план — **`Doc/Curent_Work_Plan.md`**, карта коду — **`Doc/Project_Structure.md`**.
+The canonical plan is **`Doc/Curent_Work_Plan.md`**; the code map is **`Doc/Project_Structure.md`**.
 
 ---
 
-## Команди (перевірено)
+## Commands (verified)
 
 ```bash
-# Клієнт — збірка (зараз 0 warnings / 0 errors)
+# Client — build (currently 0 warnings / 0 errors)
 dotnet build
 
-# Клієнт — запуск (відкриває вікно; сервер має бути вже запущений)
+# Client — run (opens a window; the server must already be running)
 dotnet run
 
-# Сервер — з правильним cwd (скрипт сам переходить у Server_py/)
+# Server — run with the correct cwd (the script changes into Server_py/ itself)
 ./Server_py/run_server.sh
 ```
 
-- Є `UA_TTS_Client.sln` (класичний формат — сумісний з усіма версіями Rider; .NET 10 за
-  замовчуванням створює `.slnx`, тому формат задано явно). `dotnet build` з кореня працює.
-- Немає lint/format/codegen-конфігурації. Немає CI.
-- SDK: .NET 10.0.113 · Python 3.14.8 (`Server_py/venv`) · torch 2.14.1+cu130, **CUDA доступна**.
-- Запуск сервера ≈45 с (модель `patriotyk/styletts2_ukrainian_multispeaker` ~911 МБ уже в кеші HF).
-  Модель вантажиться при кожному старті — не здивуйся, що до першого запиту довго.
+- There is `UA_TTS_Client.sln` (classic format — compatible with all Rider versions; .NET 10 creates `.slnx` by default, so the format is set explicitly). `dotnet build` from the root works.
+- There is no lint/format/codegen configuration. There is no CI.
+- SDK: .NET 10.0.113 · Python 3.14.8 (`Server_py/venv`) · torch 2.14.1+cu130, **CUDA is available**.
+- Starting the server takes ≈45 s (model `patriotyk/styletts2_ukrainian_multispeaker`, ~911 MB, already in the HF cache). The model is loaded on every start — do not be surprised that it takes a while before the first request.
 
-### Явні `using` обов'язкові
+### Explicit `using` directives are required
 
-У `.csproj` **немає** `<ImplicitUsings>` — `System`, `System.IO`, `System.Net.Http`,
-`System.Threading.Tasks` не імпортуються автоматично. Додавай `using` у кожен файл.
-У `BassAudioPlayerService` є конфлікт імен `PlaybackState` з `ManagedBass.PlaybackState`,
-тому там використано alias.
+The `.csproj` has **no** `<ImplicitUsings>` — `System`, `System.IO`, `System.Net.Http`, `System.Threading.Tasks` are not imported automatically. Add `using` to every file.
+`BassAudioPlayerService` has a name conflict for `PlaybackState` with `ManagedBass.PlaybackState`, so an alias is used there.
 
-### Сервер запускати ТІЛЬКИ з `Server_py/`
+### Run the server ONLY from `Server_py/`
 
-`server.py` використовує відносні шляхи (`glob("voices/*.pt")`, `"dictionary.json"`).
-Запуск з кореня репозиторію → 0 голосів і порожній словник, без помилки в логу.
+`server.py` uses relative paths (`glob("voices/*.pt")`, `"dictionary.json"`). Running from the repository root → 0 voices and an empty dictionary, with no error in the log.
 
 ---
 
-## Контракт API сервера (перевірено curl-ом)
+## Server API contract (verified with curl)
 
 Base URL: `http://127.0.0.1:5000` (Flask dev server, CORS `Access-Control-Allow-Origin: *`).
 
-| Метод | Шлях | Тіло | Успіх | Помилка |
+| Method | Path | Body | Success | Error |
 |---|---|---|---|---|
-| GET | `/api/voices` | — | `["Вероніка Дорош", …]` (31 голос) | — |
+| GET | `/api/voices` | — | `["Вероніка Дорош", …]` (31 voices) | — |
 | GET | `/api/health` | — | `{"status":"ok","device":"cuda","voices":31,"model":"…"}` | — |
 | POST | `/api/verbalize` | `{"text"}` | `{"text"}` | 400 `{"error":"No text"}` |
-| POST | `/api/synthesize` | `{"text","voice","speed","volume","translate"}` | `audio/wav`, 24 кГц моно 16-bit PCM | 500 `{"error"}` |
+| POST | `/api/synthesize` | `{"text","voice","speed","volume","translate"}` | `audio/wav`, 24 kHz mono 16-bit PCM | 500 `{"error"}` |
 | POST | `/api/convert` | multipart `file`, `format` | `audio/<fmt>` | 400 `{"error":"No file"}` |
 | POST | `/api/parse_file` | multipart `file` | `{"text"}` | 400 `{"error":"No file"}` |
 
-- `/api/health` **додано** в `Server_py/server.py` (Крок 2). `/api/ping` і `/health` досі не існують → 404.
-- `TtsApiClient.GetHealthAsync` на 404 від `/api/health` робить fallback на `GET /api/voices`
-  (сумісність зі старим сервером без патча).
-- `/api/convert` і `/api/parse_file` тепер теж повертають JSON `{"error": …}`. Але парсер клієнта
-  усе одно терпить і plain text: сервер міг бути не оновлений.
-- Не ламати CORS-заголовки: браузерне розширення користується цим самим сервером.
-- `/api/convert` приймає `format=mp4`; перевірено на серверному venv: pydub/ffmpeg створює
-  audio-only MP4 (AAC, `ftyp isom`). `format=m4a` на цій машині **не працює** — не використовувати.
-  Клієнт викликає цей ендпоінт для експорту MP4 (`TtsApiClient.ConvertAsync`, Крок 16);
-  для WAV конвертація не потрібна — клієнт склеює фрагменти сам.
-- Повний контракт із прикладами `curl`/JSON — **`Doc/API.md`** (створено на Кроці 9.2).
+- `/api/health` **was added** to `Server_py/server.py` (Step 2). `/api/ping` and `/health` still do not exist → 404.
+- `TtsApiClient.GetHealthAsync` falls back to `GET /api/voices` on a 404 from `/api/health` (compatibility with an old server without the patch).
+- `/api/convert` and `/api/parse_file` now also return JSON `{"error": …}`. But the client's parser still tolerates plain text, because the server may not have been updated.
+- Do not break the CORS headers: a browser extension uses the same server.
+- `/api/convert` accepts `format=mp4`; verified on the server venv: pydub/ffmpeg produce an audio-only MP4 (AAC, `ftyp isom`). `format=m4a` **does not work** on this machine — do not use it. The client calls this endpoint for MP4 export (`TtsApiClient.ConvertAsync`, Step 16); for WAV no conversion is needed — the client concatenates fragments itself.
+- The full contract with `curl`/JSON examples is in **`Doc/API.md`** (created in Step 9.2).
 
 ---
 
-## ManagedBass 4.0.2 — реальний API
+## ManagedBass 4.0.2 — real API
 
-Класів `ManagedBass.Playback` / `ManagedBass.Channel` **не існує**. Є лише статичний `ManagedBass.Bass`:
+There are **no** `ManagedBass.Playback` / `ManagedBass.Channel` classes. Only the static `ManagedBass.Bass` exists:
 
 ```csharp
 Bass.Init(int device, int freq, DeviceInitFlags flags, IntPtr win, IntPtr clsid); // 0 = No sound, -1 = default
 Bass.Free();
-Bass.CreateStream(byte[] memory, long offset, long length, BassFlags flags); // перегрузка byte[] Є
+Bass.CreateStream(byte[] memory, long offset, long length, BassFlags flags); // byte[] overload EXISTS
 Bass.ChannelPlay(int handle, bool restart);
-Bass.ChannelPause(int handle);        // toggle; атрибута PlaybackPaused НЕ існує
+Bass.ChannelPause(int handle);        // toggle; attribute PlaybackPaused does NOT exist
 Bass.ChannelStop(int handle);
 Bass.ChannelSetAttribute(int handle, ChannelAttribute.Volume, float value);
 Bass.ChannelSetSync(int handle, SyncFlags.End, 0, SyncProcedure proc, IntPtr user);
 Bass.ChannelIsActive(int handle);     // → PlaybackState { Stopped, Playing, Stalled, Paused }
 Bass.StreamFree(int handle);
 Bass.LastError;                       // → ManagedBass.Errors
-Bass.Volume;                          // double, глобальний
+Bass.Volume;                          // double, global
 ```
 
-- Делегат: `SyncProcedure(int syncHandle, int channel, int data, IntPtr user)` — **перший параметр
-  це дескриптор синхронізації, а не каналу**. Порівнювати з `_streamHandle` треба `channel`.
-  Помилка тут тихо ламає автоперехід у `Stopped`.
-- У `BassFlags` **немає** прапорця `Memory` — перегрузка `byte[]` обробляє це сама, але масив
-  мусить жити весь час відтворення (pin через `GCHandle` або зберігати в полі сервісу).
-- **На Linux `Bass.Init(0, …)` відкриває пристрій «No sound»**, а не пристрій за замовчуванням:
-  `Bass.NoSoundDevice == 0`, `Bass.DefaultDevice == -1`. Треба
-  `Bass.Init(Bass.DefaultDevice, 44100, …)` — тоді BASS створює потік у PipeWire
-  (`pactl list sink-inputs` показує `PipeWire ALSA [app]` на активному sink, зокрема Bluetooth).
-  Перевірено на цій машині: з `0` потоку в `pactl` немає і звуку немає; з `-1` звук іде на навушники.
-- Версія BASS 2.4.18.3; відтворення з `byte[]` перевірено — позиція рухається,
-  `ChannelIsActive` → `Playing`.
-- NuGet-пакет **не містить** нативних бібліотек. Потрібен системний `/usr/lib/libbass.so`.
-  AUR-пакет називається **`libbass`** (`yay -S libbass`) — **`bass` з репозиторію `extra` — це
-  гра «Beneath A Steel Sky»**, не бібліотека.
-- `libbass.so` на цій машині встановлено.
+- Delegate: `SyncProcedure(int syncHandle, int channel, int data, IntPtr user)` — **the first parameter is the sync handle, not the channel**. Compare `channel` with `_streamHandle`. A mistake here silently breaks the automatic transition to `Stopped`.
+- `BassFlags` has **no** `Memory` flag — the `byte[]` overload handles it itself, but the array must live for the whole playback (pin via `GCHandle` or keep it in a service field).
+- **On Linux `Bass.Init(0, …)` opens the "No sound" device**, not the default one: `Bass.NoSoundDevice == 0`, `Bass.DefaultDevice == -1`. Use `Bass.Init(Bass.DefaultDevice, 44100, …)` — then BASS creates the stream in PipeWire (`pactl list sink-inputs` shows `PipeWire ALSA [app]` on the active sink, including Bluetooth). Verified on this machine: with `0` there is no stream in `pactl` and no sound; with `-1` the sound goes to the headphones.
+- BASS version 2.4.18.3; playback from `byte[]` verified — the position moves, `ChannelIsActive` → `Playing`.
+- The NuGet package **does not contain** native libraries. The system `/usr/lib/libbass.so` is required. The AUR package is named **`libbass`** (`yay -S libbass`) — **`bass` from the `extra` repository is the game "Beneath A Steel Sky"**, not a library.
+- `libbass.so` is installed on this machine.
 
-**Як перевірити API, а не гадати** (ManagedBass/SharpHook/TextCopy не мають нормальних доків):
+**How to check the API instead of guessing** (ManagedBass/SharpHook/TextCopy have no proper docs):
 
 ```bash
 mkdir -p /tmp/apidump && cd /tmp/apidump
@@ -121,239 +101,154 @@ mkdir -p /tmp/apidump && cd /tmp/apidump
 
 ---
 
-## SharpHook 8.0.0 і TextCopy 6.2.1 — перевірені факти
+## SharpHook 8.0.0 and TextCopy 6.2.1 — verified facts
 
 ```csharp
 var hook = new TaskPoolGlobalHook(parallelismLevel: 1, UioHookProvider.Instance);
 hook.KeyPressed += (_, e) => { /* e.Data.KeyCode, e.IsEventSimulated */ };
-var task = hook.RunAsync();          // не блокує; завершується після Stop()
+var task = hook.RunAsync();          // does not block; completes after Stop()
 hook.Stop(); hook.Dispose();
 
 var simulator = SharpHook.Simulation.EventSimulator.Create("app-name", UioHookProvider.Instance);
 simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 ```
 
-- `KeyboardHookEventArgs` живе в namespace **`SharpHook`**, а не `SharpHook.Data`
-  (`KeyboardEventData` — у `SharpHook.Data`).
-- `GlobalHookBase` має `RunAsync(GlobalHookType = All, bool useBackgroundThread = false)`,
-  `Stop()`, `Dispose()`; події `KeyPressed/KeyReleased/KeyTyped/HookEnabled/HookDisabled`.
-- `EventSimulator.Create(applicationName, provider)` на Linux ініціалізує uinput-пристрої;
-  `SimulateKeyStroke(params KeyCode[])` — це extension у `SharpHook.Simulation`.
-- Симульовані події повертаються у хук із `IsEventSimulated == true` — саме так відсікається
-  власний `Ctrl+C`.
-- Перевірено на цій машині: `HookEnabled` спрацьовує, симульовані `Ctrl+F13`/`Ctrl+C` видно
-  в обробнику. **Alt+Q фізично перевірено користувачем** (хук спрацьовує); тригер тепер
-  на відпусканні обох клавіш, інакше Ctrl+C іде як Ctrl+Alt+C.
-- Гаряча клавіша Alt+Q спрацьовує **після відпускання обох клавіш**. Якщо симулювати `Ctrl+C`
-  ще до відпускання фізичного Alt, активне вікно отримує `Ctrl+Alt+C` і нічого не копіює.
-- **На Linux буфер читається лише через `wl-paste`** (`wl-clipboard`); X11 не підтримується,
-  тому застарілий X11-fallback видалено (Крок 11). На Windows використовується `TextCopy`
-  (Win32 Clipboard); на Linux `TextCopy` не викликається.
-- Після `Ctrl+C` сервіс опитує буфер до 900 мс і повертає порожній рядок, якщо вміст
-  не змінився (щоб не підсунути старий текст).
-- Перевірено: `wl-paste --no-newline` бачить 1312-байтовий Wayland-буфер. Повний ланцюжок
-  «виділення → Ctrl+C → wl-paste» перевірено на `zenity --entry`: захоплено рівно введений маркер.
-- **Термінали копіюють через `Ctrl+Shift+C`, а не `Ctrl+C`**: симуляція `Ctrl+C` у терміналі
-  надсилає SIGINT. Захоплення виділеного з термінала не підтримується — там треба скопіювати
-  вручну й вставити в поле Quick TTS (`Ctrl+V`).
-- `ClipboardService.GetTextAsync(CancellationToken)` і `SetTextAsync` — статичні методи.
+- `KeyboardHookEventArgs` lives in the namespace **`SharpHook`**, not `SharpHook.Data` (`KeyboardEventData` is in `SharpHook.Data`).
+- `GlobalHookBase` has `RunAsync(GlobalHookType = All, bool useBackgroundThread = false)`, `Stop()`, `Dispose()`; events `KeyPressed/KeyReleased/KeyTyped/HookEnabled/HookDisabled`.
+- `EventSimulator.Create(applicationName, provider)` on Linux initializes uinput devices; `SimulateKeyStroke(params KeyCode[])` is an extension in `SharpHook.Simulation`.
+- Simulated events come back to the hook with `IsEventSimulated == true` — that is how our own `Ctrl+C` is filtered out.
+- Verified on this machine: `HookEnabled` fires, and simulated `Ctrl+F13`/`Ctrl+C` are visible in the handler. **Alt+Q was physically verified by the user** (the hook fires); the trigger is now on release of both keys, otherwise Ctrl+C goes out as Ctrl+Alt+C.
+- The `Alt+Q` hotkey fires **after both keys are released**. If `Ctrl+C` is simulated before the physical Alt is released, the active window receives `Ctrl+Alt+C` and nothing is copied.
+- **On Linux the buffer is read only via `wl-paste`** (`wl-clipboard`); X11 is not supported, so the obsolete X11 fallback was removed (Step 11). On Windows `TextCopy` (Win32 Clipboard) is used; on Linux `TextCopy` is not called.
+- After `Ctrl+C` the service polls the clipboard for up to 900 ms and returns an empty string if the content has not changed (so an old text is not picked up).
+- Verified: `wl-paste --no-newline` sees a 1312-byte Wayland buffer. The full chain "selection → Ctrl+C → wl-paste" was verified on `zenity --entry`: exactly the typed marker was captured.
+- **Terminals copy via `Ctrl+Shift+C`, not `Ctrl+C`**: simulating `Ctrl+C` in a terminal sends SIGINT. Capturing a selection from a terminal is not supported — there the text must be copied manually and pasted into the Quick TTS field (`Ctrl+V`).
+- `ClipboardService.GetTextAsync(CancellationToken)` and `SetTextAsync` are static methods.
 
 ---
 
-## Фрагментація, черга і `Alt+Q` (Кроки 13–15) — перевірені факти
+## Fragmentation, queue and `Alt+Q` (Steps 13–15) — verified facts
 
-- `IAudioPlayerService.TrackEnded` виникає **лише на природному кінці треку**; `Stop()`
-  і заміна потоку його не викликають. Черга фрагментів чекає саме на цю подію.
-- `FragmentPlaybackService.StartAsync` повертається, щойно **перший фрагмент почав грати**,
-  а не після всього пакета. Далі пакет грає у фоні.
-- Між пакетами: `BatchCompleted` + `IsBatchPending == true`; наступний пакет запускає
-  `ContinueAsync`. `QueueCompleted` — коли відтворено останній фрагмент.
-- `SpeechQueueOptions.PauseAfterEachBatch` (типово `true`): коли `false`, сервіс сам
-  запускає наступний пакет — `BatchCompleted`/`IsBatchPending` не виникають, кнопка
-  «Наступний пакет» не показується; `QueueCompleted` з підсумком усе одно піднімається.
-- Синтез-запити **послідовні** (один фрагмент наперед), щоб не перевантажувати GPU.
-- Пауза, подана одразу після `FragmentStarted`, застосовується вже після старту
-  `BassAudioPlayerService.PlayAsync` — це перевірено harness-ом (інакше пауза «губилася»).
-- `SentenceAwareTextChunker`: три режими (`Paragraphs`, `Sentences`, `MaxLength`),
-  скорочення/ініціали не рвуть речення, задовге речення ріжеться по пробілу/комі;
-  порожній текст → **0 фрагментів**, а не виняток.
-- `MainWindowViewModel.HandleHotkeyAsync` виконує **захоплення → активація → синтез**.
-  Активація вікна до захоплення зіпсувала б `Ctrl+C` (він пішов би в сам застосунок).
-- Повторний `Alt+Q` під час захоплення ігнорується (`_hotkeyCaptureInProgress`);
-  `QuickTts.CaptureForHotkeyAsync` додатково не стартує, якщо `IsBusy`.
-- Кнопка «Захопити виділене» **не** активує вікно й **не** запускає синтез.
-- `ActivateRequested` → `App.axaml.cs` → `Window.Activate()`. На Wayland композитор може
-  проігнорувати запит (best effort); захоплення й озвучення працюють і без активації.
-- Хук ігнорує **симульовані** події (`IsEventSimulated`), тому `Alt+Q` не перевірити
-  автоматизацією — лише фізичним натисканням. Логіку перевірено harness-ом із фейковими
-  сервісами (25/25 PASS).
-
-## Експорт аудіо (Крок 16) — перевірені факти
-
-- `/api/convert` приймає multipart `file` (WAV) + поле `format`. Перевірено на живому
-  сервері: `format=mp4` дає audio-only MP4 (`ftyp isom`, AAC); `format=m4a` на цій машині
-  **не працює** — не використовувати. `ffmpeg` на сервері підключає `static-ffmpeg`.
-- `WavAudioConcatenator` — чистий синхронний клас: перевіряє RIFF/fmt/data (PCM 24 кГц,
-  моно, 16-bit), склеює `data`-чанки під новим заголовком, зайві чанки ігнорує;
-  невідповідний формат → `InvalidDataException`.
-- `AudioExportService` синтезує фрагменти **послідовно**, тримає WAV у пам'яті
-  (~48 КБ/с) і пише атомарно: тимчасовий файл у тому ж каталозі → `File.Move(overwrite)`.
-  Скасування/помилка не створює цільовий файл і прибирає тимчасовий.
-- MP4-експорт **залежить від сервера**; WAV — ні (конвертація не потрібна).
-- `IFileSaveDialogService` — єдиний UI-сервіс поза `Infrastructure`
-  (`Views/Services/AvaloniaFileSaveDialogService`): `Infrastructure` не має залежати від
-  Avalonia. Діалог викликається лише з UI-потоку; скасування нічого не змінює.
-- Під час експорту `CanCapture`/`CanSynthesize`/`CanExport` вимкнені, а `Alt+Q`-захоплення
-  ігнорується (`IsExporting`), тож текст не зміниться посеред операції.
-- Перевірено harness-ом (49 перевірок: заголовки, порядок даних, помилки формату, етапи
-  прогресу, скасування без файлів, перезапис, флоу ViewModel) і живим сервером
-  (WAV 4.64 с / MP4 4.65 с, обидва декодуються pydub).
-
-## Середовище цієї машини
-
-- Wayland (`XDG_SESSION_TYPE=wayland`) + PipeWire; `wl-copy`, `wl-paste`, `ydotool` встановлені.
-  Для буфера достатньо `wl-clipboard`; X11-утиліти не потрібні.
-- Демон `ydotool` — **enabled + active** (перевіряй `systemctl --user is-active ydotool`).
-  Але в цій сесії `ydotool key/type` завершуються з кодом 0, а події до вікон не доходять
-  (у журналі — `unable to find device pointer:ydotoold virtual device`). Для автоматизації UI
-  не покладайся на `ydotool`; SharpHook `EventSimulator` працює.
-- Користувач у групі `input` → `/dev/uinput` доступний для симуляції клавіатури.
-- NuGet-кеш прогрітий, мережа є; `dotnet build` проходить без завантаження.
-- Конфіг користувача — `~/.config/UA_TTS_Client/config.json`; уже містить усі поля Кроків
-  12/17, enum-и зберігаються рядками (`"chunkingMode": "Paragraphs"`, `"exportFormat": "Mp4"`).
+- `IAudioPlayerService.TrackEnded` fires **only at the natural end of a track**; `Stop()` and stream replacement do not raise it. The fragment queue waits precisely for this event.
+- `FragmentPlaybackService.StartAsync` returns as soon as **the first fragment has started playing**, not after the whole batch. The rest of the batch plays in the background.
+- Between batches: `BatchCompleted` + `IsBatchPending == true`; the next batch is started by `ContinueAsync`. `QueueCompleted` is raised when the last fragment has played.
+- `SpeechQueueOptions.PauseAfterEachBatch` (default `true`): when `false`, the service starts the next batch itself — `BatchCompleted`/`IsBatchPending` do not occur, the "Next batch" button is not shown, and `QueueCompleted` with the summary is still raised.
+- Synthesis requests are **sequential** (one fragment ahead) so as not to overload the GPU.
+- A pause issued right after `FragmentStarted` is applied only after `BassAudioPlayerService.PlayAsync` has started — verified by the harness (otherwise the pause was lost).
+- `SentenceAwareTextChunker`: three modes (`Paragraphs`, `Sentences`, `MaxLength`); abbreviations and initials do not break sentences; an over-long sentence is cut at a space or comma; empty text → **0 fragments**, not an exception.
+- `MainWindowViewModel.HandleHotkeyAsync` performs **capture → activation → synthesis**. Activating the window before capture would break `Ctrl+C` (it would go to the app itself).
+- A repeated `Alt+Q` during capture is ignored (`_hotkeyCaptureInProgress`); `QuickTts.CaptureForHotkeyAsync` does not start additionally if `IsBusy`.
+- The «Захопити виділене» (Capture selection) button does **not** activate the window and does **not** start synthesis.
+- `ActivateRequested` → `App.axaml.cs` → `Window.Activate()`. On Wayland the compositor may ignore the request (best effort); capture and speech work without activation.
+- The hook ignores **simulated** events (`IsEventSimulated`), so `Alt+Q` cannot be tested by automation — only by a physical key press. The logic was verified with a harness with fake services (25/25 PASS).
 
 ---
 
-## Конвенції коду
+## Audio export (Step 16) — verified facts
 
-Авторитетне джерело: **`Doc/Промпт для ллм - Єдина кодова база arch-win11.md`**
-(розділ зі стандартами). Коротко:
-
-- `file-scoped namespaces`; `public partial class` для **всіх** ViewModel (інакше згенеруються
-  неправильно `[ObservableProperty]`/`[RelayCommand]`).
-- `x:DataType="vm:XxxViewModel"` у **кожному** XAML (compiled bindings).
-- `#nullable enable`; Guard Clauses; `ILogger<T>`; жодних `NullReferenceException`.
-- Асинхронність з `CancellationToken`; DI **лише через конструктори**; реєстрація в `App.axaml.cs`.
-- Typed HttpClient: `AddHttpClient<ITtsApiClient, TtsApiClient>()` з таймаутом **≥120 с**.
-- Шляхи тільки через `Path.Combine` + `Environment.SpecialFolder.ApplicationData`
-  (`~/.config/UA_TTS_Client` / `%APPDATA%\UA_TTS_Client`). Linux чутливий до регістру.
-- Аудіо відтворюється **з пам'яті** (`byte[]`/`MemoryStream`), без запису тимчасових `.wav`.
-- Wayland: після симуляції `Ctrl+C` обов'язково `await Task.Delay(80..120)` перед читанням буфера.
-- XML-документація та коментарі — **виключно українською**; `<inheritdoc />` для реалізацій інтерфейсів.
-- DTO — `record`; усе, що можна — primary constructors, collection expressions, `required`.
-- Автотести в ітерації 2 **не створюються** (рішення користувача). Перевірка — ручні
-  сценарії та тимчасові harness-и поза репозиторієм.
+- `/api/convert` accepts a multipart `file` (WAV) + a `format` field. Verified on a live server: `format=mp4` gives an audio-only MP4 (`ftyp isom`, AAC); `format=m4a` **does not work** on this machine — do not use it. `ffmpeg` on the server is provided by `static-ffmpeg`.
+- `WavAudioConcatenator` — a pure synchronous class: it validates RIFF/fmt/data (PCM 24 kHz, mono, 16-bit), concatenates `data` chunks under a new header, and ignores extra chunks; a mismatched format → `InvalidDataException`.
+- `AudioExportService` synthesizes fragments **sequentially**, keeps the WAV in memory (~48 KB/s), and writes atomically: a temporary file in the same directory → `File.Move(overwrite)`. Cancel or error creates no target file and removes the temporary one.
+- MP4 export **depends on the server**; WAV does not (no conversion needed).
+- `IFileSaveDialogService` is the only UI service outside `Infrastructure` (`Views/Services/AvaloniaFileSaveDialogService`): `Infrastructure` must not depend on Avalonia. The dialog is invoked only from the UI thread; cancelling changes nothing.
+- During export `CanCapture`/`CanSynthesize`/`CanExport` are disabled, and `Alt+Q` capture is ignored (`IsExporting`), so the text cannot change in the middle of the operation.
+- Verified with a harness (49 checks: headers, data order, format errors, progress stages, cancellation without files, overwriting, ViewModel flow) and a live server (WAV 4.64 s / MP4 4.65 s, both decoded by pydub).
 
 ---
 
-## UI і DI (Кроки 6–8) — перевірені факти
+## This machine's environment
 
-- Avalonia 12: `TextBox.Watermark` **застарілий** → `PlaceholderText`; прокрутка в `TextBox`
-  задається attached-властивістю `ScrollViewer.VerticalScrollBarVisibility="Auto"`.
-- Rider-аналізатор помилково скаржиться на `Design.DataContext="{x:Static …}"`
-  («expected type is AttachedProperty<object?>»). Тому design-time DataContext ставиться
-  в code-behind: `if (Design.IsDesignMode) DataContext = DesignData.MainWindow;` —
-  без `Design.DataContext` у XAML. `DesignData` (`ViewModels/Design/DesignData.cs`) містить
-  фіктивні реалізації інтерфейсів лише для прев'ю.
-- Умовні класи: `Classes.online="{Binding IsServerOnline}"` + стиль
-  `Ellipse.status-dot.online`. Стилі з `Window.Styles` діють на всі дочірні UserControl.
-- `IsVisible` для рядків робиться через `{Binding X, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}`.
-- ViewModel-и створюються в UI-потоці; `ViewModelBase.OnUiThread` потрібен для подій BASS,
-  що приходять із фонового потоку.
-- `BaseAddress` для `HttpClient` фіксується на старті, тому зміна URL у налаштуваннях
-  застосовується **після перезапуску** (це написано в UI).
-- `MainWindowViewModel` перевіряє сервер кожні 15 с через `PeriodicTimer`; кнопка
-  «Перевірити» викликає той самий `RefreshServerStatusCommand`.
-- ComboBox зі списками налаштувань працює через option-записи (`ChunkingModeOption`,
-  `ExportFormatOption`) — без магічних індексів; `SelectedItem` біндиться на nullable
-  властивість, а логіка читає `ChunkingMode`/`ExportFormat` з fallback на типові
-  (типовий режим фрагментації — `Paragraphs`, «Абзаци»).
-- `NumericUpDown.Value` — `decimal?` (Avalonia 12.1.4); біндінг до `int`-властивості
-  працює (перевірено), `FormatString="0"` показує цілі числа.
-- Слайдери швидкості/гучності: `TickFrequency="0.1"` + `IsSnapToTickEnabled="True"`,
-  значення показується як `StringFormat='{}{0:0.0}'`.
-- Статуси черги для Quick TTS — `Playback.QueueStatusText` («Пакет 1 з 3 завершено…»,
-  «Готово: N пакетів, M фрагментів»); позиція — `FragmentPositionText`, прев'ю —
-  `CurrentFragmentText` (до 60 символів, один рядок). Помилка черги піднімає
-  `Playback.QueueFailed` → `ErrorMessage` Quick TTS (підписка знімається в `Dispose`).
-- Українське відмінювання чисел — `ViewModelBase.PluralWord(count, one, few, many)`
-  (для символів — `SymbolsWord`).
+- Wayland (`XDG_SESSION_TYPE=wayland`) + PipeWire; `wl-copy`, `wl-paste`, `ydotool` are installed.
+  `wl-clipboard` is enough for the clipboard; X11 utilities are not needed.
+- The `ydotool` daemon is **enabled and active** (check with `systemctl --user is-active ydotool`).
+  But in this session `ydotool key/type` exits with code 0 and the events do not reach windows (the journal shows `unable to find device pointer:ydotoold virtual device`). For UI automation do not rely on `ydotool`; SharpHook `EventSimulator` works.
+- The user is in the `input` group → `/dev/uinput` is accessible for keyboard simulation.
+- The NuGet cache is warm and the network is available; `dotnet build` succeeds without downloads.
+- User config: `~/.config/UA_TTS_Client/config.json`. It already contains all fields from Steps 12 and 17; enums are stored as strings (`"chunkingMode": "Paragraphs"`, `"exportFormat": "Mp4"`).
 
 ---
 
-## Підводні камені (вже наступили або майже)
+## Code conventions
 
-1. **`ViewLocator` виправлено** (Крок 8): він замінює `.ViewModels` → `.Views` і `ViewModel` → `View`,
-   а для `MainWindowViewModel` додатково пробує `Views.MainWindow`. Головне вікно створюється
-   явно в `App.axaml.cs`, тому локатор відповідає лише за вміст вкладок (`ContentControl`).
-2. **`App.axaml.cs` — Composition Root.** Конфіг читається синхронно до побудови контейнера
-   (адреса потрібна для `HttpClient.BaseAddress`), далі реєструються сервіси й ViewModel-и.
-   `desktop.Exit` звільняє `MainWindowViewModel` і `ServiceProvider`.
-3. **Не «виправляй» `partial`-властивість у Toolkit-моделі.** Форма
-   `[ObservableProperty] public partial string Foo { get; set; }` — **коректна** для
-   CommunityToolkit.Mvvm 8.x: генератор створює partial-властивість на C# 13 `field`
-   (`get => field;`) і `PropertyChanged` працює. Шаблонну `Greeting` із «Welcome to
-   Avalonia!» із коду вже прибрано — правило лишається.
-4. **`/api/health` тепер є** (додано в `server.py`), але `TtsApiClient` усе одно має fallback на
-   `GET /api/voices` для сумісності зі старим сервером. Не видаляй цей fallback.
-5. **Помилки сервера історично неоднорідні** (JSON vs plain text `No file`) — парсер
-   `TtsApiClient.ReadErrorMessageAsync` терпить обидва формати. Не звужуй його до JSON.
-6. **BASS `SyncProcedure`**: перший аргумент — дескриптор синхронізації, другий — канал.
-   Помилка тут не дає жодної помилки в лозі, просто автозупинка не спрацьовує.
-7. **Імена файлів у `Doc/` потребують екранування в shell**: `Промпт для ллм - Єдина кодова база arch-win11.md`
-   (пробіли). Також Linux чутливий до регістру — namespace у XAML (`x:Class`, `x:DataType`)
-   має точно збігатися з текстом у `.cs`.
-8. **`.gitignore`**: `Server_py/venv/` ігнорується кореневим правилом (`.gitignore:49`)
-   і вбудованим `venv/.gitignore` (`*`) — обидва закомічені.
-9. **`Bass.Init(0, …)` — це пристрій «No sound»**, не пристрій за замовчуванням. Завжди
-   використовуй `Bass.DefaultDevice` (-1), інакше синтез проходить (сервер віддає 200),
-   але звуку немає взагалі. Перевіряй через `pactl list sink-inputs`.
-10. **Не симулюй `Ctrl+C`, поки затиснутий фізичний Alt**: активне вікно отримає `Ctrl+Alt+C`
-    і нічого не скопіює. Хук Alt+Q спрацьовує на відпусканні обох клавіш; не повертай
-    тригер на key press.
+The authoritative source: **`Doc/Промпт для ллм - Єдина кодова база arch-win11.md`** (the code standards section). In brief:
+
+- `file-scoped namespaces`; `public partial class` for **all** ViewModels (otherwise `[ObservableProperty]`/`[RelayCommand]` are generated incorrectly).
+- `x:DataType="vm:XxxViewModel"` in **every** XAML file (compiled bindings).
+- `#nullable enable`; guard clauses; `ILogger<T>`; no `NullReferenceException`s.
+- Asynchrony with `CancellationToken`; DI **only through constructors**; registration in `App.axaml.cs`.
+- Typed HttpClient: `AddHttpClient<ITtsApiClient, TtsApiClient>()` with a timeout of **at least 120 s**.
+- Paths only through `Path.Combine` + `Environment.SpecialFolder.ApplicationData` (`~/.config/UA_TTS_Client` / `%APPDATA%\UA_TTS_Client`). Linux is case-sensitive.
+- Audio is played **from memory** (`byte[]`/`MemoryStream`), without writing temporary `.wav` files.
+- Wayland: after simulating `Ctrl+C`, always `await Task.Delay(80..120)` before reading the buffer.
+- **XML documentation and comments — English only.** `<inheritdoc />` for interface implementations. UI strings, log and exception messages, voice names, and dictionary data stay Ukrainian: they are product/runtime text, not comments.
+- DTOs are `record`s; use primary constructors, collection expressions, and `required` wherever possible.
+- Autotests are **not created** in iteration 2 (the user's decision). Verification — manual scenarios and temporary harnesses outside the repository.
 
 ---
 
-## `Doc/` та `README.md` — що чим є
+## UI and DI (Steps 6–8) — verified facts
 
-Стан після **Кроку 10** (ітерація 2): історичний `ua_tts_client_arch.md` видалено,
-замість нього — актуальна карта коду `Project_Structure.md`.
+- Avalonia 12: `TextBox.Watermark` is **obsolete** → `PlaceholderText`; scrolling in a `TextBox` is set with the attached property `ScrollViewer.VerticalScrollBarVisibility="Auto"`.
+- The Rider analyzer wrongly complains about `Design.DataContext="{x:Static …}"` («expected type is AttachedProperty<object?>»). Therefore the design-time DataContext is set in code-behind: `if (Design.IsDesignMode) DataContext = DesignData.MainWindow;` — without `Design.DataContext` in XAML. `DesignData` (`ViewModels/Design/DesignData.cs`) contains fake interface implementations for previews only.
+- Conditional classes: `Classes.online="{Binding IsServerOnline}"` + style `Ellipse.status-dot.online`. Styles from `Window.Styles` apply to all child UserControls.
+- `IsVisible` for rows is done via `{Binding X, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}`.
+- ViewModels are created on the UI thread; `ViewModelBase.OnUiThread` is needed for BASS events that come from a background thread.
+- The `BaseAddress` of `HttpClient` is fixed at startup, so a URL change in the settings applies **after restart** (this is stated in the UI).
+- `MainWindowViewModel` checks the server every 15 s via `PeriodicTimer`; the «Перевірити» (Check) button calls the same `RefreshServerStatusCommand`.
+- ComboBoxes with settings lists work through option records (`ChunkingModeOption`, `ExportFormatOption`) — no magic indexes. `SelectedItem` binds to a nullable property, and the logic reads `ChunkingMode`/`ExportFormat` with fallback to defaults (the default chunking mode is `Paragraphs`, «Абзаци»).
+- `NumericUpDown.Value` is `decimal?` (Avalonia 12.1.4); binding to an `int` property works (verified), and `FormatString="0"` shows whole numbers.
+- Speed/volume sliders: `TickFrequency="0.1"` + `IsSnapToTickEnabled="True"`; the value is shown as `StringFormat='{}{0:0.0}'`.
+- Quick TTS queue statuses — `Playback.QueueStatusText` («Пакет 1 з 3 завершено…» (Batch 1 of 3 completed…), «Готово: N пакетів, M фрагментів» (Done: N batches, M fragments)); position — `FragmentPositionText`, preview — `CurrentFragmentText` (up to 60 characters, one line). A queue error raises `Playback.QueueFailed` → `ErrorMessage` of Quick TTS (the subscription is removed in `Dispose`).
+- Ukrainian number declension — `ViewModelBase.PluralWord(count, one, few, many)` (for symbols — `SymbolsWord`).
 
-| Файл | Стан |
+---
+
+## Pitfalls (already hit, or nearly so)
+
+1. **`ViewLocator` is fixed** (Step 8): it replaces `.ViewModels` → `.Views` and `ViewModel` → `View`, and for `MainWindowViewModel` it additionally tries `Views.MainWindow`. The main window is created explicitly in `App.axaml.cs`, so the locator only handles tab content (`ContentControl`).
+2. **`App.axaml.cs` is the Composition Root.** The config is read synchronously before the container is built (the address is needed for `HttpClient.BaseAddress`); then services and ViewModels are registered. `desktop.Exit` disposes `MainWindowViewModel` and the `ServiceProvider`.
+3. **Do not "fix" a `partial` property in a Toolkit model.** The form `[ObservableProperty] public partial string Foo { get; set; }` is **correct** for CommunityToolkit.Mvvm 8.x: the generator creates the partial property on the C# 13 `field` (`get => field;`), and `PropertyChanged` works. The template `Greeting` with "Welcome to Avalonia!" has already been removed from the code — the rule stands.
+4. **`/api/health` now exists** (added to `server.py`), but `TtsApiClient` still has a fallback to `GET /api/voices` for compatibility with an old server. Do not remove this fallback.
+5. **Server errors are historically inconsistent** (JSON vs plain text `No file`) — the parser `TtsApiClient.ReadErrorMessageAsync` tolerates both formats. Do not narrow it to JSON only.
+6. **BASS `SyncProcedure`**: the first argument is the sync handle, the second is the channel. A mistake here gives no error in the log; auto-stop simply does not fire.
+7. **File names in `Doc/` need escaping in the shell**: `Промпт для ллм - Єдина кодова база arch-win11.md` (spaces). Linux is case-sensitive too — the namespace in XAML (`x:Class`, `x:DataType`) must match the text in `.cs` exactly.
+8. **`.gitignore`**: `Server_py/venv/` is ignored by the root rule (`.gitignore:49`) and by the built-in `venv/.gitignore` (`*`) — both are committed.
+9. **`Bass.Init(0, …)` is the "No sound" device**, not the default device. Always use `Bass.DefaultDevice` (-1); otherwise synthesis passes (the server returns 200), but there is no sound at all. Check with `pactl list sink-inputs`.
+10. **Do not simulate `Ctrl+C` while the physical Alt is held**: the active window receives `Ctrl+Alt+C` and copies nothing. The `Alt+Q` hook fires on release of both keys; do not switch the trigger back to a key press.
+
+---
+
+## `Doc/` and `README.md` — what each file is
+
+State after **Step 10** (iteration 2): the historical `ua_tts_client_arch.md` was deleted and replaced by the up-to-date code map `Project_Structure.md`.
+
+| File | State |
 |---|---|
-| `README.md` (корінь) | **Актуальний**: запуск сервера/клієнта, «Як користуватися», вимоги, обмеження |
-| `Doc/Project_Structure.md` | **Актуальний**: шари, фактичне дерево, контракти, DI, потоки, точки розширення |
-| `Doc/Curent_Work_Plan.md` | **Канонічний план ітерації 2**: кроки 10–18, статуси, журнал. Кроки 10–18 ✅, ітерацію 2 завершено |
-| `Doc/API.md` | **Актуальний**: контракт ендпоінтів із прикладами `curl`/JSON |
-| `Doc/Промпт для ллм - Єдина кодова база arch-win11.md` | Цілі та стандарти коду. Варто читати повністю |
-| ~~`Doc/ua_tts_client_arch.md`~~ | **Видалено** (Крок 10): замінено на `Project_Structure.md` |
-| ~~`Doc/Запит на архітектуру.md`~~ | **Видалено користувачем** як історичне |
-| ~~`Doc/implementation_roadmap.md`~~ | **Видалено** (Крок 9.2): посилався на неіснуючі `/api/ping` і `/health` |
-| ~~`Doc/ua_tts_client_architecture(remove).md`~~ | **Видалено** (Крок 9.2): конфліктний дубль |
-| ~~`Doc/Readme.md`~~ | **Перенесено** в `README.md` у корінь (Крок 9.2) |
+| `README.md` (root) | **Up to date**: running the server and client, "How to use", requirements, limitations |
+| `Doc/Project_Structure.md` | **Up to date**: layers, actual tree, contracts, DI, threads, extension points |
+| `Doc/Curent_Work_Plan.md` | **Canonical plan for iteration 2**: steps, statuses, journal. Steps 10–18 ✅, iteration 2 completed |
+| `Doc/API.md` | **Up to date**: endpoint contract with `curl`/JSON examples |
+| `Doc/Промпт для ллм - Єдина кодова база arch-win11.md` | Goals and code standards. Worth reading in full |
+| ~~`Doc/ua_tts_client_arch.md`~~ | **Deleted** (Step 10): replaced by `Project_Structure.md` |
+| ~~`Doc/Запит на архітектуру.md`~~ | **Deleted by the user** as historical |
+| ~~`Doc/implementation_roadmap.md`~~ | **Deleted** (Step 9.2): referred to non-existent `/api/ping` and `/health` |
+| ~~`Doc/ua_tts_client_architecture(remove).md`~~ | **Deleted** (Step 9.2): a conflicting duplicate |
+| ~~`Doc/Readme.md`~~ | **Moved** to `README.md` in the root (Step 9.2) |
 
 ---
 
-## Стан git
+## Git state
 
-Останні коміти: `14fdf31 feat(ui): перемикачі налаштувань, лічильники черги та слайдери`
-(Крок 17) і `93656ca docs: фінальна документація ітерації 2` (Крок 18).
-До них: `076cec5 feat(export)` (Крок 16), `fdb4106 docs` (Крок 15), `41d955d feat(hotkey)`,
-`ae319e1 docs`, `5f35b80 feat(playback)`, `957fbbe feat(text)`, `c8fba32 feat(settings)`.
+Iteration 2 commits (`git log` shows the current history): `8181092 docs: актуалізувати AGENTS.md після завершення ітерації 2`, `93656ca docs: фінальна документація ітерації 2` (Step 18). Earlier: `14fdf31 feat(ui): перемикачі налаштувань, лічильники черги та слайдери` (Step 17), `076cec5 feat(export)` (Step 16), `fdb4106 docs` (Step 15), `41d955d feat(hotkey)`, `ae319e1 docs`, `5f35b80 feat(playback)`, `957fbbe feat(text)`, `c8fba32 feat(settings)`.
 
-Робоче дерево чисте; ітерацію 2 завершено.
+Iteration 2 is completed.
 
 ---
 
-## План роботи
+## Work plan
 
-**Канонічний план — `Doc/Curent_Work_Plan.md`.** Не дублюй його зміст у цьому файлі: там є
-нумерація кроків, поточний стан, контракти й журнал виконання. План ітерації 2 **закритий**
-(усі кроки ✅) — для нових завдань створи план ітерації 3 (архівуй цей файл або додай новий).
+The canonical plan is **`Doc/Curent_Work_Plan.md`**. Do not duplicate its contents in this file: it contains the step numbering, the current state, the contracts and the execution journal. The iteration 2 plan is **closed** (all steps ✅) — for new tasks create an iteration 3 plan (archive this file or add a new one).
 
-Ітерацію 2 **завершено**: **Кроки 10–18 виконано**, ручні сценарії підтверджено
-користувачем. Крок 9.1 (тестовий проєкт) **скасовано** — автотести на цьому етапі
-не потрібні.
+Iteration 2 is **completed**: **Steps 10–18 done**, manual scenarios confirmed by the user. Step 9.1 (test project) is **cancelled** — autotests are not needed at this stage.
 
-Фактичний стан історії та вимоги — у `Doc/` і `README.md`; **пріоритет має виконуваний код
-і ці два файли**, не документи.
+The actual state of the history and requirements is in `Doc/` and `README.md`. **Executable code and these two files take priority over the other documents.**
