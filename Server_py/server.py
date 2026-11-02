@@ -6,7 +6,7 @@ import json
 import re
 from deep_translator import GoogleTranslator
 
-# --- FIX 1: Виправлення кодування для Windows ---
+# --- FIX 1: Encoding fix for Windows ---
 _real_open = builtins.open
 
 def _utf8_open(*args, **kwargs):
@@ -75,13 +75,13 @@ except ImportError:
 
 app = Flask(__name__)
 
-# --- FIX 2: ЗБІЛЬШЕНО ЛІМІТ РОЗМІРУ ЗАПИТУ ДО 500 МБ ---
-# Раніше було 16MB, через що великі файли відхилялися з помилкою 413 (Payload Too Large),
-# що могло сприйматися клієнтом як 401 або збій з'єднання.
+# --- FIX 2: INCREASED REQUEST SIZE LIMIT TO 500 MB ---
+# Previously it was 16MB, which caused large files to be rejected with error 413 (Payload Too Large),
+# which could be perceived by the client as a 401 or a connection failure.
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  
 # -------------------------------------------------------
 
-# --- FIX 3: ДОДАНО CORS ЗАГОЛОВКИ ДЛЯ БРАУЗЕРНИХ РОЗШИРЕНЬ ---
+# --- FIX 3: ADDED CORS HEADERS FOR BROWSER EXTENSIONS ---
 @app.after_request
 def after_request(response):
     response.headers.add('Access-Control-Allow-Origin', '*')
@@ -90,7 +90,7 @@ def after_request(response):
     return response
 # -------------------------------------------------------------
 
-# --- Налаштування ---
+# --- Settings ---
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"Використовується пристрій: {device}")
 
@@ -115,7 +115,7 @@ for file_path in voice_files:
 
 stressify = Stressifier()
 
-# --- СЛОВНИК ТА АВТО-ТРАНСЛІТЕРАЦІЯ ---
+# --- PRONUNCIATION DICTIONARY AND AUTO-TRANSLITERATION ---
 dict_rules = []
 
 def load_dictionary():
@@ -179,7 +179,7 @@ def apply_dictionary_and_translit(text):
         text = re.sub(r'\b' + re.escape(word) + r'\b', transliterated, text, flags=re.IGNORECASE)
     return text
 
-# --- Допоміжні функції ---
+# --- Helper functions ---
 
 def split_to_parts(text):
     split_symbols = '.?!:;\n'
@@ -275,12 +275,12 @@ def api_synthesize():
     voice_name = data.get('voice')
     speed = data.get('speed', 1.0)
     volume = data.get('volume', 1.0) 
-    do_translate = data.get('translate', False) # НОВИЙ ПАРАМЕТР: визначає, чи треба перекладати
+    do_translate = data.get('translate', False) # NEW PARAMETER: determines whether translation is needed
 
-    # --- БЛОК ПЕРЕКЛАДУ (Спрацює ТІЛЬКИ якщо do_translate == True) ---
+    # --- TRANSLATION BLOCK (runs ONLY if do_translate == True) ---
     if do_translate and text:
         try:
-            # Перекладаємо з автовизначенням мови на українську
+            # Translate to Ukrainian with automatic source language detection
             text = GoogleTranslator(source='auto', target='uk').translate(text)
             print(f" [Переклад для розширення]: {text}")
         except Exception as e:
