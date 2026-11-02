@@ -3,8 +3,8 @@
 namespace UA_TTS_Client.Core.Models;
 
 /// <summary>
-/// Фрагмент тексту, який синтезується й відтворюється як окрема одиниця.
+/// A text fragment that is synthesized and played as a separate unit.
 /// </summary>
-/// <param name="Index">Порядковий номер фрагмента, починаючи з 1.</param>
-/// <param name="Text">Текст фрагмента.</param>
+/// <param name="Index">Sequential number of the fragment, starting from 1.</param>
+/// <param name="Text">Text of the fragment.</param>
 public sealed record TextFragment(int Index, string Text);

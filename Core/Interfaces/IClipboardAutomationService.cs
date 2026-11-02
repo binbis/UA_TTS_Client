@@ -6,20 +6,20 @@ using System.Threading.Tasks;
 namespace UA_TTS_Client.Core.Interfaces;
 
 /// <summary>
-/// Захоплення тексту, виділеного в іншому застосунку.
+/// Captures text selected in another application.
 /// </summary>
 /// <remarks>
-/// На Wayland неможливо прочитати виділення чужого вікна напряму, тому реалізація
-/// симулює <c>Ctrl+C</c> і читає системний буфер обміну.
+/// On Wayland, the selection of another window cannot be read directly, so the implementation
+/// simulates <c>Ctrl+C</c> and reads the system clipboard.
 /// </remarks>
 public interface IClipboardAutomationService
 {
     /// <summary>
-    /// Копіює виділений текст (симуляцією <c>Ctrl+C</c>) і читає його з буфера обміну.
+    /// Copies the selected text (by simulating <c>Ctrl+C</c>) and reads it from the clipboard.
     /// </summary>
-    /// <param name="cancellationToken">Токен скасування операції.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
     /// <returns>
-    /// Захоплений текст або порожній рядок, якщо нічого не виділено чи буфер недоступний.
+    /// The captured text, or an empty string if nothing is selected or the clipboard is unavailable.
     /// </returns>
     Task<string> CaptureSelectedTextAsync(CancellationToken cancellationToken = default);
 }

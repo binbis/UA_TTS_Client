@@ -16,8 +16,8 @@ using UA_TTS_Client.ViewModels.Components;
 namespace UA_TTS_Client.ViewModels.Tabs;
 
 /// <summary>
-/// Вкладка Quick TTS: захоплення виділеного тексту, синтез, статуси черги
-/// та передача аудіо в міні-плеєр.
+/// Quick TTS tab: captures selected text, synthesizes speech, shows queue status,
+/// and passes audio to the mini player.
 /// </summary>
 public partial class QuickTtsViewModel : ViewModelBase, IDisposable
 {
@@ -31,16 +31,16 @@ public partial class QuickTtsViewModel : ViewModelBase, IDisposable
     private bool _disposed;
 
     /// <summary>
-    /// Створює ViewModel вкладки Quick TTS.
+    /// Creates the view model for the Quick TTS tab.
     /// </summary>
-    /// <param name="clipboard">Сервіс захоплення виділеного тексту.</param>
-    /// <param name="textChunker">Сервіс поділу тексту на фрагменти.</param>
-    /// <param name="settings">Налаштування (голос, швидкість, режим фрагментації).</param>
-    /// <param name="playback">Міні-плеєр і черга фрагментів.</param>
-    /// <param name="audioExport">Сервіс експорту аудіо у файл.</param>
-    /// <param name="fileSaveDialog">Системний діалог збереження файлу.</param>
-    /// <param name="logger">Логер.</param>
-    /// <exception cref="ArgumentNullException">Один із аргументів дорівнює <see langword="null"/>.</exception>
+    /// <param name="clipboard">Service that captures selected text.</param>
+    /// <param name="textChunker">Service that splits text into fragments.</param>
+    /// <param name="settings">Settings (voice, speed, chunking mode).</param>
+    /// <param name="playback">Mini player and fragment queue.</param>
+    /// <param name="audioExport">Service that exports audio to a file.</param>
+    /// <param name="fileSaveDialog">System file save dialog.</param>
+    /// <param name="logger">Logger.</param>
+    /// <exception cref="ArgumentNullException">One of the arguments is <see langword="null"/>.</exception>
     public QuickTtsViewModel(
         IClipboardAutomationService clipboard,
         ITextChunker textChunker,
@@ -61,41 +61,41 @@ public partial class QuickTtsViewModel : ViewModelBase, IDisposable
         _playback.QueueFailed += OnPlaybackQueueFailed;
     }
 
-    /// <summary>Міні-плеєр із чергою фрагментів (для біндінгів у XAML).</summary>
+    /// <summary>Mini player with the fragment queue (for XAML bindings).</summary>
     public PlaybackControlViewModel Playback => _playback;
 
-    /// <summary>Текст для озвучення.</summary>
+    /// <summary>Text to speak.</summary>
     [ObservableProperty]
     public partial string Text { get; set; } = string.Empty;
 
-    /// <summary>Поточний статус операції.</summary>
+    /// <summary>Current operation status.</summary>
     [ObservableProperty]
     public partial string? StatusMessage { get; set; }
 
-    /// <summary>Текст помилки для показу користувачу.</summary>
+    /// <summary>Error text shown to the user.</summary>
     [ObservableProperty]
     public partial string? ErrorMessage { get; set; }
 
-    /// <summary>Ознака виконання тривалої операції.</summary>
+    /// <summary>Indicates that a long-running operation is in progress.</summary>
     [ObservableProperty]
     public partial bool IsBusy { get; set; }
 
-    /// <summary>Ознака виконання експорту аудіо у файл.</summary>
+    /// <summary>Indicates that audio is being exported to a file.</summary>
     [ObservableProperty]
     public partial bool IsExporting { get; set; }
 
-    /// <summary>Текст прогресу експорту.</summary>
+    /// <summary>Export progress text.</summary>
     [ObservableProperty]
     public partial string? ExportProgressText { get; set; }
 
-    /// <summary>Прогрес експорту у відсотках (від 0 до 100).</summary>
+    /// <summary>Export progress in percent (from 0 to 100).</summary>
     [ObservableProperty]
     public partial double ExportProgressPercent { get; set; }
 
     /// <summary>
-    /// Захоплює виділений текст із активного вікна (кнопка «Захопити виділене»).
+    /// Captures the selected text from the active window (the "Захопити виділене" (Capture selection) button).
     /// </summary>
-    /// <param name="cancellationToken">Токен скасування.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     [RelayCommand(CanExecute = nameof(CanCapture))]
     private async Task CaptureSelectedTextAsync(CancellationToken cancellationToken)
     {
@@ -112,13 +112,13 @@ public partial class QuickTtsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Захоплює виділений текст для гарячої клавіші <c>Alt+Q</c>.
+    /// Captures the selected text for the <c>Alt+Q</c> hotkey.
     /// </summary>
-    /// <param name="cancellationToken">Токен скасування.</param>
-    /// <returns><see langword="true"/>, якщо текст захоплено й записано у <see cref="Text"/>.</returns>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns><see langword="true"/> if the text was captured and written to <see cref="Text"/>.</returns>
     /// <remarks>
-    /// Викликається до активації вікна: симуляція <c>Ctrl+C</c> має піти в активне чуже вікно,
-    /// інакше буде скопійовано порожньо. Повторний виклик під час роботи ігнорується.
+    /// Called before the window is activated: the simulated <c>Ctrl+C</c> must reach the active window of another application,
+    /// otherwise nothing will be copied. A repeated call while work is in progress is ignored.
     /// </remarks>
     public async Task<bool> CaptureForHotkeyAsync(CancellationToken cancellationToken = default)
     {
@@ -141,10 +141,10 @@ public partial class QuickTtsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Спільна логіка захоплення виділеного тексту для кнопки та гарячої клавіші.
+    /// Shared logic for capturing selected text for the button and the hotkey.
     /// </summary>
-    /// <param name="cancellationToken">Токен скасування.</param>
-    /// <returns><see langword="true"/>, якщо текст захоплено й записано у <see cref="Text"/>.</returns>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns><see langword="true"/> if the text was captured and written to <see cref="Text"/>.</returns>
     private async Task<bool> CaptureSelectedTextCoreAsync(CancellationToken cancellationToken)
     {
         ErrorMessage = null;
@@ -177,19 +177,19 @@ public partial class QuickTtsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Синтезує мовлення та починає відтворення (кнопка «Озвучити»).
+    /// Synthesizes speech and starts playback (the "Озвучити" (Speak) button).
     /// </summary>
-    /// <param name="cancellationToken">Токен скасування.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     [RelayCommand(CanExecute = nameof(CanSynthesize), IncludeCancelCommand = true)]
     private Task SynthesizeAsync(CancellationToken cancellationToken) =>
         SynthesizeCurrentTextAsync(cancellationToken);
 
     /// <summary>
-    /// Синтезує поточний текст і запускає чергу відтворення.
+    /// Synthesizes the current text and starts the playback queue.
     /// </summary>
-    /// <param name="cancellationToken">Токен скасування.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <remarks>
-    /// Спільна логіка для команди «Озвучити» та автосинтезу після <c>Alt+Q</c>.
+    /// Shared logic for the "Озвучити" (Speak) command and auto-synthesis after <c>Alt+Q</c>.
     /// </remarks>
     public async Task SynthesizeCurrentTextAsync(CancellationToken cancellationToken = default)
     {
@@ -257,13 +257,13 @@ public partial class QuickTtsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Зберігає весь поточний текст в аудіофайл (MP4 або WAV).
+    /// Saves the entire current text to an audio file (MP4 or WAV).
     /// </summary>
-    /// <param name="cancellationToken">Токен скасування.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <remarks>
-    /// Формат береться з налаштувань; шлях користувач вибирає в системному діалозі.
-    /// Перед експортом поточне відтворення зупиняється, щоб синтез не конкурував
-    /// за GPU із чергою фрагментів.
+    /// The format is taken from the settings; the user chooses the path in the system dialog.
+    /// Current playback is stopped before the export so that synthesis does not compete
+    /// for the GPU with the fragment queue.
     /// </remarks>
     [RelayCommand(CanExecute = nameof(CanExport), IncludeCancelCommand = true)]
     private async Task ExportAsync(CancellationToken cancellationToken)
@@ -301,7 +301,7 @@ public partial class QuickTtsViewModel : ViewModelBase, IDisposable
 
         if (string.IsNullOrWhiteSpace(destinationPath))
         {
-            // Користувач скасував діалог — нічого не змінюємо.
+            // The user cancelled the dialog — nothing is changed.
             return;
         }
 
@@ -364,7 +364,7 @@ public partial class QuickTtsViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>Оновлює статус і смугу прогресу під час експорту.</summary>
+    /// <summary>Updates the status and the progress bar during export.</summary>
     private void OnExportProgress(AudioExportProgress progress)
     {
         ExportProgressPercent = progress.TotalFragments > 0
@@ -382,7 +382,7 @@ public partial class QuickTtsViewModel : ViewModelBase, IDisposable
         };
     }
 
-    /// <summary>Показує помилку черги відтворення у статусі Quick TTS.</summary>
+    /// <summary>Shows a playback queue error in the Quick TTS status.</summary>
     private void OnPlaybackQueueFailed(object? sender, Exception exception)
     {
         _logger.LogWarning(exception, "Черга відтворення зупинилася з помилкою");
@@ -396,14 +396,14 @@ public partial class QuickTtsViewModel : ViewModelBase, IDisposable
 
     private bool CanExport() => !IsBusy && !IsExporting && !string.IsNullOrWhiteSpace(Text);
 
-    /// <summary>Оновлює доступність команд після зміни тексту.</summary>
+    /// <summary>Updates command availability after the text changes.</summary>
     partial void OnTextChanged(string value)
     {
         SynthesizeCommand.NotifyCanExecuteChanged();
         ExportCommand.NotifyCanExecuteChanged();
     }
 
-    /// <summary>Оновлює доступність команд під час виконання операції.</summary>
+    /// <summary>Updates command availability while an operation is running.</summary>
     partial void OnIsBusyChanged(bool value)
     {
         CaptureSelectedTextCommand.NotifyCanExecuteChanged();
@@ -411,7 +411,7 @@ public partial class QuickTtsViewModel : ViewModelBase, IDisposable
         ExportCommand.NotifyCanExecuteChanged();
     }
 
-    /// <summary>Оновлює доступність команд під час експорту.</summary>
+    /// <summary>Updates command availability during export.</summary>
     partial void OnIsExportingChanged(bool value)
     {
         CaptureSelectedTextCommand.NotifyCanExecuteChanged();
@@ -419,7 +419,7 @@ public partial class QuickTtsViewModel : ViewModelBase, IDisposable
         ExportCommand.NotifyCanExecuteChanged();
     }
 
-    /// <summary>Відписується від подій міні-плеєра.</summary>
+    /// <summary>Unsubscribes from the mini player events.</summary>
     public void Dispose()
     {
         if (_disposed)

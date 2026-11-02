@@ -17,13 +17,13 @@ using UA_TTS_Client.Core.Models;
 namespace UA_TTS_Client.Infrastructure.Api;
 
 /// <summary>
-/// HTTP-клієнт TTS-сервера (<c>Flask + StyleTTS2</c>).
+/// HTTP client for the TTS server (<c>Flask + StyleTTS2</c>).
 /// </summary>
 /// <remarks>
-/// Клієнт розрахований на типізовану реєстрацію:
+/// The client is designed for typed registration:
 /// <c>services.AddHttpClient&lt;ITtsApiClient, TtsApiClient&gt;(c =&gt; c.BaseAddress = ...)</c>.
-/// Помилки транспорту перетворюються на <see cref="TtsApiException"/>, а тіло помилки
-/// сервера читається як JSON <c>{"error": "..."}</c> або як plain text.
+/// Transport errors are converted to <see cref="TtsApiException"/>, and the server's error body
+/// is read as JSON <c>{"error": "..."}</c> or as plain text.
 /// </remarks>
 public sealed class TtsApiClient : ITtsApiClient
 {
@@ -35,17 +35,17 @@ public sealed class TtsApiClient : ITtsApiClient
     private readonly ILogger<TtsApiClient> _logger;
 
     /// <summary>
-    /// Створює клієнт поверх налаштованого <see cref="HttpClient"/>.
+    /// Creates the client on top of the configured <see cref="HttpClient"/>.
     /// </summary>
-    /// <param name="httpClient">HTTP-клієнт із заданою базовою адресою сервера.</param>
-    /// <param name="logger">Логер.</param>
-    /// <exception cref="ArgumentNullException">Один із аргументів дорівнює <see langword="null"/>.</exception>
+    /// <param name="httpClient">HTTP client with the given server base address.</param>
+    /// <param name="logger">Logger.</param>
+    /// <exception cref="ArgumentNullException">One of the arguments is <see langword="null"/>.</exception>
     public TtsApiClient(HttpClient httpClient, ILogger<TtsApiClient> logger)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        // Генерація великого тексту може тривати довго; 100 с за замовчуванням замало.
+        // Generating large text can take a long time; the default 100 s is not enough.
         if (_httpClient.Timeout < MinimumTimeout)
         {
             _httpClient.Timeout = TimeSpan.FromMinutes(5);
@@ -78,7 +78,7 @@ public sealed class TtsApiClient : ITtsApiClient
         }
         catch (TtsApiException ex) when (ex.StatusCode == 404)
         {
-            // Старий сервер без /api/health: перевіряємо доступність через /api/voices.
+            // Older server without /api/health: we check availability via /api/voices.
             _logger.LogInformation("Ендпоінт /api/health відсутній — перевіряю доступність через /api/voices");
             var voices = await GetVoicesAsync(cancellationToken).ConfigureAwait(false);
             return new ServerHealth
@@ -167,7 +167,7 @@ public sealed class TtsApiClient : ITtsApiClient
     }
 
     /// <summary>
-    /// Надсилає запит і перетворює неуспішну відповідь на <see cref="TtsApiException"/>.
+    /// Sends the request and converts an unsuccessful response into <see cref="TtsApiException"/>.
     /// </summary>
     private async Task<HttpResponseMessage> SendAsync(
         HttpMethod method,
@@ -212,10 +212,10 @@ public sealed class TtsApiClient : ITtsApiClient
     }
 
     /// <summary>
-    /// Читає тіло помилки: спершу намагається розібрати JSON <c>{"error"}</c>,
-    /// інакше повертає plain text (сервер історично відповідав саме так).
+    /// Reads the error body: first tries to parse JSON <c>{"error"}</c>,
+    /// otherwise returns plain text (the server has historically responded that way).
     /// </summary>
-    /// <returns>Текст помилки або <see langword="null"/>, якщо тіло непридатне.</returns>
+    /// <returns>The error text, or <see langword="null"/> if the body is unusable.</returns>
     private static async Task<string?> ReadErrorMessageAsync(
         HttpResponseMessage response,
         CancellationToken cancellationToken)
@@ -248,11 +248,11 @@ public sealed class TtsApiClient : ITtsApiClient
             }
             catch (JsonException)
             {
-                // Не JSON — впадемо в обробку plain text нижче.
+                // Not JSON — fall through to plain text handling below.
             }
         }
 
-        // Plain text (наприклад, "No file"); HTML-сторінки помилок не показуємо користувачу.
+        // Plain text (e.g., "No file"); HTML error pages are not shown to the user.
         if (body.StartsWith('<'))
         {
             return null;
@@ -262,7 +262,7 @@ public sealed class TtsApiClient : ITtsApiClient
     }
 
     /// <summary>
-    /// Десеріалізує JSON-відповідь або кидає <see cref="TtsApiException"/>.
+    /// Deserializes the JSON response or throws <see cref="TtsApiException"/>.
     /// </summary>
     private static async Task<T> ReadJsonAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken)
         where T : class

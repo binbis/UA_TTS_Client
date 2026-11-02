@@ -15,13 +15,13 @@ using ServerStatus = UA_TTS_Client.Core.Enums.ServerStatus;
 namespace UA_TTS_Client.ViewModels;
 
 /// <summary>
-/// Головна ViewModel вікна: координує вкладки, стан сервера та глобальну гарячу клавішу.
+/// Main window ViewModel: coordinates the tabs, server status, and the global hotkey.
 /// </summary>
 public partial class MainWindowViewModel : ViewModelBase, IDisposable
 {
     private static readonly TimeSpan HealthCheckInterval = TimeSpan.FromSeconds(15);
 
-    /// <summary>Індекс вкладки Quick TTS у головному вікні.</summary>
+    /// <summary>Index of the Quick TTS tab in the main window.</summary>
     private const int QuickTtsTabIndex = 0;
 
     private readonly ITtsApiClient _apiClient;
@@ -33,15 +33,15 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private bool _hotkeyCaptureInProgress;
 
     /// <summary>
-    /// Створює головну ViewModel.
+    /// Creates the main window ViewModel.
     /// </summary>
-    /// <param name="quickTts">Вкладка Quick TTS.</param>
-    /// <param name="settings">Вкладка налаштувань.</param>
-    /// <param name="playback">Міні-плеєр.</param>
-    /// <param name="apiClient">Клієнт TTS-сервера (для health-check).</param>
-    /// <param name="hotkeyService">Глобальна гаряча клавіша.</param>
-    /// <param name="logger">Логер.</param>
-    /// <exception cref="ArgumentNullException">Один із аргументів дорівнює <see langword="null"/>.</exception>
+    /// <param name="quickTts">Quick TTS tab.</param>
+    /// <param name="settings">Settings tab.</param>
+    /// <param name="playback">Mini player.</param>
+    /// <param name="apiClient">TTS server client (for health checks).</param>
+    /// <param name="hotkeyService">Global hotkey service.</param>
+    /// <param name="logger">Logger.</param>
+    /// <exception cref="ArgumentNullException">One of the arguments is <see langword="null"/>.</exception>
     public MainWindowViewModel(
         QuickTtsViewModel quickTts,
         SettingsViewModel settings,
@@ -58,53 +58,53 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    /// <summary>Вкладка Quick TTS.</summary>
+    /// <summary>Quick TTS tab.</summary>
     public QuickTtsViewModel QuickTts { get; }
 
-    /// <summary>Вкладка налаштувань.</summary>
+    /// <summary>Settings tab.</summary>
     public SettingsViewModel Settings { get; }
 
-    /// <summary>Міні-плеєр.</summary>
+    /// <summary>Mini player.</summary>
     public PlaybackControlViewModel Playback { get; }
 
-    /// <summary>Вкладка Reader (заглушка).</summary>
+    /// <summary>Reader tab (placeholder).</summary>
     public ReaderViewModel Reader { get; } = new();
 
-    /// <summary>Вкладка Character Voice (заглушка).</summary>
+    /// <summary>Character Voice tab (placeholder).</summary>
     public CharacterVoiceViewModel CharacterVoice { get; } = new();
 
     /// <summary>
-    /// Виникає після <c>Alt+Q</c>, коли треба показати й активувати головне вікно.
+    /// Raised after <c>Alt+Q</c> when the main window needs to be shown and activated.
     /// </summary>
     /// <remarks>
-    /// Підписник у <c>App.axaml.cs</c> викликає <c>Window.Activate()</c>. На Wayland
-    /// композитор може проігнорувати запит — активація виконується за принципом best effort.
+    /// The subscriber in <c>App.axaml.cs</c> calls <c>Window.Activate()</c>. On Wayland,
+    /// the compositor may ignore the request, so activation is done on a best-effort basis.
     /// </remarks>
     public event EventHandler? ActivateRequested;
 
-    /// <summary>Поточний стан TTS-сервера.</summary>
+    /// <summary>Current TTS server status.</summary>
     [ObservableProperty]
     public partial ServerStatus ServerStatus { get; set; } = ServerStatus.Unknown;
 
-    /// <summary>Стислий текст стану сервера для верхньої панелі.</summary>
+    /// <summary>Short server status text for the top bar.</summary>
     [ObservableProperty]
     public partial string ServerStatusText { get; set; } = "Перевірка…";
 
-    /// <summary>Додаткові відомості про сервер (пристрій, кількість голосів, текст помилки).</summary>
+    /// <summary>Additional server details (device, number of voices, error text).</summary>
     [ObservableProperty]
     public partial string ServerDetails { get; set; } = string.Empty;
 
-    /// <summary>Індекс вибраної вкладки головного вікна (0 — Quick TTS).</summary>
+    /// <summary>Index of the selected tab in the main window (0 — Quick TTS).</summary>
     [ObservableProperty]
     public partial int SelectedTabIndex { get; set; }
 
-    /// <summary>Ознака того, що сервер онлайн (використовується для індикатора).</summary>
+    /// <summary>Flag indicating that the server is online (used by the status indicator).</summary>
     public bool IsServerOnline => ServerStatus == ServerStatus.Online;
 
     /// <summary>
-    /// Ініціалізує вкладки, гарячу клавішу та періодичну перевірку сервера.
+    /// Initializes the tabs, the hotkey, and the periodic server health check.
     /// </summary>
-    /// <remarks>Викликається один раз після відкриття головного вікна.</remarks>
+    /// <remarks>Called once after the main window is opened.</remarks>
     public async Task InitializeAsync()
     {
         try
@@ -119,7 +119,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
         catch (OperationCanceledException)
         {
-            // Застосунок закривається під час ініціалізації.
+            // The application is closing during initialization.
         }
         catch (Exception ex)
         {
@@ -131,9 +131,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Перевіряє стан сервера вручну (кнопка «Перевірити»).
+    /// Checks the server status manually (the "Перевірити" (Check) button).
     /// </summary>
-    /// <param name="cancellationToken">Токен скасування.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     [RelayCommand]
     private async Task RefreshServerStatusAsync(CancellationToken cancellationToken)
     {
@@ -151,7 +151,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
         catch (OperationCanceledException)
         {
-            // Скасування під час закриття застосунку.
+            // Cancellation during application shutdown.
         }
         catch (TtsApiException ex) when (ex.IsConnectionError)
         {
@@ -176,7 +176,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Періодично перевіряє доступність сервера, доки застосунок працює.
+    /// Periodically checks server availability while the application is running.
     /// </summary>
     private async Task MonitorServerAsync(CancellationToken cancellationToken)
     {
@@ -190,7 +190,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
         catch (OperationCanceledException)
         {
-            // Нормальне завершення роботи монітора.
+            // Normal monitor shutdown.
         }
         catch (Exception ex)
         {
@@ -199,7 +199,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Запускає обробку гарячої клавіші Alt+Q на UI-потоці.
+    /// Starts handling the Alt+Q hotkey on the UI thread.
     /// </summary>
     private void OnHotkeyPressed(object? sender, EventArgs e)
     {
@@ -207,12 +207,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Виконує послідовність Alt+Q: захоплення → активація → автосинтез.
+    /// Runs the Alt+Q sequence: capture → activation → auto-synthesis.
     /// </summary>
     /// <remarks>
-    /// <para>Захоплення завжди перше: симуляція <c>Ctrl+C</c> має піти в активне чуже вікно.
-    /// Якщо активувати вікно раніше, буде скопійовано порожньо.</para>
-    /// <para>Повторне <c>Alt+Q</c> під час захоплення ігнорується.</para>
+    /// <para>Capture always comes first: the simulated <c>Ctrl+C</c> must go to the active window of another app.
+    /// If the window is activated earlier, empty text will be copied.</para>
+    /// <para>A repeated <c>Alt+Q</c> during capture is ignored.</para>
     /// </remarks>
     private async Task HandleHotkeyAsync()
     {
@@ -245,7 +245,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
         catch (OperationCanceledException)
         {
-            // Застосунок закривається.
+            // The application is closing.
         }
         catch (Exception ex)
         {
@@ -257,11 +257,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>Оновлює похідну ознаку онлайн-стану.</summary>
+    /// <summary>Updates the derived online-status flag.</summary>
     partial void OnServerStatusChanged(ServerStatus value) => OnPropertyChanged(nameof(IsServerOnline));
 
     /// <summary>
-    /// Зупиняє моніторинг і відписується від гарячої клавіші.
+    /// Stops monitoring and unsubscribes from the hotkey.
     /// </summary>
     public void Dispose()
     {

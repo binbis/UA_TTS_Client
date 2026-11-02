@@ -3,19 +3,19 @@
 namespace UA_TTS_Client.Core.Enums;
 
 /// <summary>
-/// Стан доступності TTS-сервера.
+/// Availability state of the TTS server.
 /// </summary>
 public enum ServerStatus
 {
-    /// <summary>Перевірка ще не виконувалася.</summary>
+    /// <summary>The check has not been performed yet.</summary>
     Unknown,
 
-    /// <summary>Сервер відповідає на запити.</summary>
+    /// <summary>The server responds to requests.</summary>
     Online,
 
-    /// <summary>Сервер не відповідає (мережа, порт або процес не запущено).</summary>
+    /// <summary>The server does not respond (network, port, or the process is not running).</summary>
     Offline,
 
-    /// <summary>Сервер відповів, але з помилкою (некоректна відповідь, 5xx тощо).</summary>
+    /// <summary>The server responded, but with an error (invalid response, 5xx, etc.).</summary>
     Error
 }

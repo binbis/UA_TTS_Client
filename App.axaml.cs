@@ -25,7 +25,7 @@ using UA_TTS_Client.Views.Services;
 namespace UA_TTS_Client;
 
 /// <summary>
-/// Точка композиції застосунку: тут реєструються всі сервіси та створюється головне вікно.
+/// Composition root of the application: all services are registered here and the main window is created.
 /// </summary>
 public partial class App : Application
 {
@@ -46,7 +46,7 @@ public partial class App : Application
             var window = new MainWindow { DataContext = viewModel };
             window.Opened += async (_, _) => await viewModel.InitializeAsync();
 
-            // Alt+Q: показати й активувати вікно після успішного захоплення тексту.
+            // Alt+Q: show and activate the window after a successful text capture.
             viewModel.ActivateRequested += (_, _) =>
             {
                 if (window.WindowState == WindowState.Minimized)
@@ -69,12 +69,12 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Реєструє всі залежності застосунку.
+    /// Registers all application dependencies.
     /// </summary>
     /// <remarks>
-    /// Конфігурація завантажується синхронно до побудови контейнера: адреса сервера потрібна
-    /// для <see cref="HttpClient.BaseAddress"/>. Зміна адреси у вкладці налаштувань
-    /// застосовується після перезапуску.
+    /// The configuration is loaded synchronously before the container is built: the server
+    /// address is required for <see cref="HttpClient.BaseAddress"/>. Changing the address
+    /// in the settings tab takes effect after a restart.
     /// </remarks>
     private static void ConfigureServices(IServiceCollection services)
     {
@@ -116,9 +116,9 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Завантажує конфігурацію синхронно на старті.
+    /// Loads the configuration synchronously at startup.
     /// </summary>
-    /// <returns>Збережений конфіг або значення за замовчуванням.</returns>
+    /// <returns>The saved config, or the default values.</returns>
     private static AppConfig LoadStartupConfig()
     {
         try
@@ -128,7 +128,7 @@ public partial class App : Application
         }
         catch (Exception)
         {
-            // Пошкоджений або недоступний файл не повинен заважати запуску.
+            // A corrupted or inaccessible file must not prevent startup.
             return new AppConfig();
         }
     }

@@ -3,26 +3,26 @@
 namespace UA_TTS_Client.Core.Enums;
 
 /// <summary>
-/// Стан відтворення аудіо в застосунку.
+/// Audio playback state in the application.
 /// </summary>
 /// <remarks>
-/// Це власний доменний enum: він навмисно не залежить від <c>ManagedBass.PlaybackState</c>,
-/// щоб шар <c>Core</c> залишався вільним від зовнішніх бібліотек.
+/// This is a custom domain enum: it deliberately does not depend on <c>ManagedBass.PlaybackState</c>,
+/// so that the <c>Core</c> layer stays free of external libraries.
 /// </remarks>
 public enum PlaybackState
 {
-    /// <summary>Нічого не завантажено, відтворення ще не починалося.</summary>
+    /// <summary>Nothing is loaded; playback has not started yet.</summary>
     Idle,
 
-    /// <summary>Аудіо відтворюється.</summary>
+    /// <summary>Audio is playing.</summary>
     Playing,
 
-    /// <summary>Відтворення призупинено; позиція збережена.</summary>
+    /// <summary>Playback is paused; the position is kept.</summary>
     Paused,
 
-    /// <summary>Відтворення зупинено користувачем або трек дослухано до кінця.</summary>
+    /// <summary>Playback was stopped by the user or the track was played to the end.</summary>
     Stopped,
 
-    /// <summary>Сталася помилка аудіопідсистеми (наприклад, не вдалося ініціалізувати пристрій).</summary>
+    /// <summary>An audio subsystem error occurred (for example, the device could not be initialized).</summary>
     Error
 }

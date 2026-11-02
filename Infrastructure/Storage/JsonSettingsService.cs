@@ -13,12 +13,12 @@ using UA_TTS_Client.Core.Models;
 namespace UA_TTS_Client.Infrastructure.Storage;
 
 /// <summary>
-/// Зберігає налаштування у JSON-файл у каталозі конфігурації користувача.
+/// Stores settings in a JSON file in the user's configuration directory.
 /// </summary>
 /// <remarks>
-/// Шлях за замовчуванням: <c>~/.config/UA_TTS_Client/config.json</c> (Linux) або
-/// <c>%APPDATA%\UA_TTS_Client\config.json</c> (Windows). Запис атомарний: спочатку
-/// дані пишуться в тимчасовий файл у тому ж каталозі, потім перейменовуються.
+/// Default path: <c>~/.config/UA_TTS_Client/config.json</c> (Linux) or
+/// <c>%APPDATA%\UA_TTS_Client\config.json</c> (Windows). Writes are atomic: the data is first
+/// written to a temporary file in the same directory, then renamed.
 /// </remarks>
 public sealed class JsonSettingsService : ISettingsService
 {
@@ -36,22 +36,22 @@ public sealed class JsonSettingsService : ISettingsService
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     /// <summary>
-    /// Створює сервіс, що працює зі стандартним шляхом конфігурації.
+    /// Creates the service that works with the default configuration path.
     /// </summary>
-    /// <param name="logger">Логер.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="logger"/> дорівнює <see langword="null"/>.</exception>
+    /// <param name="logger">Logger.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="logger"/> is <see langword="null"/>.</exception>
     public JsonSettingsService(ILogger<JsonSettingsService> logger)
         : this(logger, GetDefaultFilePath())
     {
     }
 
     /// <summary>
-    /// Створює сервіс із явно заданим шляхом до файлу (використовується в тестах).
+    /// Creates the service with an explicitly specified file path (used in tests).
     /// </summary>
-    /// <param name="logger">Логер.</param>
-    /// <param name="filePath">Повний шлях до JSON-файлу конфігурації.</param>
-    /// <exception cref="ArgumentNullException">Один із аргументів дорівнює <see langword="null"/>.</exception>
-    /// <exception cref="ArgumentException"><paramref name="filePath"/> порожній.</exception>
+    /// <param name="logger">Logger.</param>
+    /// <param name="filePath">Full path to the JSON configuration file.</param>
+    /// <exception cref="ArgumentNullException">One of the arguments is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="filePath"/> is empty.</exception>
     public JsonSettingsService(ILogger<JsonSettingsService> logger, string filePath)
     {
         ArgumentNullException.ThrowIfNull(logger);
@@ -62,9 +62,9 @@ public sealed class JsonSettingsService : ISettingsService
     }
 
     /// <summary>
-    /// Повертає стандартний шлях до файлу конфігурації для поточної платформи.
+    /// Returns the default configuration file path for the current platform.
     /// </summary>
-    /// <returns>Повний шлях <c>.../UA_TTS_Client/config.json</c>.</returns>
+    /// <returns>The full path <c>.../UA_TTS_Client/config.json</c>.</returns>
     public static string GetDefaultFilePath()
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);

@@ -5,15 +5,15 @@ using System.Text.Json.Serialization;
 namespace UA_TTS_Client.Core.Models;
 
 /// <summary>
-/// Тіло помилки, яке повертає TTS-сервер у форматі JSON.
+/// Error body returned by the TTS server in JSON format.
 /// </summary>
 /// <remarks>
-/// Сервер історично відповідав і plain text (<c>No file</c>), тому клієнт зобов'язаний
-/// терпіти обидва формати. Цей DTO описує лише JSON-варіант.
+/// The server has historically also replied with plain text (<c>No file</c>), so the client must
+/// tolerate both formats. This DTO describes only the JSON variant.
 /// </remarks>
 public sealed record ApiErrorResponse
 {
-    /// <summary>Опис помилки від сервера.</summary>
+    /// <summary>Error description from the server.</summary>
     [JsonPropertyName("error")]
     public string? Error { get; init; }
 }

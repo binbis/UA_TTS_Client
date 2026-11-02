@@ -12,13 +12,13 @@ using UA_TTS_Client.Core.Models;
 namespace UA_TTS_Client.Infrastructure.Playback;
 
 /// <summary>
-/// Синтезує фрагменти послідовно та відтворює їх пакетами по N.
+/// Synthesizes fragments sequentially and plays them in batches of N.
 /// </summary>
 /// <remarks>
-/// <para>Поки поточний фрагмент грає, наступний уже синтезується (один крок попереду),
-/// щоб між фрагментами не було чутної паузи.</para>
-/// <para>Після пакета черга зупиняється; наступний пакет запускає <see cref="ContinueAsync"/>.</para>
-/// <para>Синтез-запити до сервера послідовні: паралельні запити перевантажували б GPU.</para>
+/// <para>While the current fragment plays, the next one is already being synthesized (one step ahead),
+/// so there is no audible gap between fragments.</para>
+/// <para>After a batch, the queue stops; the next batch is started by <see cref="ContinueAsync"/>.</para>
+/// <para>Synthesis requests to the server are sequential: parallel requests would overload the GPU.</para>
 /// </remarks>
 public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposable
 {
@@ -44,12 +44,12 @@ public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposa
     private int _generation;
 
     /// <summary>
-    /// Створює сервіс черги фрагментів.
+    /// Creates the fragment queue service.
     /// </summary>
-    /// <param name="apiClient">Клієнт TTS-сервера.</param>
-    /// <param name="audioPlayer">Сервіс відтворення аудіо.</param>
-    /// <param name="logger">Логер.</param>
-    /// <exception cref="ArgumentNullException">Один із аргументів дорівнює <see langword="null"/>.</exception>
+    /// <param name="apiClient">TTS server client.</param>
+    /// <param name="audioPlayer">Audio playback service.</param>
+    /// <param name="logger">Logger.</param>
+    /// <exception cref="ArgumentNullException">One of the arguments is <see langword="null"/>.</exception>
     public FragmentPlaybackService(
         ITtsApiClient apiClient,
         IAudioPlayerService audioPlayer,
@@ -207,22 +207,22 @@ public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposa
     }
 
     /// <summary>
-    /// Запускає фоновий pipeline поточного пакета й чекає на старт першого фрагмента.
+    /// Starts the background pipeline of the current batch and waits for the first fragment to start.
     /// </summary>
     private async Task StartBatchAsync(int startIndex, CancellationToken cancellationToken)
     {
         var generation = _generation;
         var firstStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        // Pipeline не очікується тут: StartAsync/ContinueAsync повертаються після старту
-        // першого фрагмента, а решта пакета грає у фоні.
+        // The pipeline is not awaited here: StartAsync/ContinueAsync return once the first fragment
+        // has started, and the rest of the batch plays in the background.
         _ = RunQueueAsync(generation, startIndex, firstStarted, cancellationToken);
 
         await firstStarted.Task.ConfigureAwait(false);
     }
 
     /// <summary>
-    /// Виконує пакети черги: один (якщо увімкнена пауза між пакетами) або всі підряд.
+    /// Runs the queue's batches: either one (if a pause between batches is enabled) or all of them in a row.
     /// </summary>
     private async Task RunQueueAsync(
         int generation,
@@ -250,7 +250,7 @@ public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposa
 
                 if (index >= _fragments.Count)
                 {
-                    // Останній пакет уже підняв QueueCompleted.
+                    // The last batch has already raised QueueCompleted.
                     return;
                 }
             }
@@ -277,7 +277,7 @@ public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposa
         }
     }
 
-    /// <summary>Синтезує й відтворює фрагменти одного пакета.</summary>
+    /// <summary>Synthesizes and plays the fragments of a single batch.</summary>
     private async Task RunBatchAsync(
         int generation,
         int startIndex,
@@ -361,7 +361,7 @@ public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposa
         }
     }
 
-    /// <summary>Синтезує один фрагмент через сервер.</summary>
+    /// <summary>Synthesizes one fragment via the server.</summary>
     private async Task<byte[]> SynthesizeAsync(
         TextFragment fragment,
         SpeechQueueOptions options,
@@ -379,7 +379,7 @@ public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposa
         return await _apiClient.SynthesizeAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Запускає відтворення фрагмента й чекає на природний кінець треку.</summary>
+    /// <summary>Starts playback of the fragment and waits for the track to end naturally.</summary>
     private async Task PlayAndWaitAsync(
         byte[] wav,
         TextFragment fragment,
@@ -406,7 +406,7 @@ public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposa
             RaiseFragmentStarted(fragment, batchNumber, _totalBatches);
             firstStarted.TrySetResult(true);
 
-            // Пауза могла надійти, доки фрагмент ще запускався: застосовуємо її після старту.
+            // A pause may have arrived while the fragment was still starting: apply it after the start.
             if (_isPaused)
             {
                 _audioPlayer.Pause();
@@ -426,7 +426,7 @@ public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposa
         }
     }
 
-    /// <summary>Чекає, доки черга не вийде з паузи, якщо вона на паузі.</summary>
+    /// <summary>Waits until the queue is resumed, if it is paused.</summary>
     private async Task WaitIfPausedAsync(CancellationToken cancellationToken)
     {
         Task waitTask;
@@ -445,7 +445,7 @@ public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposa
         await waitTask.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Обробник природного завершення треку BASS.</summary>
+    /// <summary>Handler for the natural end of a BASS track.</summary>
     private void OnTrackEnded(object? sender, EventArgs e)
     {
         TaskCompletionSource<bool>? trackEnded;
@@ -459,7 +459,7 @@ public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposa
         trackEnded?.TrySetResult(true);
     }
 
-    /// <summary>Скасовує поточну чергу; викликається під <see cref="_sync"/>.</summary>
+    /// <summary>Cancels the current queue; called under <see cref="_sync"/>.</summary>
     private void StopCore(bool resetCounters)
     {
         _generation++;
@@ -486,7 +486,7 @@ public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposa
         }
     }
 
-    /// <summary>Повідомляє про старт фрагмента, не даючи обробнику зламати чергу.</summary>
+    /// <summary>Raises the fragment-started notification without letting a handler break the queue.</summary>
     private void RaiseFragmentStarted(TextFragment fragment, int batch, int totalBatches)
     {
         try
@@ -499,7 +499,7 @@ public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposa
         }
     }
 
-    /// <summary>Повідомляє про завершення пакета.</summary>
+    /// <summary>Raises the batch-completed notification.</summary>
     private void RaiseBatchCompleted(int completedBatch, int totalBatches, bool hasNext)
     {
         try
@@ -512,7 +512,7 @@ public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposa
         }
     }
 
-    /// <summary>Повідомляє про завершення всієї черги.</summary>
+    /// <summary>Raises the queue-completed notification.</summary>
     private void RaiseQueueCompleted()
     {
         try
@@ -525,7 +525,7 @@ public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposa
         }
     }
 
-    /// <summary>Повідомляє про помилку черги після старту.</summary>
+    /// <summary>Raises the queue failure notification after startup.</summary>
     private void RaiseFailed(Exception exception)
     {
         try
@@ -538,7 +538,7 @@ public sealed class FragmentPlaybackService : IFragmentPlaybackService, IDisposa
         }
     }
 
-    /// <summary>Зупиняє чергу й відписується від подій аудіосервісу.</summary>
+    /// <summary>Stops the queue and unsubscribes from the audio service events.</summary>
     public void Dispose()
     {
         lock (_sync)

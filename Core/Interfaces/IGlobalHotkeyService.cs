@@ -6,24 +6,24 @@ using System.Threading.Tasks;
 namespace UA_TTS_Client.Core.Interfaces;
 
 /// <summary>
-/// Глобальна гаряча клавіша, що працює незалежно від активного вікна.
+/// Global hotkey that works regardless of the active window.
 /// </summary>
 public interface IGlobalHotkeyService
 {
-    /// <summary>Виникає, коли користувач натискає налаштовану гарячу клавішу (<c>Alt+Q</c>).</summary>
+    /// <summary>Raised when the user presses the configured hotkey (<c>Alt+Q</c>).</summary>
     event EventHandler? HotkeyPressed;
 
     /// <summary>
-    /// Запускає перехоплення клавіатури.
+    /// Starts intercepting keyboard input.
     /// </summary>
     /// <remarks>
-    /// Повторний виклик нічого не робить. Якщо хук не вдалося запустити, помилка
-    /// записується в лог, а застосунок продовжує працювати без гарячої клавіші.
+    /// Repeated calls do nothing. If the hook cannot be started, the error is written to the log,
+    /// and the application keeps running without the hotkey.
     /// </remarks>
     void Start();
 
     /// <summary>
-    /// Зупиняє перехоплення клавіатури та звільняє ресурси хука.
+    /// Stops keyboard interception and releases the hook's resources.
     /// </summary>
     Task StopAsync();
 }

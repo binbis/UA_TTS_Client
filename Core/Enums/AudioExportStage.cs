@@ -3,19 +3,19 @@
 namespace UA_TTS_Client.Core.Enums;
 
 /// <summary>
-/// Етапи експорту озвученого тексту у файл.
+/// Stages of exporting spoken text to a file.
 /// </summary>
 public enum AudioExportStage
 {
-    /// <summary>Послідовний синтез фрагментів тексту.</summary>
+    /// <summary>Sequential synthesis of the text fragments.</summary>
     Synthesizing,
 
-    /// <summary>Склеювання WAV-фрагментів в один потік.</summary>
+    /// <summary>Concatenation of WAV fragments into a single stream.</summary>
     Concatenating,
 
-    /// <summary>Конвертація WAV у вибраний формат (MP4).</summary>
+    /// <summary>Conversion of WAV to the selected format (MP4).</summary>
     Converting,
 
-    /// <summary>Запис результату на диск.</summary>
+    /// <summary>Writing the result to disk.</summary>
     Writing
 }

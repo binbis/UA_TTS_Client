@@ -3,30 +3,30 @@
 namespace UA_TTS_Client.Core.Models;
 
 /// <summary>
-/// Параметри черги відтворення фрагментів.
+/// Options for the fragment playback queue.
 /// </summary>
 public sealed record SpeechQueueOptions
 {
-    /// <summary>Мінімальна кількість фрагментів у пакеті.</summary>
+    /// <summary>Minimum number of fragments in a batch.</summary>
     public const int MinBatchSize = 1;
 
-    /// <summary>Максимальна кількість фрагментів у пакеті.</summary>
+    /// <summary>Maximum number of fragments in a batch.</summary>
     public const int MaxBatchSize = 10;
 
-    /// <summary>Кількість фрагментів у пакеті за замовчуванням.</summary>
+    /// <summary>Default number of fragments in a batch.</summary>
     public const int DefaultBatchSize = 5;
 
-    /// <summary>Ім'я голосу або <see langword="null"/> для голосу за замовчуванням.</summary>
+    /// <summary>Voice name, or <see langword="null"/> for the default voice.</summary>
     public string? Voice { get; init; }
 
-    /// <summary>Швидкість мовлення, що передається серверу.</summary>
+    /// <summary>Speech speed passed to the server.</summary>
     public double Speed { get; init; } = 1.0;
 
-    /// <summary>Кількість фрагментів в одному пакеті (від 1 до 10).</summary>
+    /// <summary>Number of fragments in one batch (from 1 to 10).</summary>
     public int BatchSize { get; init; } = DefaultBatchSize;
 
     /// <summary>
-    /// Чи зупиняти відтворення після кожного пакета (типово) або грати всі пакети підряд.
+    /// Whether to stop playback after each batch (default) or play all batches in a row.
     /// </summary>
     public bool PauseAfterEachBatch { get; init; } = true;
 }

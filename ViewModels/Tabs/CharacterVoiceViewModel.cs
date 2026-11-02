@@ -4,16 +4,16 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace UA_TTS_Client.ViewModels.Tabs;
 
 /// <summary>
-/// Вкладка «Character Voice» — озвучення реплік персонажів різними голосами.
+/// "Character Voice" tab — speech for character lines using different voices.
 /// </summary>
-/// <remarks>Заглушка: функціонал з'явиться в наступній ітерації.</remarks>
+/// <remarks>Placeholder: the functionality will be available in the next iteration.</remarks>
 public partial class CharacterVoiceViewModel : ViewModelBase
 {
-    /// <summary>Заголовок вкладки.</summary>
+    /// <summary>Tab title.</summary>
     [ObservableProperty]
     public partial string Title { get; set; } = "Character Voice";
 
-    /// <summary>Опис майбутньої функціональності.</summary>
+    /// <summary>Description of the upcoming functionality.</summary>
     [ObservableProperty]
     public partial string Description { get; set; } =
         "Тут з'явиться розподіл реплік за персонажами та озвучення кожної репліки окремим голосом.";

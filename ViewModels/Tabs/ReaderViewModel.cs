@@ -4,16 +4,16 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace UA_TTS_Client.ViewModels.Tabs;
 
 /// <summary>
-/// Вкладка «Reader» — розпізнавання тексту з файлів (PDF, DOCX, ODT, TXT).
+/// "Reader" tab — text recognition from files (PDF, DOCX, ODT, TXT).
 /// </summary>
-/// <remarks>Заглушка: функціонал з'явиться в наступній ітерації.</remarks>
+/// <remarks>Placeholder: the functionality will be available in the next iteration.</remarks>
 public partial class ReaderViewModel : ViewModelBase
 {
-    /// <summary>Заголовок вкладки.</summary>
+    /// <summary>Tab title.</summary>
     [ObservableProperty]
     public partial string Title { get; set; } = "Reader";
 
-    /// <summary>Опис майбутньої функціональності.</summary>
+    /// <summary>Description of the upcoming functionality.</summary>
     [ObservableProperty]
     public partial string Description { get; set; } =
         "Тут з'явиться завантаження PDF, DOCX, ODT і TXT та озвучення розпізнаного тексту.";

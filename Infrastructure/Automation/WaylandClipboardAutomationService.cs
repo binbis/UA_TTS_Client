@@ -15,24 +15,24 @@ using UA_TTS_Client.Core.Interfaces;
 namespace UA_TTS_Client.Infrastructure.Automation;
 
 /// <summary>
-/// Захоплює виділений текст на Wayland: симулює <c>Ctrl+C</c> через uinput і читає буфер обміну.
+/// Captures selected text on Wayland: simulates <c>Ctrl+C</c> via uinput and reads the clipboard.
 /// </summary>
 /// <remarks>
-/// <para>Wayland не дозволяє читати виділення чужого вікна напряму, тому єдиний робочий
-/// шлях — інжекція <c>Ctrl+C</c> у поточне активне вікно.</para>
-/// <para>Основна реалізація симуляції — SharpHook <see cref="EventSimulator"/>.
-/// Якщо він недоступний, використовується CLI <c>ydotool</c> (демон уже працює в системі).</para>
-/// <para>Перед натисканням <c>Ctrl+C</c> сервіс відпускає Alt: інакше активне вікно
-/// отримало б <c>Ctrl+Alt+C</c>, бо гаряча клавіша <c>Alt+Q</c> ще фізично затиснута.</para>
+/// <para>Wayland does not allow reading another window's selection directly, so the only working
+/// path is injecting <c>Ctrl+C</c> into the current active window.</para>
+/// <para>The primary simulation implementation is SharpHook <see cref="EventSimulator"/>.
+/// If it is unavailable, the <c>ydotool</c> CLI is used (its daemon is already running on the system).</para>
+/// <para>Before pressing <c>Ctrl+C</c>, the service releases Alt: otherwise the active window would
+/// receive <c>Ctrl+Alt+C</c>, because the <c>Alt+Q</c> hotkey is still physically held down.</para>
 /// </remarks>
 public sealed class WaylandClipboardAutomationService : IClipboardAutomationService, IDisposable
 {
     private const string ApplicationName = "UA_TTS_Client";
 
-    /// <summary>Інтервал опитування буфера обміну після симуляції Ctrl+C (мс).</summary>
+    /// <summary>Clipboard polling interval after simulating Ctrl+C (ms).</summary>
     private const int ClipboardPollIntervalMilliseconds = 50;
 
-    /// <summary>Скільки чекати, доки вміст буфера зміниться після Ctrl+C.</summary>
+    /// <summary>How long to wait for the clipboard contents to change after Ctrl+C.</summary>
     private static readonly TimeSpan ClipboardChangeTimeout = TimeSpan.FromMilliseconds(900);
 
     private static readonly TimeSpan YdotoolTimeout = TimeSpan.FromSeconds(3);
@@ -47,10 +47,10 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
     private bool _disposed;
 
     /// <summary>
-    /// Створює сервіс захоплення виділеного тексту.
+    /// Creates the selected text capture service.
     /// </summary>
-    /// <param name="logger">Логер.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="logger"/> дорівнює <see langword="null"/>.</exception>
+    /// <param name="logger">Logger.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="logger"/> is <see langword="null"/>.</exception>
     public WaylandClipboardAutomationService(ILogger<WaylandClipboardAutomationService> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -64,8 +64,8 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
 
-            // Запам'ятовуємо поточний вміст: якщо Ctrl+C не спрацює, буфер не зміниться
-            // і ми не підсунемо користувачу старий текст як «захоплений».
+            // Remember the current contents: if Ctrl+C does not work, the clipboard stays unchanged
+            // and we do not hand the user old text as "captured".
             var previous = await ReadClipboardAsync(cancellationToken).ConfigureAwait(false);
 
             var simulated = await SimulateCopyAsync(cancellationToken).ConfigureAwait(false);
@@ -99,12 +99,12 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
     }
 
     /// <summary>
-    /// Читає текст із буфера обміну.
+    /// Reads text from the clipboard.
     /// </summary>
     /// <remarks>
-    /// На Linux буфер читається лише через <c>wl-paste</c> (Wayland). X11 не підтримується,
-    /// тому застарілий X11-fallback видалено. На Windows використовується TextCopy
-    /// (Win32 Clipboard), бо <c>wl-paste</c> там недоступний.
+    /// On Linux the clipboard is read only via <c>wl-paste</c> (Wayland). X11 is not supported,
+    /// so the obsolete X11 fallback has been removed. On Windows TextCopy (Win32 Clipboard) is used,
+    /// because <c>wl-paste</c> is not available there.
     /// </remarks>
     private async Task<string> ReadClipboardAsync(CancellationToken cancellationToken)
     {
@@ -132,7 +132,7 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
     }
 
     /// <summary>
-    /// Читає буфер через TextCopy (використовується лише на Windows).
+    /// Reads the clipboard via TextCopy (used only on Windows).
     /// </summary>
     private async Task<string> ReadWithTextCopyAsync(CancellationToken cancellationToken)
     {
@@ -147,14 +147,14 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
         }
     }
 
-    /// <summary>Чи запущений застосунок у Wayland-сеансі.</summary>
+    /// <summary>Whether the application is running in a Wayland session.</summary>
     private static bool IsWaylandSession() =>
         !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY"));
 
     /// <summary>
-    /// Запускає консольну утиліту буфера обміну й повертає її stdout.
+    /// Runs a console clipboard utility and returns its stdout.
     /// </summary>
-    /// <returns>Текст або <see langword="null"/>, якщо утиліта недоступна чи завершилася з помилкою.</returns>
+    /// <returns>The text, or <see langword="null"/> if the utility is unavailable or exited with an error.</returns>
     private async Task<string?> TryRunClipboardCommandAsync(
         string fileName,
         string[] arguments,
@@ -203,9 +203,9 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
     }
 
     /// <summary>
-    /// Симулює <c>Alt up → Ctrl+C</c> через SharpHook, а за потреби — через <c>ydotool</c>.
+    /// Simulates <c>Alt up → Ctrl+C</c> via SharpHook, or via <c>ydotool</c> if needed.
     /// </summary>
-    /// <returns><see langword="true"/>, якщо натискання вдалося надіслати.</returns>
+    /// <returns><see langword="true"/> if the key presses were sent successfully.</returns>
     private async Task<bool> SimulateCopyAsync(CancellationToken cancellationToken)
     {
         var simulator = GetOrCreateSimulator();
@@ -244,7 +244,7 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
     }
 
     /// <summary>
-    /// Повертає симулятор SharpHook, створюючи його ліниво (ініціалізація uinput недешева).
+    /// Returns the SharpHook simulator, creating it lazily (uinput initialization is expensive).
     /// </summary>
     private EventSimulator? GetOrCreateSimulator()
     {
@@ -276,11 +276,11 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
     }
 
     /// <summary>
-    /// Резервний шлях: викликає <c>ydotool key</c> з кодами клавіш Linux input.
+    /// Fallback path: invokes <c>ydotool key</c> with Linux input key codes.
     /// </summary>
     /// <remarks>
-    /// Коди: <c>56</c> — KEY_LEFTALT, <c>100</c> — KEY_RIGHTALT, <c>29</c> — KEY_LEFTCTRL,
-    /// <c>46</c> — KEY_C. Суфікс <c>:1</c> — натискання, <c>:0</c> — відпускання.
+    /// Codes: <c>56</c> — KEY_LEFTALT, <c>100</c> — KEY_RIGHTALT, <c>29</c> — KEY_LEFTCTRL,
+    /// <c>46</c> — KEY_C. The <c>:1</c> suffix means press, <c>:0</c> means release.
     /// </remarks>
     private async Task<bool> TrySimulateWithYdotoolAsync(CancellationToken cancellationToken)
     {
@@ -340,7 +340,7 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
     }
 
     /// <summary>
-    /// Звільняє симулятор і семафор.
+    /// Releases the simulator and the semaphore.
     /// </summary>
     public void Dispose()
     {

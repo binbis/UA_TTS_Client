@@ -30,7 +30,7 @@
 
     <DockPanel>
 
-        <!-- Верхня панель: назва та стан сервера -->
+        <!-- Top bar: title and server status -->
         <Border DockPanel.Dock="Top" Padding="16,10" BorderThickness="0,0,0,1" BorderBrush="#30363D">
             <Grid ColumnDefinitions="*,Auto">
                 <TextBlock Text="UA TTS Client"
@@ -51,7 +51,7 @@
             </Grid>
         </Border>
 
-        <!-- Нижня панель: міні-плеєр -->
+        <!-- Bottom bar: mini player -->
         <Border DockPanel.Dock="Bottom" Padding="16,8" BorderThickness="0,1,0,0" BorderBrush="#30363D">
             <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto">
                 <Button Classes="player"
@@ -105,7 +105,7 @@
             </Grid>
         </Border>
 
-        <!-- Центральна частина: вкладки -->
+        <!-- Central area: tabs -->
         <TabControl Margin="12,8" SelectedIndex="{Binding SelectedTabIndex}">
             <TabItem Header="Quick TTS">
                 <ContentControl Content="{Binding QuickTts}" />

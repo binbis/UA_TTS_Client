@@ -13,8 +13,8 @@ using UA_TTS_Client.Core.Models;
 namespace UA_TTS_Client.Infrastructure.Audio;
 
 /// <summary>
-/// Експорт озвученого тексту у файл: послідовний синтез → склеювання WAV →
-/// конвертація (MP4) → атомарний запис.
+/// Exports spoken text to a file: sequential synthesis → WAV concatenation →
+/// conversion (MP4) → atomic write.
 /// </summary>
 public sealed class AudioExportService : IAudioExportService
 {
@@ -25,12 +25,12 @@ public sealed class AudioExportService : IAudioExportService
     private readonly ILogger<AudioExportService> _logger;
 
     /// <summary>
-    /// Створює сервіс експорту.
+    /// Creates the export service.
     /// </summary>
-    /// <param name="apiClient">Клієнт TTS-сервера.</param>
-    /// <param name="textChunker">Сервіс поділу тексту на фрагменти.</param>
-    /// <param name="logger">Логер.</param>
-    /// <exception cref="ArgumentNullException">Один із аргументів дорівнює <see langword="null"/>.</exception>
+    /// <param name="apiClient">TTS server client.</param>
+    /// <param name="textChunker">Service that splits text into fragments.</param>
+    /// <param name="logger">Logger.</param>
+    /// <exception cref="ArgumentNullException">One of the arguments is <see langword="null"/>.</exception>
     public AudioExportService(
         ITtsApiClient apiClient,
         ITextChunker textChunker,
@@ -60,7 +60,7 @@ public sealed class AudioExportService : IAudioExportService
         _logger.LogInformation("Експорт {Count} фрагментів у формат {Format}: {Path}",
             fragments.Count, request.Format, request.DestinationPath);
 
-        // Синтез послідовний: паралельні запити перевантажили б GPU.
+        // Synthesis is sequential: parallel requests would overload the GPU.
         var wavParts = new List<byte[]>(fragments.Count);
         for (var i = 0; i < fragments.Count; i++)
         {
@@ -98,12 +98,12 @@ public sealed class AudioExportService : IAudioExportService
     }
 
     /// <summary>
-    /// Записує файл атомарно: спершу в тимчасовий файл у тому ж каталозі,
-    /// потім переміщує його поверх цільового.
+    /// Writes the file atomically: first to a temporary file in the same directory,
+    /// then moves it over the destination.
     /// </summary>
-    /// <param name="destinationPath">Цільовий шлях.</param>
-    /// <param name="data">Вміст файлу.</param>
-    /// <param name="cancellationToken">Токен скасування.</param>
+    /// <param name="destinationPath">Destination path.</param>
+    /// <param name="data">File contents.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     private static async Task WriteAtomicallyAsync(
         string destinationPath,
         byte[] data,
@@ -125,7 +125,7 @@ public sealed class AudioExportService : IAudioExportService
         }
     }
 
-    /// <summary>Прибирає тимчасовий файл, якщо він залишився після помилки.</summary>
+    /// <summary>Removes the temporary file if it was left behind after an error.</summary>
     private static void TryDelete(string path)
     {
         try
@@ -137,7 +137,7 @@ public sealed class AudioExportService : IAudioExportService
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // Прибирання не повинно маскувати початкову помилку.
+            // Cleanup must not mask the original error.
         }
     }
 }

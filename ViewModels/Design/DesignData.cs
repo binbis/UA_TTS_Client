@@ -15,32 +15,32 @@ using UA_TTS_Client.ViewModels.Tabs;
 namespace UA_TTS_Client.ViewModels.Design;
 
 /// <summary>
-/// Дані для прев'ю XAML у Rider.
+/// Preview data for XAML in Rider.
 /// </summary>
 /// <remarks>
-/// Використовується лише дизайнером: code-behind відповідного View ставить його як
-/// <c>DataContext</c>, коли <c>Design.IsDesignMode</c> істинний. Під час роботи застосунку
-/// всі ViewModel створюються через DI з реальними сервісами.
+/// Used only by the designer: the code-behind of the corresponding View sets it as the
+/// <c>DataContext</c> when <c>Design.IsDesignMode</c> is true. While the application runs,
+/// all ViewModels are created through DI with real services.
 /// </remarks>
 public static class DesignData
 {
     private static readonly AppConfig PreviewConfig = new();
 
-    /// <summary>Міні-плеєр із фіктивним аудіосервісом.</summary>
+    /// <summary>Mini player with a fake audio service.</summary>
     public static PlaybackControlViewModel Playback { get; } =
         new(PreviewConfig, new PreviewAudioPlayer(), new PreviewFragmentPlaybackService(),
             NullLogger<PlaybackControlViewModel>.Instance);
 
-    /// <summary>Вкладка налаштувань із тестовими голосами.</summary>
+    /// <summary>Settings tab with test voices.</summary>
     public static SettingsViewModel Settings { get; } = CreateSettings();
 
-    /// <summary>Вкладка Quick TTS із тестовим текстом.</summary>
+    /// <summary>Quick TTS tab with test text.</summary>
     public static QuickTtsViewModel QuickTts { get; } =
         new(new PreviewClipboard(), new PreviewTextChunker(), Settings, Playback,
             new PreviewAudioExportService(), new PreviewFileSaveDialogService(),
             NullLogger<QuickTtsViewModel>.Instance);
 
-    /// <summary>Головна ViewModel для прев'ю вікна.</summary>
+    /// <summary>Main window ViewModel for the window preview.</summary>
     public static MainWindowViewModel MainWindow { get; } =
         new(QuickTts, Settings, Playback, new PreviewTtsApiClient(), new PreviewHotkeyService(),
             NullLogger<MainWindowViewModel>.Instance);
@@ -63,7 +63,7 @@ public static class DesignData
     }
 }
 
-/// <summary>Фіктивний аудіосервіс, який нічого не відтворює.</summary>
+/// <summary>Fake audio service that plays nothing.</summary>
 file sealed class PreviewAudioPlayer : IAudioPlayerService
 {
     public PlaybackState State => PlaybackState.Idle;
@@ -101,7 +101,7 @@ file sealed class PreviewAudioPlayer : IAudioPlayerService
     }
 }
 
-/// <summary>Фіктивна черга фрагментів для прев'ю.</summary>
+/// <summary>Fake fragment queue for previews.</summary>
 file sealed class PreviewFragmentPlaybackService : IFragmentPlaybackService
 {
     public event EventHandler<FragmentStartedEventArgs>? FragmentStarted
@@ -160,14 +160,14 @@ file sealed class PreviewFragmentPlaybackService : IFragmentPlaybackService
     }
 }
 
-/// <summary>Фіктивний поділ тексту на фрагменти для прев'ю.</summary>
+/// <summary>Fake text chunker for previews.</summary>
 file sealed class PreviewTextChunker : ITextChunker
 {
     public IReadOnlyList<TextFragment> Split(string text, TextChunkingOptions options)
         => string.IsNullOrWhiteSpace(text) ? [] : [new TextFragment(1, text.Trim())];
 }
 
-/// <summary>Фіктивний клієнт API з двома голосами.</summary>
+/// <summary>Fake API client with two voices.</summary>
 file sealed class PreviewTtsApiClient : ITtsApiClient
 {
     private static readonly string[] PreviewVoices = ["Вероніка Дорош", "Денис Денисенко"];
@@ -191,7 +191,7 @@ file sealed class PreviewTtsApiClient : ITtsApiClient
         => Task.FromResult(string.Empty);
 }
 
-/// <summary>Фіктивний сервіс експорту аудіо, який нічого не робить.</summary>
+/// <summary>Fake audio export service that does nothing.</summary>
 file sealed class PreviewAudioExportService : IAudioExportService
 {
     public Task ExportAsync(
@@ -200,7 +200,7 @@ file sealed class PreviewAudioExportService : IAudioExportService
         CancellationToken cancellationToken = default) => Task.CompletedTask;
 }
 
-/// <summary>Фіктивний діалог збереження файлу (завжди скасовується).</summary>
+/// <summary>Fake file save dialog (always cancelled).</summary>
 file sealed class PreviewFileSaveDialogService : IFileSaveDialogService
 {
     public Task<string?> PickSavePathAsync(
@@ -209,7 +209,7 @@ file sealed class PreviewFileSaveDialogService : IFileSaveDialogService
         CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
 }
 
-/// <summary>Фіктивне сховище налаштувань.</summary>
+/// <summary>Fake settings storage.</summary>
 file sealed class PreviewSettingsService : ISettingsService
 {
     public Task<AppConfig> LoadAsync(CancellationToken cancellationToken = default)
@@ -219,14 +219,14 @@ file sealed class PreviewSettingsService : ISettingsService
         => Task.CompletedTask;
 }
 
-/// <summary>Фіктивний сервіс буфера обміну.</summary>
+/// <summary>Fake clipboard service.</summary>
 file sealed class PreviewClipboard : IClipboardAutomationService
 {
     public Task<string> CaptureSelectedTextAsync(CancellationToken cancellationToken = default)
         => Task.FromResult(string.Empty);
 }
 
-/// <summary>Фіктивна гаряча клавіша.</summary>
+/// <summary>Fake hotkey.</summary>
 file sealed class PreviewHotkeyService : IGlobalHotkeyService
 {
     public event EventHandler? HotkeyPressed

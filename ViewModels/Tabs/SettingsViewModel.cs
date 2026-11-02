@@ -19,13 +19,12 @@ using UA_TTS_Client.Core.Models;
 namespace UA_TTS_Client.ViewModels.Tabs;
 
 /// <summary>
-/// Вкладка налаштувань: адреса сервера, голос, швидкість, гучність, фрагментація,
-/// формат експорту й гаряча клавіша.
+/// Settings tab: server address, voice, speed, volume, chunking, export format, and hotkey.
 /// </summary>
 /// <remarks>
-/// Ця ViewModel є джерелом істини для <see cref="QuickTtsViewModel"/>: синтез бере
-/// поточний голос, швидкість, режим фрагментації та розмір пакета саме звідси.
-/// Гучність синхронізується з міні-плеєром в обидва боки.
+/// This ViewModel is the source of truth for <see cref="QuickTtsViewModel"/>: synthesis takes the
+/// current voice, speed, chunking mode and batch size from here.
+/// Volume is synchronized with the mini player in both directions.
 /// </remarks>
 public partial class SettingsViewModel : ViewModelBase, IDisposable
 {
@@ -47,14 +46,14 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     private bool _disposed;
 
     /// <summary>
-    /// Створює ViewModel налаштувань.
+    /// Creates the settings ViewModel.
     /// </summary>
-    /// <param name="settingsService">Сервіс збереження конфігурації.</param>
-    /// <param name="apiClient">Клієнт TTS-сервера (для списку голосів).</param>
-    /// <param name="playback">Міні-плеєр, з яким синхронізується гучність.</param>
-    /// <param name="initialConfig">Конфігурація, завантажена на старті застосунку.</param>
-    /// <param name="logger">Логер.</param>
-    /// <exception cref="ArgumentNullException">Один із аргументів дорівнює <see langword="null"/>.</exception>
+    /// <param name="settingsService">Service that saves the configuration.</param>
+    /// <param name="apiClient">TTS server client (used for the voice list).</param>
+    /// <param name="playback">Mini player that the volume is synchronized with.</param>
+    /// <param name="initialConfig">Configuration loaded at application startup.</param>
+    /// <param name="logger">Logger.</param>
+    /// <exception cref="ArgumentNullException">One of the arguments is <see langword="null"/>.</exception>
     public SettingsViewModel(
         ISettingsService settingsService,
         ITtsApiClient apiClient,
@@ -72,39 +71,39 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         _playback.PropertyChanged += OnPlaybackPropertyChanged;
     }
 
-    /// <summary>Адреса TTS-сервера.</summary>
+    /// <summary>TTS server address.</summary>
     [ObservableProperty]
     public partial string ServerUrl { get; set; } = AppConfig.DefaultServerUrl;
 
-    /// <summary>Список голосів, отриманий від сервера.</summary>
+    /// <summary>List of voices received from the server.</summary>
     [ObservableProperty]
     public partial IReadOnlyList<string> Voices { get; set; } = [];
 
-    /// <summary>Вибраний голос.</summary>
+    /// <summary>Selected voice.</summary>
     [ObservableProperty]
     public partial string? SelectedVoice { get; set; }
 
-    /// <summary>Швидкість мовлення (від 0.5 до 2.0).</summary>
+    /// <summary>Speech speed (from 0.5 to 2.0).</summary>
     [ObservableProperty]
     public partial double Speed { get; set; } = 1.0;
 
-    /// <summary>Гучність відтворення (від 0.0 до 1.0).</summary>
+    /// <summary>Playback volume (from 0.0 to 1.0).</summary>
     [ObservableProperty]
     public partial double Volume { get; set; } = 1.0;
 
-    /// <summary>Гаряча клавіша захоплення виділеного тексту.</summary>
+    /// <summary>Hotkey for capturing the selected text.</summary>
     [ObservableProperty]
     public partial string Hotkey { get; set; } = AppConfig.DefaultHotkey;
 
-    /// <summary>Чи запускати озвучення автоматично після <c>Alt+Q</c>.</summary>
+    /// <summary>Whether to start speech automatically after <c>Alt+Q</c>.</summary>
     [ObservableProperty]
     public partial bool AutoSynthesizeOnHotkey { get; set; } = true;
 
-    /// <summary>Чи активувати вікно й перемикатися на Quick TTS після <c>Alt+Q</c>.</summary>
+    /// <summary>Whether to activate the window and switch to Quick TTS after <c>Alt+Q</c>.</summary>
     [ObservableProperty]
     public partial bool ActivateOnHotkey { get; set; }
 
-    /// <summary>Варіанти режиму фрагментації для списку в налаштуваннях.</summary>
+    /// <summary>Chunking mode options for the list in the settings.</summary>
     public IReadOnlyList<ChunkingModeOption> ChunkingModes { get; } =
     [
         DefaultChunkingMode,
@@ -112,60 +111,60 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         new(TextChunkingMode.MaxLength, "До 250 символів (розумне пакування)")
     ];
 
-    /// <summary>Варіанти формату збереження аудіо для списку в налаштуваннях.</summary>
+    /// <summary>Audio save format options for the list in the settings.</summary>
     public IReadOnlyList<ExportFormatOption> ExportFormats { get; } =
     [
         DefaultExportFormat,
         new(AudioExportFormat.Wav, "WAV (без стиснення)")
     ];
 
-    /// <summary>Вибраний режим поділу тексту на фрагменти.</summary>
+    /// <summary>Selected mode for splitting the text into fragments.</summary>
     [ObservableProperty]
     public partial ChunkingModeOption? SelectedChunkingMode { get; set; }
 
-    /// <summary>Кількість фрагментів у пакеті (від 1 до 10).</summary>
+    /// <summary>Number of fragments per batch (from 1 to 10).</summary>
     [ObservableProperty]
     public partial int BatchSize { get; set; } = SpeechQueueOptions.DefaultBatchSize;
 
-    /// <summary>Чи зупинятися після кожного пакета (типово) або грати всі пакети підряд.</summary>
+    /// <summary>Whether to stop after each batch (default) or play all batches back to back.</summary>
     [ObservableProperty]
     public partial bool PauseAfterEachBatch { get; set; } = true;
 
-    /// <summary>Вибраний формат збереження озвученого тексту.</summary>
+    /// <summary>Selected format for saving the spoken text.</summary>
     [ObservableProperty]
     public partial ExportFormatOption? SelectedExportFormat { get; set; }
 
-    /// <summary>Поточний режим фрагментації (зі значенням за замовчуванням).</summary>
+    /// <summary>Current chunking mode (with a default value).</summary>
     public TextChunkingMode ChunkingMode => SelectedChunkingMode?.Mode ?? TextChunkingMode.Paragraphs;
 
-    /// <summary>Поточний формат збереження (зі значенням за замовчуванням).</summary>
+    /// <summary>Current save format (with a default value).</summary>
     public AudioExportFormat ExportFormat => SelectedExportFormat?.Format ?? AudioExportFormat.Mp4;
 
-    /// <summary>Повідомлення про успішну дію.</summary>
+    /// <summary>Message about a successful action.</summary>
     [ObservableProperty]
     public partial string? StatusMessage { get; set; }
 
-    /// <summary>Повідомлення про помилку.</summary>
+    /// <summary>Error message.</summary>
     [ObservableProperty]
     public partial string? ErrorMessage { get; set; }
 
-    /// <summary>Ознака виконання тривалої операції.</summary>
+    /// <summary>Flag indicating that a long-running operation is in progress.</summary>
     [ObservableProperty]
     public partial bool IsBusy { get; set; }
 
     /// <summary>
-    /// Завантажує список голосів із сервера.
+    /// Loads the voice list from the server.
     /// </summary>
-    /// <param name="cancellationToken">Токен скасування.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         await RefreshVoicesAsync(cancellationToken);
     }
 
     /// <summary>
-    /// Оновлює список голосів із сервера.
+    /// Refreshes the voice list from the server.
     /// </summary>
-    /// <param name="cancellationToken">Токен скасування.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     [RelayCommand]
     private async Task RefreshVoicesAsync(CancellationToken cancellationToken)
     {
@@ -206,9 +205,9 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Зберігає налаштування на диск.
+    /// Saves the settings to disk.
     /// </summary>
-    /// <param name="cancellationToken">Токен скасування.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     [RelayCommand]
     private async Task SaveAsync(CancellationToken cancellationToken)
     {
@@ -269,7 +268,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Застосовує завантажену конфігурацію до властивостей.
+    /// Applies the loaded configuration to the properties.
     /// </summary>
     private void ApplyConfig(AppConfig config)
     {
@@ -288,18 +287,18 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             ?? DefaultExportFormat;
     }
 
-    /// <summary>Округлює значення до кроку 0.1.</summary>
+    /// <summary>Rounds the value to a step of 0.1.</summary>
     private static double RoundToStep(double value) => Math.Round(value, 1, MidpointRounding.AwayFromZero);
 
-    /// <summary>Оновлює похідне значення після зміни режиму фрагментації.</summary>
+    /// <summary>Updates the derived value after the chunking mode changes.</summary>
     partial void OnSelectedChunkingModeChanged(ChunkingModeOption? value) =>
         OnPropertyChanged(nameof(ChunkingMode));
 
-    /// <summary>Оновлює похідне значення після зміни формату збереження.</summary>
+    /// <summary>Updates the derived value after the save format changes.</summary>
     partial void OnSelectedExportFormatChanged(ExportFormatOption? value) =>
         OnPropertyChanged(nameof(ExportFormat));
 
-    /// <summary>Передає зміну гучності міні-плеєру.</summary>
+    /// <summary>Passes the volume change to the mini player.</summary>
     partial void OnVolumeChanged(double value)
     {
         if (_syncingVolume)
@@ -318,7 +317,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>Підхоплює зміну гучності, зроблену в міні-плеєрі.</summary>
+    /// <summary>Picks up the volume change made in the mini player.</summary>
     private void OnPlaybackPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(PlaybackControlViewModel.Volume) || _syncingVolume)
@@ -337,7 +336,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>Відписується від подій міні-плеєра.</summary>
+    /// <summary>Unsubscribes from the mini player events.</summary>
     public void Dispose()
     {
         if (_disposed)

@@ -10,12 +10,12 @@ using UA_TTS_Client.ViewModels;
 namespace UA_TTS_Client;
 
 /// <summary>
-/// Знаходить View для ViewModel за конвенцією імен: <c>ViewModels.Tabs.FooViewModel</c>
-/// перетворюється на <c>Views.Tabs.FooView</c>.
+/// Finds the View for a ViewModel by naming convention: <c>ViewModels.Tabs.FooViewModel</c>
+/// is mapped to <c>Views.Tabs.FooView</c>.
 /// </summary>
 /// <remarks>
-/// Окремо обробляється головне вікно: <c>MainWindowViewModel</c> за конвенцією дав би
-/// <c>MainWindowView</c>, якого не існує, тому додатково пробується <c>MainWindow</c>.
+/// The main window is handled separately: by convention, <c>MainWindowViewModel</c> would yield
+/// <c>MainWindowView</c>, which does not exist, so <c>MainWindow</c> is also tried.
 /// </remarks>
 [RequiresUnreferencedCode(
     "Default implementation of ViewLocator involves reflection which may be trimmed away.",
@@ -48,7 +48,7 @@ public class ViewLocator : IDataTemplate
     public bool Match(object? data) => data is ViewModelBase;
 
     /// <summary>
-    /// Генерує можливі повні імена View у порядку пріоритету.
+    /// Generates the possible fully qualified View names in priority order.
     /// </summary>
     private static IEnumerable<string> EnumerateViewTypeNames(Type viewModelType)
     {
@@ -64,7 +64,7 @@ public class ViewLocator : IDataTemplate
 
         yield return viewName;
 
-        // MainWindowViewModel -> Views.MainWindowView, але реальний клас — Views.MainWindow.
+        // MainWindowViewModel -> Views.MainWindowView, but the real class is Views.MainWindow.
         if (viewName.EndsWith("WindowView", StringComparison.Ordinal))
         {
             yield return viewName[..^"View".Length];

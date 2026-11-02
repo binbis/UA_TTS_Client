@@ -11,12 +11,12 @@ using PlaybackState = UA_TTS_Client.Core.Enums.PlaybackState;
 namespace UA_TTS_Client.Infrastructure.Audio;
 
 /// <summary>
-/// Відтворює WAV-аудіо з пам'яті через BASS (ManagedBass 4.0.2).
+/// Plays WAV audio from memory via BASS (ManagedBass 4.0.2).
 /// </summary>
 /// <remarks>
-/// <para>Масив <c>byte[]</c> з WAV-ом утримується в полі до кінця відтворення: BASS читає
-/// його безпосередньо, тому збирання сміття не повинно звільнити буфер.</para>
-/// <para>Звук ніколи не пишеться на диск — усе відбувається в пам'яті.</para>
+/// <para>The <c>byte[]</c> array holding the WAV is kept in a field until playback ends: BASS reads
+/// it directly, so garbage collection must not free the buffer.</para>
+/// <para>Audio is never written to disk — everything happens in memory.</para>
 /// </remarks>
 public sealed class BassAudioPlayerService : IAudioPlayerService, IDisposable
 {
@@ -35,10 +35,10 @@ public sealed class BassAudioPlayerService : IAudioPlayerService, IDisposable
     private volatile PlaybackState _state = PlaybackState.Idle;
 
     /// <summary>
-    /// Створює сервіс відтворення.
+    /// Creates the playback service.
     /// </summary>
-    /// <param name="logger">Логер.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="logger"/> дорівнює <see langword="null"/>.</exception>
+    /// <param name="logger">Logger.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="logger"/> is <see langword="null"/>.</exception>
     public BassAudioPlayerService(ILogger<BassAudioPlayerService> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -91,14 +91,14 @@ public sealed class BassAudioPlayerService : IAudioPlayerService, IDisposable
             _streamHandle = handle;
             _wavBuffer = wavData;
 
-            // Синхронізація "кінець треку" потрібна для автопереходу в Stopped.
+            // The "end of track" sync is required for the automatic transition to Stopped.
             if (Bass.ChannelSetSync(handle, SyncFlags.End, 0, _endSyncProcedure, IntPtr.Zero) == 0)
             {
                 _logger.LogWarning("Не вдалося встановити синхронізацію завершення треку: {Error}", Bass.LastError);
             }
             Bass.ChannelSetAttribute(handle, ChannelAttribute.Volume, (float)_volume);
 
-            // restart: true — почати з нуля, навіть якщо потік щойно створено.
+            // restart: true — start from the beginning, even if the stream was just created.
             if (!Bass.ChannelPlay(handle, true))
             {
                 var error = Bass.LastError;
@@ -200,9 +200,9 @@ public sealed class BassAudioPlayerService : IAudioPlayerService, IDisposable
     }
 
     /// <summary>
-    /// Ініціалізує BASS один раз на весь час життя сервісу.
+    /// Initializes BASS once for the lifetime of the service.
     /// </summary>
-    /// <returns><see langword="true"/>, якщо пристрій готовий до відтворення.</returns>
+    /// <returns><see langword="true"/> if the device is ready for playback.</returns>
     private bool EnsureInitialized()
     {
         if (_initialized)
@@ -212,9 +212,9 @@ public sealed class BassAudioPlayerService : IAudioPlayerService, IDisposable
 
         try
         {
-            // На Linux індекс 0 — це не «пристрій за замовчуванням», а віртуальний
-            // пристрій «No sound». Bass.DefaultDevice (-1) маршрутизується через
-            // PipeWire/PulseAudio до активного виходу (навушників, колонок тощо).
+            // On Linux, index 0 is not the "default device" but the virtual
+            // "No sound" device. Bass.DefaultDevice (-1) is routed through
+            // PipeWire/PulseAudio to the active output (headphones, speakers, etc.).
             if (Bass.Init(Bass.DefaultDevice, DefaultOutputFrequency, DeviceInitFlags.Default, IntPtr.Zero, IntPtr.Zero))
             {
                 _ownsBassInitialization = true;
@@ -235,7 +235,7 @@ public sealed class BassAudioPlayerService : IAudioPlayerService, IDisposable
         var error = Bass.LastError;
         if (error == Errors.Already)
         {
-            // BASS уже ініціалізований іншим компонентом — не звільняємо його у Dispose.
+            // BASS is already initialized by another component — we do not free it in Dispose.
             _ownsBassInitialization = false;
             _initialized = true;
             _logger.LogDebug("BASS уже був ініціалізований раніше");
@@ -248,13 +248,13 @@ public sealed class BassAudioPlayerService : IAudioPlayerService, IDisposable
     }
 
     /// <summary>
-    /// Обробник синхронізації BASS, що спрацьовує після завершення треку.
+    /// BASS sync handler that fires after the track has ended.
     /// </summary>
     /// <remarks>
-    /// Викликається у потоці BASS. Потік тут не звільняється: звільнення відбудеться
-    /// під час наступного <see cref="PlayAsync"/>, <see cref="Stop"/> або <see cref="Dispose"/>.
-    /// Зверніть увагу: перший параметр — це дескриптор синхронізації, а не каналу;
-    /// канал передається другим.
+    /// Called on the BASS thread. The stream is not released here; the release will happen
+    /// during the next <see cref="PlayAsync"/>, <see cref="Stop"/>, or <see cref="Dispose"/>.
+    /// Note: the first parameter is the sync handle, not the channel;
+    /// the channel is passed second.
     /// </remarks>
     private void OnStreamEnded(int syncHandle, int channel, int data, IntPtr user)
     {
@@ -279,7 +279,7 @@ public sealed class BassAudioPlayerService : IAudioPlayerService, IDisposable
     }
 
     /// <summary>
-    /// Повідомляє підписників про природне завершення треку поза блокуванням.
+    /// Notifies subscribers about the natural end of the track, outside the lock.
     /// </summary>
     private void RaiseTrackEnded()
     {
@@ -294,7 +294,7 @@ public sealed class BassAudioPlayerService : IAudioPlayerService, IDisposable
     }
 
     /// <summary>
-    /// Зупиняє та звільняє поточний потік, якщо він існує.
+    /// Stops and releases the current stream, if one exists.
     /// </summary>
     private void StopCore()
     {
@@ -323,7 +323,7 @@ public sealed class BassAudioPlayerService : IAudioPlayerService, IDisposable
     }
 
     /// <summary>
-    /// Звільняє невдало створений потік.
+    /// Releases a stream that failed to be created.
     /// </summary>
     private void ReleaseStream()
     {
@@ -345,7 +345,7 @@ public sealed class BassAudioPlayerService : IAudioPlayerService, IDisposable
     }
 
     /// <summary>
-    /// Змінює стан і повідомляє підписників.
+    /// Changes the state and notifies subscribers.
     /// </summary>
     private void SetState(PlaybackState state)
     {
@@ -367,7 +367,7 @@ public sealed class BassAudioPlayerService : IAudioPlayerService, IDisposable
     }
 
     /// <summary>
-    /// Звільняє аудіопотік і (за потреби) сам BASS.
+    /// Releases the audio stream and, if necessary, BASS itself.
     /// </summary>
     public void Dispose()
     {

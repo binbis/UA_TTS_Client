@@ -8,25 +8,25 @@ using UA_TTS_Client.Core.Models;
 namespace UA_TTS_Client.Core.Interfaces;
 
 /// <summary>
-/// Збереження та завантаження налаштувань застосунку.
+/// Saves and loads the application settings.
 /// </summary>
 public interface ISettingsService
 {
     /// <summary>
-    /// Завантажує налаштування з диска.
+    /// Loads the settings from disk.
     /// </summary>
-    /// <param name="cancellationToken">Токен скасування операції.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
     /// <returns>
-    /// Збережений конфіг, або конфіг зі значеннями за замовчуванням, якщо файл відсутній чи пошкоджений.
+    /// The saved config, or a config with default values if the file is missing or corrupted.
     /// </returns>
     Task<AppConfig> LoadAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Атомарно зберігає налаштування на диск.
+    /// Atomically saves the settings to disk.
     /// </summary>
-    /// <param name="config">Конфігурація для збереження.</param>
-    /// <param name="cancellationToken">Токен скасування операції.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="config"/> дорівнює <see langword="null"/>.</exception>
-    /// <exception cref="IOException">Не вдалося записати файл.</exception>
+    /// <param name="config">Configuration to save.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="config"/> is <see langword="null"/>.</exception>
+    /// <exception cref="IOException">The file could not be written.</exception>
     Task SaveAsync(AppConfig config, CancellationToken cancellationToken = default);
 }

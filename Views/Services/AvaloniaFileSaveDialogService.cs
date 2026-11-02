@@ -11,11 +11,11 @@ using UA_TTS_Client.Core.Interfaces;
 namespace UA_TTS_Client.Views.Services;
 
 /// <summary>
-/// Системний діалог збереження файлу на базі Avalonia <see cref="IStorageProvider"/>.
+/// System file save dialog based on Avalonia <see cref="IStorageProvider"/>.
 /// </summary>
 /// <remarks>
-/// Єдиний UI-специфічний сервіс застосунку: <c>Infrastructure</c> не повинна залежати
-/// від Avalonia, тому діалог живе у <c>Views</c>. Викликати лише з UI-потоку.
+/// The only UI-specific service in the application: <c>Infrastructure</c> must not depend on
+/// Avalonia, so the dialog lives in <c>Views</c>. Call only from the UI thread.
 /// </remarks>
 public sealed class AvaloniaFileSaveDialogService : IFileSaveDialogService
 {
@@ -48,7 +48,7 @@ public sealed class AvaloniaFileSaveDialogService : IFileSaveDialogService
         return file?.TryGetLocalPath();
     }
 
-    /// <summary>Створює тип файлу для фільтра діалогу.</summary>
+    /// <summary>Creates a file type for the dialog filter.</summary>
     private static FilePickerFileType CreateFileType(string extension) => extension switch
     {
         "mp4" => new FilePickerFileType("Аудіо MP4")

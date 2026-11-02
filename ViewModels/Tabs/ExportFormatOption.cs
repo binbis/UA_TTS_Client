@@ -5,8 +5,8 @@ using UA_TTS_Client.Core.Enums;
 namespace UA_TTS_Client.ViewModels.Tabs;
 
 /// <summary>
-/// Варіант формату збереження аудіо для списку в налаштуваннях.
+/// Audio save format option for the list in settings.
 /// </summary>
-/// <param name="Format">Формат файлу.</param>
-/// <param name="Title">Підпис для користувача.</param>
+/// <param name="Format">File format.</param>
+/// <param name="Title">User-facing label.</param>
 public sealed record ExportFormatOption(AudioExportFormat Format, string Title);

@@ -11,19 +11,19 @@ using UA_TTS_Client.Core.Models;
 namespace UA_TTS_Client.Infrastructure.Text;
 
 /// <summary>
-/// Ділить текст на фрагменти, зважаючи на межі абзаців і речень.
+/// Splits text into fragments, respecting paragraph and sentence boundaries.
 /// </summary>
 /// <remarks>
-/// <para>Режими: абзаци, речення або пакування речень до 250 символів.</para>
-/// <para>Речення не обривається посередині, якщо його можна вмістити в ліміт.
-/// Занадто довге речення ріжеться по останньому пробілу/комі до ліміту.</para>
+/// <para>Modes: paragraphs, sentences, or packing sentences up to 250 characters.</para>
+/// <para>A sentence is not cut in the middle if it fits within the limit.
+/// An overly long sentence is cut at the last space/comma before the limit.</para>
 /// </remarks>
 public sealed partial class SentenceAwareTextChunker : ITextChunker
 {
-    /// <summary>Фрагменти коротші за цю довжину за можливості приєднуються до сусідніх.</summary>
+    /// <summary>Fragments shorter than this length are merged into their neighbors when possible.</summary>
     private const int MinFragmentLength = 20;
 
-    /// <summary>Скорочення, після яких крапка не завершує речення.</summary>
+    /// <summary>Abbreviations after which a period does not end a sentence.</summary>
     private static readonly string[] Abbreviations =
     [
         "т.д.", "т.п.", "і т.ін.", "р.", "м.", "вул.", "ім.", "проф.", "акад.", "див.", "напр."
@@ -58,7 +58,7 @@ public sealed partial class SentenceAwareTextChunker : ITextChunker
             _ => BuildMaxLengthFragments(paragraphs, maxLength)
         };
 
-        // У режимі «речення» короткі речення не зливаються: один фрагмент = одне речення.
+        // In the "Речення" (Sentences) mode, short sentences are not merged: one fragment = one sentence.
         var merged = options.Mode == TextChunkingMode.Sentences
             ? rawFragments
             : MergeShortFragments(rawFragments, maxLength);
@@ -67,7 +67,7 @@ public sealed partial class SentenceAwareTextChunker : ITextChunker
     }
 
     /// <summary>
-    /// Згортає пробіли, нормалізує переноси рядків і прибирає порожні рядки.
+    /// Collapses whitespace, normalizes line breaks, and removes empty lines.
     /// </summary>
     private static string Normalize(string text)
     {
@@ -114,7 +114,7 @@ public sealed partial class SentenceAwareTextChunker : ITextChunker
         return WhitespaceRegex().Replace(builder.ToString(), " ").Trim();
     }
 
-    /// <summary>Розбиває нормалізований текст на абзаци.</summary>
+    /// <summary>Splits the normalized text into paragraphs.</summary>
     private static List<string> SplitParagraphs(string text)
     {
         var paragraphs = new List<string>();
@@ -131,7 +131,7 @@ public sealed partial class SentenceAwareTextChunker : ITextChunker
     }
 
     /// <summary>
-    /// Розбиває абзац на речення, не рвучи відомі скорочення та ініціали.
+    /// Splits a paragraph into sentences without breaking known abbreviations and initials.
     /// </summary>
     private static List<string> SplitSentences(string paragraph)
     {
@@ -172,7 +172,7 @@ public sealed partial class SentenceAwareTextChunker : ITextChunker
         return sentences;
     }
 
-    /// <summary>Чи закінчується текст скороченням або ініціалом.</summary>
+    /// <summary>Whether the text ends with an abbreviation or an initial.</summary>
     private static bool EndsWithAbbreviation(string value)
     {
         var trimmed = value.TrimEnd();
@@ -202,7 +202,7 @@ public sealed partial class SentenceAwareTextChunker : ITextChunker
             or (>= 'A' and <= 'Z');
     }
 
-    /// <summary>Фрагменти за абзацами; задовгі абзаци ріжуться по реченнях.</summary>
+    /// <summary>Fragments by paragraph; overly long paragraphs are split by sentence.</summary>
     private static List<string> BuildParagraphFragments(List<string> paragraphs, int maxLength)
     {
         var result = new List<string>();
@@ -220,7 +220,7 @@ public sealed partial class SentenceAwareTextChunker : ITextChunker
         return result;
     }
 
-    /// <summary>Одне речення — один фрагмент.</summary>
+    /// <summary>One sentence per fragment.</summary>
     private static List<string> BuildSentenceFragments(List<string> paragraphs, int maxLength)
     {
         var result = new List<string>();
@@ -242,7 +242,7 @@ public sealed partial class SentenceAwareTextChunker : ITextChunker
         return result;
     }
 
-    /// <summary>Пакує речення у фрагменти до ліміту.</summary>
+    /// <summary>Packs sentences into fragments up to the limit.</summary>
     private static List<string> BuildMaxLengthFragments(List<string> paragraphs, int maxLength)
     {
         var result = new List<string>();
@@ -254,7 +254,7 @@ public sealed partial class SentenceAwareTextChunker : ITextChunker
         return result;
     }
 
-    /// <summary>Послідовно додає речення, доки вміщується в ліміт.</summary>
+    /// <summary>Adds sentences in sequence while they fit within the limit.</summary>
     private static List<string> PackSentences(List<string> sentences, int maxLength)
     {
         var result = new List<string>();
@@ -299,7 +299,7 @@ public sealed partial class SentenceAwareTextChunker : ITextChunker
         return result;
     }
 
-    /// <summary>Ріже задовге речення по останньому пробілу/комі до ліміту.</summary>
+    /// <summary>Cuts an overly long sentence at the last space/comma before the limit.</summary>
     private static List<string> HardSplit(string sentence, int maxLength)
     {
         var result = new List<string>();
@@ -330,7 +330,7 @@ public sealed partial class SentenceAwareTextChunker : ITextChunker
         return result;
     }
 
-    /// <summary>Шукає позицію для розрізу з кінця до середини ліміту.</summary>
+    /// <summary>Searches for a cut position, scanning backward from the limit toward its midpoint.</summary>
     private static int FindSplitPosition(string value, int maxLength)
     {
         var limit = Math.Min(maxLength, value.Length - 1);
@@ -345,7 +345,7 @@ public sealed partial class SentenceAwareTextChunker : ITextChunker
         return -1;
     }
 
-    /// <summary>Приєднує занадто короткі фрагменти до попереднього, якщо вміщуються.</summary>
+    /// <summary>Merges overly short fragments into the previous one if they fit.</summary>
     private static List<string> MergeShortFragments(List<string> fragments, int maxLength)
     {
         if (fragments.Count < 2)
@@ -370,7 +370,7 @@ public sealed partial class SentenceAwareTextChunker : ITextChunker
         return result;
     }
 
-    /// <summary>Присвоює фрагментам послідовні номери з 1.</summary>
+    /// <summary>Assigns sequential numbers to fragments, starting from 1.</summary>
     private static List<TextFragment> ToTextFragments(List<string> rawFragments)
     {
         var result = new List<TextFragment>(rawFragments.Count);

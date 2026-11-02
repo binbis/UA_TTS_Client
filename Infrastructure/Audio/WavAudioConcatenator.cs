@@ -8,13 +8,13 @@ using System.Text;
 namespace UA_TTS_Client.Infrastructure.Audio;
 
 /// <summary>
-/// Склеює WAV-фрагменти (24 кГц, моно, 16-bit PCM) в один WAV-файл.
+/// Concatenates WAV fragments (24 kHz, mono, 16-bit PCM) into a single WAV file.
 /// </summary>
 /// <remarks>
-/// <para>Клас синхронний і не залежить від BASS, HTTP чи UI: на вхід — байти WAV,
-/// на вихід — новий коректний RIFF-файл.</para>
-/// <para>Додаткових пауз між фрагментами не вставляється: експорт звучить так само,
-/// як послідовне відтворення.</para>
+/// <para>The class is synchronous and does not depend on BASS, HTTP, or UI: the input is WAV bytes,
+/// the output is a new valid RIFF file.</para>
+/// <para>No extra pauses are inserted between fragments: the export sounds the same
+/// as sequential playback.</para>
 /// </remarks>
 public static class WavAudioConcatenator
 {
@@ -25,13 +25,13 @@ public static class WavAudioConcatenator
     private const int HeaderSize = 44;
 
     /// <summary>
-    /// Склеює фрагменти в один WAV-файл, зберігаючи їх порядок.
+    /// Concatenates fragments into a single WAV file, preserving their order.
     /// </summary>
-    /// <param name="parts">WAV-фрагменти однакового формату.</param>
-    /// <returns>Вміст об'єднаного WAV-файлу.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="parts"/> дорівнює <see langword="null"/>.</exception>
-    /// <exception cref="ArgumentException"><paramref name="parts"/> порожній.</exception>
-    /// <exception cref="InvalidDataException">Фрагмент не є WAV 24 кГц/моно/16-bit PCM.</exception>
+    /// <param name="parts">WAV fragments of the same format.</param>
+    /// <returns>Contents of the combined WAV file.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="parts"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="parts"/> is empty.</exception>
+    /// <exception cref="InvalidDataException">A fragment is not 24 kHz/mono/16-bit PCM WAV.</exception>
     public static byte[] Concat(IReadOnlyList<byte[]> parts)
     {
         ArgumentNullException.ThrowIfNull(parts);
@@ -55,15 +55,15 @@ public static class WavAudioConcatenator
         using var writer = new BinaryWriter(output, Encoding.ASCII, leaveOpen: true);
 
         writer.Write(Encoding.ASCII.GetBytes("RIFF"));
-        writer.Write(dataSize + HeaderSize - 8); // розмір RIFF = 36 + розмір data
+        writer.Write(dataSize + HeaderSize - 8); // RIFF size = 36 + data size
         writer.Write(Encoding.ASCII.GetBytes("WAVE"));
         writer.Write(Encoding.ASCII.GetBytes("fmt "));
-        writer.Write(16);                                                                  // розмір fmt-чанка
+        writer.Write(16);                                                                  // fmt chunk size
         writer.Write(PcmAudioFormat);
         writer.Write(ExpectedChannels);
         writer.Write(ExpectedSampleRate);
-        writer.Write(ExpectedSampleRate * ExpectedChannels * ExpectedBitsPerSample / 8);   // байтів за секунду
-        writer.Write((short)(ExpectedChannels * ExpectedBitsPerSample / 8));               // вирівнювання блоку
+        writer.Write(ExpectedSampleRate * ExpectedChannels * ExpectedBitsPerSample / 8);   // bytes per second
+        writer.Write((short)(ExpectedChannels * ExpectedBitsPerSample / 8));               // block alignment
         writer.Write(ExpectedBitsPerSample);
         writer.Write(Encoding.ASCII.GetBytes("data"));
         writer.Write(dataSize);
@@ -78,12 +78,12 @@ public static class WavAudioConcatenator
     }
 
     /// <summary>
-    /// Витягує та перевіряє PCM-дані одного WAV-фрагмента.
+    /// Extracts and validates the PCM data of a single WAV fragment.
     /// </summary>
-    /// <param name="wav">Вміст WAV-файлу.</param>
-    /// <param name="partIndex">Індекс фрагмента (для повідомлення про помилку).</param>
-    /// <returns>Байти чанка <c>data</c>.</returns>
-    /// <exception cref="InvalidDataException">Заголовок відсутній або формат не той, що очікується.</exception>
+    /// <param name="wav">WAV file contents.</param>
+    /// <param name="partIndex">Fragment index (for error reporting).</param>
+    /// <returns>Bytes of the <c>data</c> chunk.</returns>
+    /// <exception cref="InvalidDataException">The header is missing or the format is not the expected one.</exception>
     private static byte[] ExtractDataChunk(byte[] wav, int partIndex)
     {
         ArgumentNullException.ThrowIfNull(wav);
@@ -118,7 +118,7 @@ public static class WavAudioConcatenator
                 data = wav[contentStart..(contentStart + chunkSize)];
             }
 
-            // Чанки вирівняні на парну кількість байтів.
+            // Chunks are aligned to an even number of bytes.
             offset = contentStart + chunkSize + (chunkSize % 2);
         }
 
@@ -135,7 +135,7 @@ public static class WavAudioConcatenator
         return data;
     }
 
-    /// <summary>Перевіряє, що <c>fmt</c>-чанк описує PCM 24 кГц/моно/16-bit.</summary>
+    /// <summary>Checks that the <c>fmt</c> chunk describes 24 kHz/mono/16-bit PCM.</summary>
     private static void ValidateFormat(ReadOnlySpan<byte> fmt, int partIndex)
     {
         if (fmt.Length < 16)
@@ -157,9 +157,9 @@ public static class WavAudioConcatenator
         }
     }
 
-    /// <summary>Перевіряє 4-байтовий тег за вказаним зсувом.</summary>
+    /// <summary>Checks the 4-byte tag at the specified offset.</summary>
     private static bool HasTag(byte[] wav, int offset, string tag) => ReadTag(wav, offset) == tag;
 
-    /// <summary>Читає 4-байтовий ASCII-тег.</summary>
+    /// <summary>Reads a 4-byte ASCII tag.</summary>
     private static string ReadTag(byte[] wav, int offset) => Encoding.ASCII.GetString(wav, offset, 4);
 }

@@ -14,7 +14,7 @@ using UA_TTS_Client.Core.Models;
 namespace UA_TTS_Client.ViewModels.Components;
 
 /// <summary>
-/// Міні-плеєр: керує відтворенням синтезованого аудіо та показує його стан.
+/// Mini player: controls playback of synthesized audio and shows its state.
 /// </summary>
 public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
 {
@@ -29,13 +29,13 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
     private int _lastTotalBatches;
 
     /// <summary>
-    /// Створює міні-плеєр.
+    /// Creates the mini player.
     /// </summary>
-    /// <param name="config">Стартові налаштування (звідти береться початкова гучність).</param>
-    /// <param name="audioPlayer">Сервіс відтворення.</param>
-    /// <param name="fragmentPlayback">Черга фрагментів.</param>
-    /// <param name="logger">Логер.</param>
-    /// <exception cref="ArgumentNullException">Один із аргументів дорівнює <see langword="null"/>.</exception>
+    /// <param name="config">Startup settings (the initial volume is taken from there).</param>
+    /// <param name="audioPlayer">Playback service.</param>
+    /// <param name="fragmentPlayback">Fragment queue.</param>
+    /// <param name="logger">Logger.</param>
+    /// <exception cref="ArgumentNullException">One of the arguments is <see langword="null"/>.</exception>
     public PlaybackControlViewModel(
         AppConfig config,
         IAudioPlayerService audioPlayer,
@@ -53,66 +53,66 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
         _fragmentPlayback.QueueCompleted += OnQueueCompleted;
         _fragmentPlayback.Failed += OnQueueFailed;
 
-        // Сетер одразу застосує гучність до BASS.
+        // The setter applies the volume to BASS immediately.
         Volume = Math.Clamp(config.Volume, 0d, 1d);
     }
 
-    /// <summary>Поточний стан відтворення.</summary>
+    /// <summary>Current playback state.</summary>
     [ObservableProperty]
     public partial PlaybackState State { get; set; } = PlaybackState.Idle;
 
-    /// <summary>Людиночитний опис стану для статус-бару.</summary>
+    /// <summary>Human-readable description of the state for the status bar.</summary>
     [ObservableProperty]
     public partial string StateText { get; set; } = "Готово";
 
-    /// <summary>Символ на кнопці «пауза/продовжити».</summary>
+    /// <summary>Symbol on the pause/resume button.</summary>
     [ObservableProperty]
     public partial string PlayPauseGlyph { get; set; } = "▶";
 
-    /// <summary>Ім'я голосу, яким озвучено поточний трек.</summary>
+    /// <summary>Name of the voice used to speak the current track.</summary>
     [ObservableProperty]
     public partial string? VoiceName { get; set; }
 
-    /// <summary>Гучність відтворення в діапазоні від 0.0 до 1.0.</summary>
+    /// <summary>Playback volume in the range from 0.0 to 1.0.</summary>
     [ObservableProperty]
     public partial double Volume { get; set; } = 1.0;
 
-    /// <summary>Позиція у черзі: «Фрагмент 2 з 5 · пакет 1 з 3».</summary>
+    /// <summary>Queue position: "Фрагмент 2 з 5 · пакет 1 з 3" (Fragment 2 of 5 · batch 1 of 3).</summary>
     [ObservableProperty]
     public partial string? FragmentPositionText { get; set; }
 
-    /// <summary>Початок тексту поточного фрагмента (до 60 символів).</summary>
+    /// <summary>Beginning of the current fragment's text (up to 60 characters).</summary>
     [ObservableProperty]
     public partial string? CurrentFragmentText { get; set; }
 
-    /// <summary>Стан черги для вкладки Quick TTS: завершення пакета або всієї черги.</summary>
+    /// <summary>Queue state for the Quick TTS tab: completion of a batch or of the whole queue.</summary>
     [ObservableProperty]
     public partial string? QueueStatusText { get; set; }
 
-    /// <summary>Виникає на UI-потоці, коли черга фрагментів зупинилася з помилкою.</summary>
+    /// <summary>Raised on the UI thread when the fragment queue stops because of an error.</summary>
     public event EventHandler<Exception>? QueueFailed;
 
-    /// <summary>Чи завершився пакет і черга чекає на продовження.</summary>
+    /// <summary>Whether a batch has completed and the queue is waiting to continue.</summary>
     [ObservableProperty]
     public partial bool IsBatchPending { get; set; }
 
-    /// <summary>Текст кнопки продовження наступного пакета.</summary>
+    /// <summary>Text of the button that continues with the next batch.</summary>
     [ObservableProperty]
     public partial string? ContinueButtonText { get; set; }
 
-    /// <summary>Чи існує активна черга фрагментів.</summary>
+    /// <summary>Whether an active fragment queue exists.</summary>
     [ObservableProperty]
     public partial bool HasQueue { get; set; }
 
-    /// <summary>Ознака того, що аудіо зараз відтворюється.</summary>
+    /// <summary>Flag indicating that audio is currently playing.</summary>
     public bool IsPlaying => State == PlaybackState.Playing;
 
     /// <summary>
-    /// Завантажує WAV у пам'ять і починає відтворення.
+    /// Loads WAV data into memory and starts playback.
     /// </summary>
-    /// <param name="wavData">Вміст WAV-файлу.</param>
-    /// <param name="voiceName">Ім'я голосу для відображення в плеєрі.</param>
-    /// <param name="cancellationToken">Токен скасування.</param>
+    /// <param name="wavData">WAV file contents.</param>
+    /// <param name="voiceName">Voice name shown in the player.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     public async Task PlayAsync(byte[] wavData, string? voiceName, CancellationToken cancellationToken = default)
     {
         VoiceName = voiceName;
@@ -120,15 +120,15 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Запускає чергу фрагментів із пакетним відтворенням.
+    /// Starts a fragment queue with batch playback.
     /// </summary>
-    /// <param name="fragments">Фрагменти в порядку відтворення.</param>
-    /// <param name="voice">Ім'я голосу для відображення в плеєрі.</param>
-    /// <param name="speed">Швидкість мовлення.</param>
-    /// <param name="batchSize">Кількість фрагментів у пакеті.</param>
-    /// <param name="pauseAfterEachBatch">Чи зупинятися після кожного пакета.</param>
-    /// <param name="cancellationToken">Токен скасування.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="fragments"/> дорівнює <see langword="null"/>.</exception>
+    /// <param name="fragments">Fragments in playback order.</param>
+    /// <param name="voice">Voice name shown in the player.</param>
+    /// <param name="speed">Speech speed.</param>
+    /// <param name="batchSize">Number of fragments per batch.</param>
+    /// <param name="pauseAfterEachBatch">Whether to stop after each batch.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="fragments"/> is <see langword="null"/>.</exception>
     public async Task StartQueueAsync(
         IReadOnlyList<TextFragment> fragments,
         string? voice,
@@ -158,7 +158,7 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
             cancellationToken);
     }
 
-    /// <summary>Призупиняє або продовжує відтворення залежно від поточного стану.</summary>
+    /// <summary>Pauses or resumes playback depending on the current state.</summary>
     [RelayCommand]
     private void TogglePlayPause()
     {
@@ -182,8 +182,8 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>Запускає наступний пакет фрагментів.</summary>
-    /// <param name="cancellationToken">Токен скасування.</param>
+    /// <summary>Starts the next batch of fragments.</summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
     [RelayCommand]
     private async Task ContinueQueueAsync(CancellationToken cancellationToken)
     {
@@ -193,7 +193,7 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
         }
         catch (OperationCanceledException)
         {
-            // Скасування під час закриття застосунку або зупинки черги.
+            // Cancellation during application shutdown or queue stop.
         }
         catch (Exception ex)
         {
@@ -201,7 +201,7 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>Зупиняє відтворення або всю чергу фрагментів.</summary>
+    /// <summary>Stops playback or the whole fragment queue.</summary>
     [RelayCommand]
     private void Stop()
     {
@@ -216,14 +216,14 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Синхронізує стан плеєра з подією аудіосервісу (може надходити з потоку BASS).
+    /// Synchronizes the player state with the audio service event (may arrive from the BASS thread).
     /// </summary>
     private void OnPlayerStateChanged(object? sender, PlaybackState state)
     {
         OnUiThread(() => State = state);
     }
 
-    /// <summary>Оновлює лічильник після старту фрагмента.</summary>
+    /// <summary>Updates the counter after a fragment starts.</summary>
     private void OnFragmentStarted(object? sender, FragmentStartedEventArgs e)
     {
         OnUiThread(() =>
@@ -240,7 +240,7 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
         });
     }
 
-    /// <summary>Показує стан очікування наступного пакета.</summary>
+    /// <summary>Shows the waiting state for the next batch.</summary>
     private void OnBatchCompleted(object? sender, BatchCompletedEventArgs e)
     {
         OnUiThread(() =>
@@ -255,7 +255,7 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
         });
     }
 
-    /// <summary>Скидає стан після завершення всієї черги.</summary>
+    /// <summary>Resets the state after the whole queue has completed.</summary>
     private void OnQueueCompleted(object? sender, EventArgs e)
     {
         OnUiThread(() =>
@@ -271,7 +271,7 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
         });
     }
 
-    /// <summary>Показує помилку, через яку черга зупинилася.</summary>
+    /// <summary>Shows the error that stopped the queue.</summary>
     private void OnQueueFailed(object? sender, Exception e)
     {
         _logger.LogWarning(e, "Черга фрагментів зупинилася з помилкою");
@@ -287,7 +287,7 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
         });
     }
 
-    /// <summary>Скидає лічильники черги після ручної зупинки.</summary>
+    /// <summary>Resets the queue counters after a manual stop.</summary>
     private void ResetQueueState()
     {
         HasQueue = false;
@@ -298,9 +298,9 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
         QueueStatusText = null;
     }
 
-    /// <summary>Формує короткий опис фрагмента для показу в UI.</summary>
-    /// <param name="text">Текст фрагмента.</param>
-    /// <returns>Перші 60 символів в один рядок; довший текст завершується трикрапкою.</returns>
+    /// <summary>Builds a short description of the fragment for display in the UI.</summary>
+    /// <param name="text">Fragment text.</param>
+    /// <returns>The first 60 characters on one line; longer text ends with an ellipsis.</returns>
     private static string BuildFragmentPreview(string text)
     {
         var normalized = text.ReplaceLineEndings(" ").Trim();
@@ -315,7 +315,7 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Оновлює похідні властивості після зміни стану.
+    /// Updates the derived properties after a state change.
     /// </summary>
     partial void OnStateChanged(PlaybackState value)
     {
@@ -333,10 +333,10 @@ public partial class PlaybackControlViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(IsPlaying));
     }
 
-    /// <summary>Застосовує зміну гучності до аудіосервісу.</summary>
+    /// <summary>Applies the volume change to the audio service.</summary>
     partial void OnVolumeChanged(double value) => _audioPlayer.SetVolume(value);
 
-    /// <summary>Відписується від подій аудіосервісу та черги.</summary>
+    /// <summary>Unsubscribes from the audio service and queue events.</summary>
     public void Dispose()
     {
         if (_disposed)

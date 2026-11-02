@@ -12,17 +12,17 @@ using UA_TTS_Client.Core.Interfaces;
 namespace UA_TTS_Client.Infrastructure.Automation;
 
 /// <summary>
-/// Глобальна гаряча клавіша <c>Alt+Q</c> на базі SharpHook (libuiohook).
+/// Global <c>Alt+Q</c> hotkey based on SharpHook (libuiohook).
 /// </summary>
 /// <remarks>
-/// <para>Стан модифікаторів доводиться тримати самостійно: у <see cref="KeyboardEventData"/>
-/// немає інформації про затиснуті Alt/Ctrl, тому окремо відслідковуються події
-/// <see cref="KeyCode.VcLeftAlt"/> та <see cref="KeyCode.VcRightAlt"/>.</para>
-/// <para>Гаряча клавіша спрацьовує не в момент натискання Q, а після відпускання обох
-/// клавіш. Інакше симуляція <c>Ctrl+C</c> для захоплення виділеного тексту надсилалася б,
-/// поки фізичний Alt ще затиснутий, і застосунок отримував би <c>Ctrl+Alt+C</c>.</para>
-/// <para>Власні симульовані події (наприклад, <c>Ctrl+C</c> від сервісу буфера обміну)
-/// ігноруються через <see cref="HookEventArgs.IsEventSimulated"/>.</para>
+/// <para>Modifier state has to be tracked manually: <see cref="KeyboardEventData"/>
+/// carries no information about whether Alt/Ctrl are held, so the
+/// <see cref="KeyCode.VcLeftAlt"/> and <see cref="KeyCode.VcRightAlt"/> events are tracked separately.</para>
+/// <para>The hotkey fires not when Q is pressed, but after both keys are released.
+/// Otherwise the simulated <c>Ctrl+C</c> used to capture selected text would be sent
+/// while the physical Alt is still held, and the application would receive <c>Ctrl+Alt+C</c>.</para>
+/// <para>Our own simulated events (for example, the <c>Ctrl+C</c> from the clipboard service)
+/// are ignored via <see cref="HookEventArgs.IsEventSimulated"/>.</para>
 /// </remarks>
 public sealed class SharpHookGlobalHotkeyService : IGlobalHotkeyService, IDisposable
 {
@@ -39,10 +39,10 @@ public sealed class SharpHookGlobalHotkeyService : IGlobalHotkeyService, IDispos
     private bool _disposed;
 
     /// <summary>
-    /// Створює сервіс глобальної гарячої клавіші.
+    /// Creates the global hotkey service.
     /// </summary>
-    /// <param name="logger">Логер.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="logger"/> дорівнює <see langword="null"/>.</exception>
+    /// <param name="logger">Logger.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="logger"/> is <see langword="null"/>.</exception>
     public SharpHookGlobalHotkeyService(ILogger<SharpHookGlobalHotkeyService> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -142,7 +142,7 @@ public sealed class SharpHookGlobalHotkeyService : IGlobalHotkeyService, IDispos
     }
 
     /// <summary>
-    /// Запускає хук і спостерігає за його завершенням, щоб не втратити виняток.
+    /// Runs the hook and observes its completion so that an exception is not lost.
     /// </summary>
     private async Task RunHookAsync(TaskPoolGlobalHook hook)
     {
@@ -187,7 +187,7 @@ public sealed class SharpHookGlobalHotkeyService : IGlobalHotkeyService, IDispos
             _qPressed = true;
             if (_altPressed)
             {
-                // Автоповтор Q не створює повторних спрацювань: озброюємось один раз.
+                // Auto-repeat of Q does not cause repeated triggers: arm only once.
                 _hotkeyArmed = true;
             }
         }
@@ -215,11 +215,11 @@ public sealed class SharpHookGlobalHotkeyService : IGlobalHotkeyService, IDispos
     }
 
     /// <summary>
-    /// Повідомляє про гарячу клавішу, коли обидві її клавіші вже відпущені.
+    /// Raises the hotkey once both of its keys have been released.
     /// </summary>
     /// <remarks>
-    /// Це принципово: поки фізичний Alt затиснутий, симульований <c>Ctrl+C</c> приходить
-    /// у застосунок як <c>Ctrl+Alt+C</c> і нічого не копіює.
+    /// This is essential: while the physical Alt is held, a simulated <c>Ctrl+C</c>
+    /// reaches the application as <c>Ctrl+Alt+C</c> and copies nothing.
     /// </remarks>
     private void TryRaiseHotkey()
     {
@@ -233,7 +233,7 @@ public sealed class SharpHookGlobalHotkeyService : IGlobalHotkeyService, IDispos
     }
 
     /// <summary>
-    /// Повідомляє підписників поза потоком хука, щоб не блокувати обробку клавіатури.
+    /// Notifies subscribers outside the hook thread so that keyboard processing is not blocked.
     /// </summary>
     private void RaiseHotkeyPressed()
     {
@@ -259,7 +259,7 @@ public sealed class SharpHookGlobalHotkeyService : IGlobalHotkeyService, IDispos
     }
 
     /// <summary>
-    /// Зупиняє хук і звільняє ресурси.
+    /// Stops the hook and releases resources.
     /// </summary>
     public void Dispose()
     {

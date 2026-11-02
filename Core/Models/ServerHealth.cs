@@ -5,23 +5,23 @@ using System.Text.Json.Serialization;
 namespace UA_TTS_Client.Core.Models;
 
 /// <summary>
-/// Відповідь <c>GET /api/health</c>.
+/// Response of <c>GET /api/health</c>.
 /// </summary>
 public sealed record ServerHealth
 {
-    /// <summary>Стан сервера; очікується <c>ok</c>.</summary>
+    /// <summary>Server status; expected to be <c>ok</c>.</summary>
     [JsonPropertyName("status")]
     public string Status { get; init; } = "ok";
 
-    /// <summary>Пристрій обчислень: <c>cuda</c> або <c>cpu</c>.</summary>
+    /// <summary>Compute device: <c>cuda</c> or <c>cpu</c>.</summary>
     [JsonPropertyName("device")]
     public string? Device { get; init; }
 
-    /// <summary>Кількість завантажених голосів.</summary>
+    /// <summary>Number of loaded voices.</summary>
     [JsonPropertyName("voices")]
     public int Voices { get; init; }
 
-    /// <summary>Ідентифікатор моделі синтезу.</summary>
+    /// <summary>Identifier of the synthesis model.</summary>
     [JsonPropertyName("model")]
     public string? Model { get; init; }
 }

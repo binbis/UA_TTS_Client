@@ -5,25 +5,25 @@ using UA_TTS_Client.Core.Enums;
 namespace UA_TTS_Client.Core.Models;
 
 /// <summary>
-/// Параметри експорту озвученого тексту у файл.
+/// Parameters for exporting spoken text to a file.
 /// </summary>
 public sealed record AudioExportRequest
 {
-    /// <summary>Повний текст для синтезу й збереження.</summary>
+    /// <summary>Full text to synthesize and save.</summary>
     public required string Text { get; init; }
 
-    /// <summary>Ім'я голосу; <see langword="null"/> — голос за замовчуванням сервера.</summary>
+    /// <summary>Voice name; <see langword="null"/> means the server's default voice.</summary>
     public string? Voice { get; init; }
 
-    /// <summary>Швидкість мовлення; 1.0 — звичайна.</summary>
+    /// <summary>Speech speed; 1.0 is normal.</summary>
     public double Speed { get; init; } = 1.0;
 
-    /// <summary>Параметри поділу тексту на фрагменти.</summary>
+    /// <summary>Text chunking options.</summary>
     public TextChunkingOptions Chunking { get; init; } = new();
 
-    /// <summary>Формат збереження.</summary>
+    /// <summary>Save format.</summary>
     public AudioExportFormat Format { get; init; } = AudioExportFormat.Mp4;
 
-    /// <summary>Шлях до файлу, який буде створено (перезаписується атомарно).</summary>
+    /// <summary>Path of the file to be created (overwritten atomically).</summary>
     public required string DestinationPath { get; init; }
 }

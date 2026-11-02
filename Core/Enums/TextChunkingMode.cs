@@ -3,16 +3,16 @@
 namespace UA_TTS_Client.Core.Enums;
 
 /// <summary>
-/// Спосіб поділу тексту на фрагменти перед синтезом.
+/// How text is split into fragments before synthesis.
 /// </summary>
 public enum TextChunkingMode
 {
-    /// <summary>Кожен абзац — окремий фрагмент; задовгі абзаци додатково ріжуться по реченнях.</summary>
+    /// <summary>Each paragraph is a separate fragment; overly long paragraphs are additionally split by sentences.</summary>
     Paragraphs,
 
-    /// <summary>Кожне речення — окремий фрагмент.</summary>
+    /// <summary>Each sentence is a separate fragment.</summary>
     Sentences,
 
-    /// <summary>Речення пакуються у фрагменти до 250 символів, без обривання речень.</summary>
+    /// <summary>Sentences are packed into fragments of up to 250 characters, without breaking up sentences.</summary>
     MaxLength
 }

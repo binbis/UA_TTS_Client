@@ -7,23 +7,23 @@ using System.Threading.Tasks;
 namespace UA_TTS_Client.Core.Interfaces;
 
 /// <summary>
-/// Вибір шляху збереження файлу через системний діалог.
+/// Selects a file save path through the system dialog.
 /// </summary>
 /// <remarks>
-/// Інтерфейс живе в <c>Core</c>, щоб ViewModel не залежала від Avalonia; реалізація —
-/// єдиний UI-специфічний сервіс у <c>Views/Services</c>.
+/// The interface lives in <c>Core</c> so that the ViewModel does not depend on Avalonia; the implementation is
+/// the only UI-specific service in <c>Views/Services</c>.
 /// </remarks>
 public interface IFileSaveDialogService
 {
     /// <summary>
-    /// Показує діалог збереження файлу.
+    /// Shows the file save dialog.
     /// </summary>
-    /// <param name="suggestedFileName">Ім'я файлу без розширення.</param>
-    /// <param name="extension">Розширення без крапки: <c>mp4</c> або <c>wav</c>.</param>
-    /// <param name="cancellationToken">Токен скасування операції.</param>
-    /// <returns>Локальний шлях або <see langword="null"/>, якщо користувач скасував діалог.</returns>
-    /// <exception cref="ArgumentException">Один із рядкових аргументів порожній.</exception>
-    /// <exception cref="OperationCanceledException">Операцію скасовано до відкриття діалогу.</exception>
+    /// <param name="suggestedFileName">File name without the extension.</param>
+    /// <param name="extension">Extension without the dot: <c>mp4</c> or <c>wav</c>.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
+    /// <returns>The local path, or <see langword="null"/> if the user canceled the dialog.</returns>
+    /// <exception cref="ArgumentException">One of the string arguments is empty.</exception>
+    /// <exception cref="OperationCanceledException">The operation was canceled before the dialog was opened.</exception>
     Task<string?> PickSavePathAsync(
         string suggestedFileName,
         string extension,

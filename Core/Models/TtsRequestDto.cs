@@ -5,31 +5,31 @@ using System.Text.Json.Serialization;
 namespace UA_TTS_Client.Core.Models;
 
 /// <summary>
-/// Тіло запиту до <c>POST /api/synthesize</c>.
+/// Request body for <c>POST /api/synthesize</c>.
 /// </summary>
 /// <remarks>
-/// Імена JSON-властивостей зафіксовані сервером: <c>text</c>, <c>voice</c>, <c>speed</c>,
+/// The JSON property names are fixed by the server: <c>text</c>, <c>voice</c>, <c>speed</c>,
 /// <c>volume</c>, <c>translate</c>.
 /// </remarks>
 public sealed record TtsRequestDto
 {
-    /// <summary>Текст, який потрібно озвучити. Обов'язковий.</summary>
+    /// <summary>Text to speak. Required.</summary>
     [JsonPropertyName("text")]
     public required string Text { get; init; }
 
-    /// <summary>Ім'я голосу зі списку <c>GET /api/voices</c>. Якщо <see langword="null"/>, сервер бере перший доступний.</summary>
+    /// <summary>Voice name from the <c>GET /api/voices</c> list. If <see langword="null"/>, the server uses the first available voice.</summary>
     [JsonPropertyName("voice")]
     public string? Voice { get; init; }
 
-    /// <summary>Швидкість мовлення; 1.0 — звичайна.</summary>
+    /// <summary>Speech speed; 1.0 is normal.</summary>
     [JsonPropertyName("speed")]
     public double Speed { get; init; } = 1.0;
 
-    /// <summary>Підсилення амплітуди на боці сервера; 1.0 — без змін.</summary>
+    /// <summary>Amplitude gain on the server side; 1.0 means no change.</summary>
     [JsonPropertyName("volume")]
     public double Volume { get; init; } = 1.0;
 
-    /// <summary>Чи перекладати текст українською перед синтезом.</summary>
+    /// <summary>Whether to translate the text into Ukrainian before synthesis.</summary>
     [JsonPropertyName("translate")]
     public bool Translate { get; init; }
 }

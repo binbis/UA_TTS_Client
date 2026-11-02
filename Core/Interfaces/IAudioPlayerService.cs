@@ -8,50 +8,50 @@ using UA_TTS_Client.Core.Enums;
 namespace UA_TTS_Client.Core.Interfaces;
 
 /// <summary>
-/// Відтворення аудіо з пам'яті (без запису тимчасових файлів на диск).
+/// Plays audio from memory (without writing temporary files to disk).
 /// </summary>
 public interface IAudioPlayerService
 {
-    /// <summary>Поточний стан відтворення.</summary>
+    /// <summary>Current playback state.</summary>
     PlaybackState State { get; }
 
-    /// <summary>Поточна гучність у діапазоні від 0.0 до 1.0.</summary>
+    /// <summary>Current volume in the range from 0.0 to 1.0.</summary>
     double Volume { get; }
 
-    /// <summary>Виникає щоразу, коли змінюється <see cref="State"/>.</summary>
+    /// <summary>Raised every time <see cref="State"/> changes.</summary>
     event EventHandler<PlaybackState>? StateChanged;
 
     /// <summary>
-    /// Виникає після природного завершення потоку.
+    /// Raised when the stream ends naturally.
     /// </summary>
     /// <remarks>
-    /// На відміну від переходу в <see cref="PlaybackState.Stopped"/> через <see cref="Stop"/>,
-    /// ця подія означає, що трек дослухано до кінця. Використовується чергою фрагментів,
-    /// щоб дочекатися завершення поточного фрагмента перед наступним.
+    /// Unlike the transition to <see cref="PlaybackState.Stopped"/> via <see cref="Stop"/>,
+    /// this event means the track was played to the end. It is used by the fragment queue
+    /// to wait for the current fragment to finish before the next one.
     /// </remarks>
     event EventHandler? TrackEnded;
 
     /// <summary>
-    /// Завантажує WAV у пам'ять і починає відтворення.
+    /// Loads the WAV data into memory and starts playback.
     /// </summary>
-    /// <param name="wavData">Повний вміст WAV-файлу.</param>
-    /// <param name="cancellationToken">Токен скасування операції.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="wavData"/> дорівнює <see langword="null"/>.</exception>
-    /// <exception cref="ArgumentException"><paramref name="wavData"/> порожній.</exception>
+    /// <param name="wavData">Complete contents of the WAV file.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="wavData"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="wavData"/> is empty.</exception>
     Task PlayAsync(byte[] wavData, CancellationToken cancellationToken = default);
 
-    /// <summary>Призупиняє відтворення, зберігаючи позицію.</summary>
+    /// <summary>Pauses playback, keeping the current position.</summary>
     void Pause();
 
-    /// <summary>Продовжує відтворення після <see cref="Pause"/>.</summary>
+    /// <summary>Resumes playback after <see cref="Pause"/>.</summary>
     void Resume();
 
-    /// <summary>Зупиняє відтворення та звільняє потік.</summary>
+    /// <summary>Stops playback and releases the stream.</summary>
     void Stop();
 
     /// <summary>
-    /// Встановлює гучність відтворення.
+    /// Sets the playback volume.
     /// </summary>
-    /// <param name="volume">Значення від 0.0 до 1.0; значення поза межами обрізаються.</param>
+    /// <param name="volume">Value from 0.0 to 1.0; values outside this range are clamped.</param>
     void SetVolume(double volume);
 }
