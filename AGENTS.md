@@ -9,7 +9,7 @@ in `App.axaml.cs`, and documentation. Iteration 2 is **completed**: **Steps 10�
 (documentation, chunking, batch queue, auto-speech after `Alt+Q`, MP4/WAV export,
 UI toggles and counters, final check).
 
-The canonical plan is **`Doc/Curent_Work_Plan.md`**; the code map is **`Doc/Project_Structure.md`**.
+The canonical plan is **`Doc/Current_Work_Plan.md`**; the code map is **`Doc/Project_Structure.md`**.
 
 ---
 
@@ -170,7 +170,7 @@ simulator.Sequence().AddKeyPress(KeyCode.VcLeftControl) /* … */ .Simulate();
 
 ## Code conventions
 
-The authoritative source: **`Doc/Промпт для ллм - Єдина кодова база arch-win11.md`** (the code standards section). In brief:
+The authoritative source: **`Doc/Code_Standards_Prompt.md`** (the code standards section). In brief:
 
 - `file-scoped namespaces`; `public partial class` for **all** ViewModels (otherwise `[ObservableProperty]`/`[RelayCommand]` are generated incorrectly).
 - `x:DataType="vm:XxxViewModel"` in **every** XAML file (compiled bindings).
@@ -211,7 +211,7 @@ The authoritative source: **`Doc/Промпт для ллм - Єдина код�
 4. **`/api/health` now exists** (added to `server.py`), but `TtsApiClient` still has a fallback to `GET /api/voices` for compatibility with an old server. Do not remove this fallback.
 5. **Server errors are historically inconsistent** (JSON vs plain text `No file`) — the parser `TtsApiClient.ReadErrorMessageAsync` tolerates both formats. Do not narrow it to JSON only.
 6. **BASS `SyncProcedure`**: the first argument is the sync handle, the second is the channel. A mistake here gives no error in the log; auto-stop simply does not fire.
-7. **File names in `Doc/` need escaping in the shell**: `Промпт для ллм - Єдина кодова база arch-win11.md` (spaces). Linux is case-sensitive too — the namespace in XAML (`x:Class`, `x:DataType`) must match the text in `.cs` exactly.
+7. **Linux is case-sensitive**: the namespace in XAML (`x:Class`, `x:DataType`) must match the text in `.cs` exactly.
 8. **`.gitignore`**: `Server_py/venv/` is ignored by the root rule (`.gitignore:49`) and by the built-in `venv/.gitignore` (`*`) — both are committed.
 9. **`Bass.Init(0, …)` is the "No sound" device**, not the default device. Always use `Bass.DefaultDevice` (-1); otherwise synthesis passes (the server returns 200), but there is no sound at all. Check with `pactl list sink-inputs`.
 10. **Do not simulate `Ctrl+C` while the physical Alt is held**: the active window receives `Ctrl+Alt+C` and copies nothing. The `Alt+Q` hook fires on release of both keys; do not switch the trigger back to a key press.
@@ -226,9 +226,9 @@ State after **Step 10** (iteration 2): the historical `ua_tts_client_arch.md` wa
 |---|---|
 | `README.md` (root) | **Up to date**: running the server and client, "How to use", requirements, limitations |
 | `Doc/Project_Structure.md` | **Up to date**: layers, actual tree, contracts, DI, threads, extension points |
-| `Doc/Curent_Work_Plan.md` | **Canonical plan for iteration 2**: steps, statuses, journal. Steps 10–18 ✅, iteration 2 completed |
+| `Doc/Current_Work_Plan.md` | **Canonical plan for iteration 2**: steps, statuses, journal. Steps 10–18 ✅, iteration 2 completed |
 | `Doc/API.md` | **Up to date**: endpoint contract with `curl`/JSON examples |
-| `Doc/Промпт для ллм - Єдина кодова база arch-win11.md` | Goals and code standards. Worth reading in full |
+| `Doc/Code_Standards_Prompt.md` | Goals and code standards. Worth reading in full |
 | ~~`Doc/ua_tts_client_arch.md`~~ | **Deleted** (Step 10): replaced by `Project_Structure.md` |
 | ~~`Doc/Запит на архітектуру.md`~~ | **Deleted by the user** as historical |
 | ~~`Doc/implementation_roadmap.md`~~ | **Deleted** (Step 9.2): referred to non-existent `/api/ping` and `/health` |
@@ -247,7 +247,7 @@ Iteration 2 is completed.
 
 ## Work plan
 
-The canonical plan is **`Doc/Curent_Work_Plan.md`**. Do not duplicate its contents in this file: it contains the step numbering, the current state, the contracts and the execution journal. The iteration 2 plan is **closed** (all steps ✅) — for new tasks create an iteration 3 plan (archive this file or add a new one).
+The canonical plan is **`Doc/Current_Work_Plan.md`**. Do not duplicate its contents in this file: it contains the step numbering, the current state, the contracts and the execution journal. The iteration 2 plan is **closed** (all steps ✅) — for new tasks create an iteration 3 plan (archive this file or add a new one).
 
 Iteration 2 is **completed**: **Steps 10–18 done**, manual scenarios confirmed by the user. Step 9.1 (test project) is **cancelled** — autotests are not needed at this stage.
 

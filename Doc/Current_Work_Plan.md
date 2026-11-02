@@ -107,7 +107,7 @@ Views/
 App.axaml.cs                             ← registration of new services, ActivateRequested
 Doc/
 ├── Project_Structure.md                 ← new (replaces ua_tts_client_arch.md)
-├── Curent_Work_Plan.md                  ← this plan
+├── Current_Work_Plan.md                 ← this plan
 └── ua_tts_client_arch.md                ← deleted (replaced by Project_Structure.md)
 ```
 

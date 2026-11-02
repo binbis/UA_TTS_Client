@@ -120,14 +120,14 @@ Working version after **Steps 0–9**. Iteration 2 is **completed**: **Steps 10�
 
 Known limitations: the Windows runtime is not verified (the `TextCopy` path is kept); MP4 export depends on `ffmpeg` on the server (fallback: WAV); window activation on Wayland is best effort; long texts are kept in memory during export.
 
-Details, statuses and the journal are in **`Doc/Curent_Work_Plan.md`**. Autotests are deliberately not created in this iteration (Step 9.1 cancelled).
+Details, statuses and the journal are in **`Doc/Current_Work_Plan.md`**. Autotests are deliberately not created in this iteration (Step 9.1 cancelled).
 
 ## Documentation
 
 | File | Contents |
 |---|---|
-| `Doc/Curent_Work_Plan.md` | Canonical iteration 2 plan: what to do and in what order |
+| `Doc/Current_Work_Plan.md` | Canonical iteration 2 plan: what to do and in what order |
 | `Doc/Project_Structure.md` | Code map: layers, files, DI, threads, extension points |
 | `AGENTS.md` | Verified API facts and pitfalls (read before working) |
 | `Doc/API.md` | Exact server endpoint contract with examples |
-| `Doc/Промпт для ллм - Єдина кодова база arch-win11.md` | Goals and code standards |
+| `Doc/Code_Standards_Prompt.md` | Goals and code standards |

@@ -3,7 +3,7 @@
 > **Purpose:** a code map for an agent and a developer: where things are, how the layers relate, and where to add new things. This is not an architecture history and not a work plan.
 >
 > **Up to date as of:** 2026-10-22 (after Steps 10–18; iteration 2 completed).
-> **Work plan:** `Doc/Curent_Work_Plan.md`. **Verified facts and pitfalls:** `AGENTS.md`.
+> **Work plan:** `Doc/Current_Work_Plan.md`. **Verified facts and pitfalls:** `AGENTS.md`.
 > **Server contract:** `Doc/API.md`.
 
 ---
@@ -54,10 +54,10 @@ UA_TTS_Client/
 ├── Assets/
 ├── Server_py/                    ← Flask + StyleTTS2 (separate Python project)
 ├── Doc/
-│   ├── Curent_Work_Plan.md       ← work plan
+│   ├── Current_Work_Plan.md      ← work plan
 │   ├── Project_Structure.md      ← this file
 │   ├── API.md                    ← server contract
-│   └── Промпт для ллм - Єдина кодова база arch-win11.md
+│   └── Code_Standards_Prompt.md
 ├── Core/
 │   ├── Enums/
 │   │   ├── PlaybackState.cs      ← Idle, Playing, Paused, Stopped, Error
@@ -313,8 +313,8 @@ Do not remove the Windows-specific paths: `TextCopy` is needed precisely for Win
 
 | Question | File |
 |---|---|
-| What to do next and in what order | `Doc/Curent_Work_Plan.md` |
+| What to do next and in what order | `Doc/Current_Work_Plan.md` |
 | Exact APIs, pitfalls, environment | `AGENTS.md` |
 | Server contract | `Doc/API.md` |
 | Setup and usage | `README.md` |
-| Code standards | `Doc/Промпт для ллм - Єдина кодова база arch-win11.md` |
+| Code standards | `Doc/Code_Standards_Prompt.md` |
