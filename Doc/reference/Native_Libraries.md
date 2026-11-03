@@ -69,7 +69,7 @@ One capture:
 
 1. Read the current clipboard text. This is the baseline.
 2. Release `VcLeftAlt` and `VcRightAlt`, press and release `VcC` with `VcLeftControl` held. The sequence is sent with `Sequence().Simulate()`.
-3. Poll the clipboard every 50 ms, for at most 900 ms, until the text differs from the baseline. If it never differs, the result is an empty string. Old text is never returned as the capture.
+3. Poll the clipboard every 50 ms, for at most 900 ms, until the text differs from the baseline. If it never differs, the result is an empty string. Old text is never returned as the capture. This includes a selection that equals the current clipboard text, which cannot be told apart from an unchanged clipboard.
 
 Reading the clipboard:
 
@@ -82,7 +82,7 @@ Fallback:
 - The `ydotool` daemon (`ydotoold`) must be running for the fallback. On the reference machine `ydotool` did not deliver events in the current session; SharpHook works there.
 - After a failed SharpHook initialization, `ydotool` is used for the rest of the session.
 
-Timing note: `Code_Standards_Prompt.md` asks for `await Task.Delay(80..120)` before reading the clipboard after `Ctrl+C`. The implementation has no fixed delay. It polls every 50 ms and returns as soon as the content changes. The difference is listed in `Roadmap.md`.
+Timing: there is no fixed delay after `Ctrl+C`. The clipboard is polled every 50 ms and read again until it changes. This is the rule in `Code_Standards_Prompt.md` (section 1).
 
 Terminal limitation: terminals copy with `Ctrl+Shift+C`. In a terminal, `Ctrl+C` sends SIGINT. Capture from a terminal is not supported.
 

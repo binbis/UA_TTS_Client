@@ -36,7 +36,7 @@ The server reads `Server_py/dictionary.json` once at startup. If the JSON is inv
 - `wl-paste` is missing. Install `wl-clipboard`.
 - The session is not Wayland, so `WAYLAND_DISPLAY` is not set. X11 is not supported.
 - Keyboard simulation failed. The client falls back to `ydotool`. Check that the `ydotool` daemon runs and that the user is in the `input` group.
-- The clipboard did not change within 900 ms. The client then returns empty text instead of the old clipboard content.
+- The clipboard did not change within 900 ms. The client then returns empty text instead of the old clipboard content. The same happens when the selected text is identical to the text already in the clipboard, because the two cannot be told apart. Workaround: copy any other text first, then select the text and press `Alt+Q`.
 
 ## Alt+Q does nothing at all
 

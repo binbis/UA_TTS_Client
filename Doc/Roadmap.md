@@ -23,7 +23,7 @@
 2. **Long texts in export.** The whole WAV is kept in memory (about 48 KB of audio per second). Streaming to a temporary file is a possible optimization.
 3. **Server truncation.** The server cuts each part at 500 tokens without a warning. Consider logging it, or splitting the part further (`server/Server.md`).
 4. **Dictionary errors.** An invalid `dictionary.json` only prints a console message and the dictionary is ignored. A clearer signal would help (`server/Server.md`).
-5. **Clipboard timing.** `Code_Standards_Prompt.md` asks for `Task.Delay(80..120)` after `Ctrl+C`. The implementation polls every 50 ms until the content changes (`reference/Native_Libraries.md`). Decide whether the rule or the code should change.
+5. **Identical clipboard text.** A selection that equals the current clipboard text is not detected, so the capture returns nothing (`user/Troubleshooting.md`). Options: clear the clipboard before the copy, which replaces the user's clipboard content, or copy a marker first. Decide before implementing.
 6. **Naming.** `WaylandClipboardAutomationService` also runs on Windows. A rename is optional.
 7. **ydotool fallback.** Kept and documented as optional. Re-test `Alt+Q` in a live session before relying on it.
 8. **Verbalizer scope.** Only integers become words. Dates, abbreviations and ordinals are not handled (`server/Server.md`).

@@ -30,7 +30,7 @@
 15. **`Ctrl+C` is sent while the physical Alt is held.** Symptom: the application receives `Ctrl+Alt+C`. Rule: the hotkey fires after both keys are released, and the capture releases Alt before it sends `Ctrl+C`. (`reference/Native_Libraries.md`)
 16. **Terminals.** `Ctrl+C` in a terminal sends SIGINT. Rule: capture from terminals is not supported; the user copies with `Ctrl+Shift+C` and pastes into the field. (`user/Troubleshooting.md`)
 17. **X11 is not supported.** Without `WAYLAND_DISPLAY` the capture returns empty text and logs a warning. Rule: do not add an X11 fallback back. (`reference/Native_Libraries.md`)
-18. **Old text returned as a capture.** Rule: the capture returns text only when the clipboard has changed since the baseline. Keep this behavior. (`reference/Native_Libraries.md`)
+18. **Old text returned as a capture.** Rule: the capture returns text only when the clipboard has changed since the baseline. Keep this behavior. Consequence: a selection identical to the clipboard text returns nothing. (`reference/Native_Libraries.md`)
 19. **The `ydotool` fallback needs its daemon.** Symptom: the fallback logs a warning and fails. Rule: SharpHook is the primary path; on the reference machine `ydotool` did not deliver events. (`reference/Native_Libraries.md`)
 20. **`EventSimulator.Create` is expensive.** Rule: create it lazily, as the code does. (`reference/Native_Libraries.md`)
 

@@ -26,7 +26,7 @@ If initialization throws, the server status becomes an error with the text «П�
    - releases Alt (left and right), then presses and releases `Ctrl+C` through SharpHook `EventSimulator`; if that fails, the `ydotool` fallback runs;
    - polls the clipboard every 50 ms for at most 900 ms until the text differs from the baseline;
    - on Linux the text comes from `wl-paste --no-newline`; on Windows from TextCopy.
-   If the text never changes, the result is empty.
+   If the text never changes, the result is empty. This includes a selection identical to the current clipboard text.
 5. **Empty result:** the status «Нічого не захоплено — виділіть текст в активному вікні.» (Nothing captured — select text in the active window) is shown. The flow stops: no activation, no speech.
 6. **Activation (only if `activateOnHotkey` is on):** `SelectedTabIndex` becomes 0 (Quick TTS) and `ActivateRequested` is raised. `App.axaml.cs` restores a minimized window and calls `Window.Activate()`. On Wayland the compositor may ignore the request.
 7. **Speech (only if `autoSynthesizeOnHotkey` is on):** `QuickTtsViewModel.SynthesizeCurrentTextAsync` (section 3).
