@@ -6,7 +6,7 @@ namespace UA_TTS_Client.ViewModels.Tabs;
 /// <summary>
 /// "Reader" tab — text recognition from files (PDF, DOCX, ODT, TXT).
 /// </summary>
-/// <remarks>Placeholder: the functionality will be available in the next iteration.</remarks>
+/// <remarks>Placeholder: the functionality is not implemented yet. See Doc/Roadmap.md.</remarks>
 public partial class ReaderViewModel : ViewModelBase
 {
     /// <summary>Tab title.</summary>
