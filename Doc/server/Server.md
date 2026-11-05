@@ -50,7 +50,7 @@ Errors: `No audio generated` when no part produces audio. Any other exception is
 
 ## Verbalization (`verbalize`, `POST /api/verbalize`)
 
-`verbalize` (in `verbalizer.py`) wraps the Python package `ukrainian-tn`, preset `tts_friendly`. The package is rule-based and runs on the CPU: no model and no GPU are used. A line without a digit is not changed by `verbalize`. A line with a digit is normalized. Line breaks are kept, because `split_to_parts` uses them as split points.
+`verbalize` (in `verbalizer.py`) wraps the Python package `ukrainian-tn`, preset `tts_friendly`. The package is rule-based and runs on the CPU: no model and no GPU are used. A line without a digit is not changed by `verbalize`. A line with a digit is normalized. Line breaks are kept, because `split_to_parts` uses them as split points. The library does not know the unit `ГВт`, so `verbalize` writes it as `гвт` first; the dictionary entry `гвт` then expands it (`2 ГВт` → `два гіга ват`).
 
 `POST /api/verbalize` returns the text that the synthesis uses after step 3 above, without audio. Examples (outputs of the server):
 
@@ -73,7 +73,7 @@ Known reading errors, found on 74 test phrases:
 - Compound ordinals: `21-шу` → `двадцятиодношу` (the correct form is `двадцять першу`).
 - `4а` → `чотириа`.
 - `Гб` is not expanded: `16 Гб` → `шістнадцять Гб`.
-- Power units: `500 мВт` becomes `п'ятсот мВт` and `3 гвт` becomes `три гвт`. The unit is then read as letters, because the dictionary entries `мвт` and `гвт` are not in `dictionary.json`. `2 ГВт` becomes `два ге вет` with or without an entry, because the library changes the text before the dictionary runs.
+- Uppercase `МВт` is read by the library (`500 МВт` → `п'ятсот мегават`), so the dictionary entry `мвт` does not apply to it. Lowercase `мВт` takes the dictionary value (`500 мВт` → `п'ятсот мега ват`).
 - A phone number with a leading zero gets a country prefix: `0979456822` → `плюс три вісім нуль …`.
 - The guillemets `«»` are removed in lines with digits.
 - English words next to numbers are read by the library, not by the transliteration. For some words the reading is worse (`Photoshop 2024` → `пготошоп`). A dictionary entry with that key takes precedence.
@@ -85,10 +85,10 @@ Console warnings from the verbalization:
 
 ## Dictionary (`dictionary.json`)
 
-- A flat JSON object of `"source text": "replacement"` pairs. In the copy checked on 2026-11-05 the file has 337 entries and loads without errors.
+- A flat JSON object of `"source text": "replacement"` pairs. In the copy checked on 2026-11-05 the file has 342 entries and loads without errors.
 - The file is read **once, at startup**. After any change, restart the server.
 - A JSON syntax error is printed as `[!] Помилка словника` and **no** dictionary rules are applied at all. A trailing comma is a common cause; see `user/Troubleshooting.md`.
-- Keys with an English letter are applied before verbalization, so `"Google": "Гугл"` or `"cookie policy": "кукі полісі"` also work in lines with digits. Keys without English letters are applied after verbalization. Do not add entries for number abbreviations such as `грн`, `млн` or `млрд`: the verbalizer reads them with the number, and an entry that expands them first gives a wrong reading (`40,50 грн` would be read as a decimal).
+- Keys with an English letter are applied before verbalization, so `"Google": "Гугл"` or `"cookie policy": "кукі полісі"` also work in lines with digits. Keys without English letters are applied after verbalization. The entries `грн`, `млн` and `млрд` are applied after verbalization, so the verbalizer reads them with the number. Moving them before verbalization gives a wrong reading (`40,50 грн` would be read as a decimal).
 
 Examples of entries: `"Google": "Гугл"`, `"Windows": "Віндовс"`, `"cookie policy": "кукі полісі"`.
 
