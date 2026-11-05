@@ -21,7 +21,7 @@ The message shown is the server's error text. Common cases:
 
 ## The server console shows «Помилка словника» (dictionary error)
 
-The server reads `Server_py/dictionary.json` once at startup. If the JSON is invalid, the server prints `[!] Помилка словника` and applies no dictionary rules. The working copy of the file on the reference machine currently has a trailing comma after the entry `"гвт"`. Remove it, then restart the server. See `server/Server.md`.
+The server reads `Server_py/dictionary.json` once at startup. If the JSON is invalid, the server prints `[!] Помилка словника` and applies no dictionary rules. If the server prints the error, look for a syntax error, for example a trailing comma after an entry. Remove it, then restart the server. See `server/Server.md`.
 
 ## No sound on Linux
 

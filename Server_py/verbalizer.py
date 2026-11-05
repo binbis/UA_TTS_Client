@@ -1,30 +1,25 @@
 import re
-from num2words import num2words
 
-class Verbalizer:
-    def __init__(self, device=None):
-        # Since we do not use neural networks, the device argument is simply ignored,
-        # but it is kept for compatibility with your server.py
-        pass
-    
-    def _replace_number(self, match):
-        """Replace the matched number with its text form."""
-        num_str = match.group()
+from ukrainian_tn import NormalizeOptions, flag_uncertain, normalize_with
+
+_OPTIONS = NormalizeOptions("tts_friendly")
+_DIGIT = re.compile(r"\d")
+_LOGGED_CATEGORIES = {"unit", "foreign_word"}
+
+
+def verbalize(text):
+    """Spell out numbers, dates, times, units and currency. Lines without digits are kept as they are."""
+    lines = []
+    for line in text.split("\n"):
+        if not _DIGIT.search(line):
+            lines.append(line)
+            continue
         try:
-            # Convert the number to Ukrainian words
-            words = num2words(int(num_str), lang='uk')
-            return words
-        except Exception as e:
-            # If the conversion fails (for example, the number is too large),
-            # leave it as is.
-            return num_str
-
-    def generate_text(self, text):
-        """Find all integer numbers in the text and replace them with words."""
-        # The regular expression matches standalone numbers (with no letters adjacent)
-        normalized_text = re.sub(r'\b\d+\b', self._replace_number, text)
-        
-        # Handle minor double-space artifacts (if they occur)
-        normalized_text = re.sub(r'\s+', ' ', normalized_text)
-        
-        return normalized_text.strip()
+            for span in flag_uncertain(line):
+                if span.category in _LOGGED_CATEGORIES and len(span.text) > 1:
+                    print(f" [!] Неоднозначне читання: «{span.text}» ({span.category})")
+            lines.append(normalize_with(line, _OPTIONS))
+        except Exception as err:
+            print(f" [!] Помилка вербалізації, рядок лишено без змін: {err}")
+            lines.append(line)
+    return "\n".join(lines)

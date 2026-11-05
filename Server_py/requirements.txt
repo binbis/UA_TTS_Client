@@ -20,7 +20,7 @@ pydub
 python-docx
 pypdf
 odfpy
-num2words
+ukrainian-tn==0.7.0
 pymorphy3
 ukrainian-word-stress
 deep-translator

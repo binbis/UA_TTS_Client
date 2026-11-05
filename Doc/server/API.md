@@ -4,7 +4,7 @@
 > **Audience:** developers and AI agents who change the client or the server.
 > **Source of truth:** `Server_py/server.py`. If this document and the code disagree, the code is right; update this document.
 > **Client wrapper:** `Infrastructure/Api/TtsApiClient.cs` (`ITtsApiClient`).
-> **Verified:** 2026-11-03 against a live server (CUDA, 31 voices). The `curl` examples below were run; the `parse_file` example was run with a `.txt` file instead of the `.pdf`.
+> **Verified:** 2026-11-05 against a live server (CUDA, 31 voices). The `curl` examples below were run; the `parse_file` example was run with a `.txt` file instead of the `.pdf`.
 
 ## General
 
@@ -71,7 +71,7 @@ curl -sS http://127.0.0.1:5000/api/health
 
 ## POST `/api/verbalize`
 
-Converts integers into Ukrainian words. Only standalone integers are converted, using cardinal numbers. Dates, abbreviations and ordinals are not converted. Sentences without digits are returned unchanged. The dictionary and the English transliteration are applied first (see `server/Server.md`).
+Returns the text that the synthesis uses before it is split into parts: the Latin dictionary rules, the verbalization of numbers, dates, times, units and currency, the dictionary and the English transliteration. No audio is produced, and line breaks are kept. The steps and the known reading errors are described in `server/Server.md`.
 
 **Body (JSON):**
 
@@ -82,7 +82,7 @@ Converts integers into Ukrainian words. Only standalone integers are converted, 
 **Success (200):**
 
 ```json
-{ "text": "У дві тисячі двадцять шість році ми пройшли п'ять км." }
+{ "text": "У дві тисячі двадцять шостому році ми пройшли п'ять кілометрів." }
 ```
 
 **Errors:** `400 {"error": "No text"}`; `500 {"error": "<exception text>"}`.
@@ -97,7 +97,7 @@ curl -sS -X POST http://127.0.0.1:5000/api/verbalize \
 
 ## POST `/api/synthesize`
 
-The main endpoint: text to WAV. The server splits the text into parts internally (see `server/Server.md`). The client sends one fragment per request.
+The main endpoint: text to WAV. Before splitting, the server prepares the text the same way as `POST /api/verbalize` does. The server then splits the text into parts internally (see `server/Server.md`). The client sends one fragment per request.
 
 **Body (JSON):**
 

@@ -63,7 +63,7 @@ except ImportError:
 from styletts2_inference.models import StyleTTS2
 from ukrainian_word_stress import Stressifier, StressSymbol
 from ipa_uk import ipa
-from verbalizer import Verbalizer
+from verbalizer import verbalize
 
 try:
     from pydub import AudioSegment
@@ -97,9 +97,6 @@ print(f"Використовується пристрій: {device}")
 print("Завантаження StyleTTS2...")
 model = StyleTTS2(hf_path='patriotyk/styletts2_ukrainian_multispeaker', device=device)
 
-print("Завантаження Verbalizer...")
-verbalizer = Verbalizer(device=device)
-
 voices = {}
 print("Сканування голосів...")
 voice_files = glob.glob(os.path.join("voices", "*.pt"))
@@ -117,9 +114,10 @@ stressify = Stressifier()
 
 # --- PRONUNCIATION DICTIONARY AND AUTO-TRANSLITERATION ---
 dict_rules = []
+latin_dict_rules = []
 
 def load_dictionary():
-    global dict_rules
+    global dict_rules, latin_dict_rules
     dict_path = "dictionary.json"
     if not os.path.exists(dict_path): return
 
@@ -129,14 +127,19 @@ def load_dictionary():
         
         sorted_keys = sorted(custom_dict.keys(), key=len, reverse=True)
         rules = []
+        latin_rules = []
         for key in sorted_keys:
             val = custom_dict[key]
             pattern_str = re.escape(key)
             prefix = r'\b' if (key[0].isalnum() or key[0] == '_') else ''
             suffix = r'\b' if (key[-1].isalnum() or key[-1] == '_') else ''
             final_pattern = f"{prefix}{pattern_str}{suffix}"
-            rules.append((re.compile(final_pattern, re.IGNORECASE), val))
+            rule = (re.compile(final_pattern, re.IGNORECASE), val)
+            rules.append(rule)
+            if re.search(r'[a-zA-Z]', key):
+                latin_rules.append(rule)
         dict_rules = rules
+        latin_dict_rules = latin_rules
         print(f" [i] Словник завантажено: {len(rules)} правил.")
     except Exception as e:
         print(f" [!] Помилка словника: {e}")
@@ -178,6 +181,17 @@ def apply_dictionary_and_translit(text):
         transliterated = transliterate_english_to_ukrainian(word)
         text = re.sub(r'\b' + re.escape(word) + r'\b', transliterated, text, flags=re.IGNORECASE)
     return text
+
+def apply_latin_dictionary(text):
+    if not text: return text
+    for pattern, replacement in latin_dict_rules:
+        text = pattern.sub(replacement, text)
+    return text
+
+def prepare_text(text):
+    text = apply_latin_dictionary(text)
+    text = verbalize(text)
+    return apply_dictionary_and_translit(text)
 
 # --- Helper functions ---
 
@@ -238,32 +252,12 @@ def api_health():
 def api_verbalize():
     data = request.json
     text = data.get('text', '')
-    
+
     if not text: return jsonify({"error": "No text"}), 400
-    
-    text = apply_dictionary_and_translit(text)
-    
+
     try:
-        sentences = re.split(r'(?<=[.?!;])\s+', text)
-        processed_parts = []
-        
-        for sentence in sentences:
-            stripped_sentence = sentence.strip()
-            if not stripped_sentence: continue
-
-            if re.search(r'\d', stripped_sentence):
-                try:
-                    processed = verbalizer.generate_text(stripped_sentence)
-                    processed_parts.append(processed)
-                except Exception as model_err:
-                    print(f" [!] Помилка моделі: {model_err}")
-                    processed_parts.append(stripped_sentence) 
-            else:
-                processed_parts.append(stripped_sentence)
-        
-        full_result = ' '.join(processed_parts)
-        return jsonify({"text": full_result})
-
+        text = prepare_text(text)
+        return jsonify({"text": text})
     except Exception as e:
         print(f"Verbalization error: {e}")
         return jsonify({"error": str(e)}), 500
@@ -293,7 +287,7 @@ def api_synthesize():
         else: return jsonify({"error": "No voices loaded"}), 500
 
     try:
-        text = apply_dictionary_and_translit(text)
+        text = prepare_text(text)
         parts = split_to_parts(text)
         audio_segments = []
 
@@ -305,8 +299,14 @@ def api_synthesize():
                 
                 if not phonemes: continue
 
+                dropped = sorted({c for c in phonemes if c not in model.tokenizer.vocab_dict})
+                if dropped:
+                    print(f" [!] Модель пропускає символи {''.join(dropped)} у фрагменті: {part}")
+
                 tokens = model.tokenizer.encode(phonemes)
-                if len(tokens) > 500: tokens = tokens[:500]
+                if len(tokens) > 500:
+                    print(f" [!] Фрагмент обрізано до 500 токенів: {part}")
+                    tokens = tokens[:500]
 
                 wav_tensor = model(tokens, speed=speed, s_prev=style)
                 audio_segments.append(wav_tensor)

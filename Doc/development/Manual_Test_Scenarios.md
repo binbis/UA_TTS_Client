@@ -39,11 +39,14 @@
 | 21 | Export during playback | Playback stops, the export starts, and the file is in place when it finishes |
 | 22 | Export of a text with one fragment | MP4 and WAV are created correctly, with no empty headers |
 | 23 | MP4 conversion fails (for example, no ffmpeg on the server) | The server error is shown; WAV export still works |
+| 24 | «Озвучити» (Speak) with the text `У 2026 році ми пройшли 5 км. Курс 40,50 грн, знижка 50%.` | The numbers are spoken as words, for example «дві тисячі двадцять шостому році», «п'ять кілометрів», «сорок гривень п'ятдесят копійок», «п'ятдесят відсотків». No number is skipped |
+| 25 | MP4 export of the text from scenario 24 | The sound of the file contains the same number words |
 
 ## Checks before a release
 
 - `dotnet build` reports 0 warnings and 0 errors.
 - The server log shows no `[!] Помилка словника` (dictionary error) at startup.
+- The server console shows no `[!] Модель пропускає символи` line during scenarios 24–25.
 - Settings: change a value, press «Зберегти», restart the client; the value is still there.
 - A physical `Alt+Q` press works after a fresh start of the client.
 - The documents in `Doc/` that describe the changed behavior are updated, and their `Verified` dates are refreshed.

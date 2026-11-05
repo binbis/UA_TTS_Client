@@ -85,7 +85,7 @@ UA_TTS_Client/
 │       └── CharacterVoiceView.axaml(.cs)
 ├── Server_py/                        Python server (see server/Server.md)
 │   ├── server.py                     Flask app, all endpoints, StyleTTS2 pipeline
-│   ├── verbalizer.py                 integers → Ukrainian words (num2words)
+│   ├── verbalizer.py                 numbers, dates, units → Ukrainian words (ukrainian-tn)
 │   ├── dictionary.json               pronunciation rules, read at startup
 │   ├── voices/*.pt                   31 voice style files
 │   ├── requirements.txt
