@@ -3,7 +3,7 @@
 > **Purpose:** the real APIs and the verified behavior of ManagedBass, SharpHook, TextCopy and wl-clipboard as this project uses them. Read it before writing code against these packages: they have very little documentation.
 > **Audience:** developers and AI agents.
 > **Source of truth:** `Infrastructure/Audio/BassAudioPlayerService.cs`, `Infrastructure/Automation/*.cs`, and runs on the reference machine.
-> **Verified:** 2026-11-03.
+> **Verified:** 2026-11-12.
 
 ## ManagedBass 4.0.2 (BASS 2.4.18.3)
 
@@ -76,11 +76,7 @@ Reading the clipboard:
 - **Linux:** `wl-paste --no-newline`, with a 2-second timeout. The service uses it only when `WAYLAND_DISPLAY` is set. Otherwise it logs a warning and returns an empty string. X11 is not supported.
 - **Windows:** `TextCopy` 6.2.1, `ClipboardService.GetTextAsync`. This is not called on Linux.
 
-Fallback:
-
-- If SharpHook cannot initialize, or the simulation result is not `UioHookResult.Success`, the service runs `ydotool key 56:0 100:0 29:1 46:1 46:0 29:0` with a 3-second timeout. The numbers are Linux input codes: 56 is LEFTALT, 100 is RIGHTALT, 29 is LEFTCTRL, 46 is C. `:1` means press and `:0` means release.
-- The `ydotool` daemon (`ydotoold`) must be running for the fallback. On the reference machine `ydotool` did not deliver events in the current session; SharpHook works there.
-- After a failed SharpHook initialization, `ydotool` is used for the rest of the session.
+There is no fallback: if SharpHook cannot initialize or the simulation fails, the capture returns an empty string.
 
 Timing: there is no fixed delay after `Ctrl+C`. The clipboard is polled every 50 ms and read again until it changes. This is the rule in `Code_Standards_Prompt.md` (section 1).
 

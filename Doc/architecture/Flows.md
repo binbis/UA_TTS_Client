@@ -23,7 +23,7 @@ If initialization throws, the server status becomes an error with the text «П�
 3. If a capture is already running (`_hotkeyCaptureInProgress`), the new event is ignored.
 4. **Capture, always first.** `QuickTtsViewModel.CaptureForHotkeyAsync` calls `IClipboardAutomationService.CaptureSelectedTextAsync`:
    - remembers the current clipboard text as the baseline;
-   - releases Alt (left and right), then presses and releases `Ctrl+C` through SharpHook `EventSimulator`; if that fails, the `ydotool` fallback runs;
+   - releases Alt (left and right), then presses and releases `Ctrl+C` through SharpHook `EventSimulator`;
    - polls the clipboard every 50 ms for at most 900 ms until the text differs from the baseline;
    - on Linux the text comes from `wl-paste --no-newline`; on Windows from TextCopy.
    If the text never changes, the result is empty. This includes a selection identical to the current clipboard text.

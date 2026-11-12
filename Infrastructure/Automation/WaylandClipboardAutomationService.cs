@@ -20,8 +20,7 @@ namespace UA_TTS_Client.Infrastructure.Automation;
 /// <remarks>
 /// <para>Wayland does not allow reading another window's selection directly, so the only working
 /// path is injecting <c>Ctrl+C</c> into the current active window.</para>
-/// <para>The primary simulation implementation is SharpHook <see cref="EventSimulator"/>.
-/// If it is unavailable, the <c>ydotool</c> CLI is used (its daemon is already running on the system).</para>
+/// <para>The simulation implementation is SharpHook <see cref="EventSimulator"/>.</para>
 /// <para>Before pressing <c>Ctrl+C</c>, the service releases Alt: otherwise the active window would
 /// receive <c>Ctrl+Alt+C</c>, because the <c>Alt+Q</c> hotkey is still physically held down.</para>
 /// </remarks>
@@ -35,7 +34,6 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
     /// <summary>How long to wait for the clipboard contents to change after Ctrl+C.</summary>
     private static readonly TimeSpan ClipboardChangeTimeout = TimeSpan.FromMilliseconds(900);
 
-    private static readonly TimeSpan YdotoolTimeout = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan ClipboardCommandTimeout = TimeSpan.FromSeconds(2);
 
     private readonly ILogger<WaylandClipboardAutomationService> _logger;
@@ -43,7 +41,6 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
     private readonly object _simulatorSync = new();
 
     private EventSimulator? _simulator;
-    private bool _simulatorUnavailable;
     private bool _disposed;
 
     /// <summary>
@@ -203,44 +200,44 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
     }
 
     /// <summary>
-    /// Simulates <c>Alt up → Ctrl+C</c> via SharpHook, or via <c>ydotool</c> if needed.
+    /// Simulates <c>Alt up → Ctrl+C</c> via SharpHook.
     /// </summary>
     /// <returns><see langword="true"/> if the key presses were sent successfully.</returns>
     private async Task<bool> SimulateCopyAsync(CancellationToken cancellationToken)
     {
         var simulator = GetOrCreateSimulator();
-
-        if (simulator is not null)
+        if (simulator is null)
         {
-            var result = await Task.Run(() =>
-            {
-                try
-                {
-                    return simulator.Sequence()
-                        .AddKeyRelease(KeyCode.VcLeftAlt)
-                        .AddKeyRelease(KeyCode.VcRightAlt)
-                        .AddKeyPress(KeyCode.VcLeftControl)
-                        .AddKeyPress(KeyCode.VcC)
-                        .AddKeyRelease(KeyCode.VcC)
-                        .AddKeyRelease(KeyCode.VcLeftControl)
-                        .Simulate();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Помилка симуляції клавіатури через SharpHook");
-                    return UioHookResult.Failure;
-                }
-            }, cancellationToken).ConfigureAwait(false);
-
-            if (result == UioHookResult.Success)
-            {
-                return true;
-            }
-
-            _logger.LogWarning("SharpHook не зміг симулювати Ctrl+C (результат {Result}) — пробую ydotool", result);
+            return false;
         }
 
-        return await TrySimulateWithYdotoolAsync(cancellationToken).ConfigureAwait(false);
+        var result = await Task.Run(() =>
+        {
+            try
+            {
+                return simulator.Sequence()
+                    .AddKeyRelease(KeyCode.VcLeftAlt)
+                    .AddKeyRelease(KeyCode.VcRightAlt)
+                    .AddKeyPress(KeyCode.VcLeftControl)
+                    .AddKeyPress(KeyCode.VcC)
+                    .AddKeyRelease(KeyCode.VcC)
+                    .AddKeyRelease(KeyCode.VcLeftControl)
+                    .Simulate();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Помилка симуляції клавіатури через SharpHook");
+                return UioHookResult.Failure;
+            }
+        }, cancellationToken).ConfigureAwait(false);
+
+        if (result == UioHookResult.Success)
+        {
+            return true;
+        }
+
+        _logger.LogWarning("SharpHook не зміг симулювати Ctrl+C (результат {Result})", result);
+        return false;
     }
 
     /// <summary>
@@ -250,11 +247,6 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
     {
         lock (_simulatorSync)
         {
-            if (_simulatorUnavailable)
-            {
-                return null;
-            }
-
             if (_simulator is not null)
             {
                 return _simulator;
@@ -268,74 +260,9 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
             }
             catch (Exception ex)
             {
-                _simulatorUnavailable = true;
-                _logger.LogWarning(ex, "Не вдалося ініціалізувати симуляцію SharpHook — використовуватиму ydotool");
+                _logger.LogWarning(ex, "Не вдалося ініціалізувати симуляцію SharpHook");
                 return null;
             }
-        }
-    }
-
-    /// <summary>
-    /// Fallback path: invokes <c>ydotool key</c> with Linux input key codes.
-    /// </summary>
-    /// <remarks>
-    /// Codes: <c>56</c> — KEY_LEFTALT, <c>100</c> — KEY_RIGHTALT, <c>29</c> — KEY_LEFTCTRL,
-    /// <c>46</c> — KEY_C. The <c>:1</c> suffix means press, <c>:0</c> means release.
-    /// </remarks>
-    private async Task<bool> TrySimulateWithYdotoolAsync(CancellationToken cancellationToken)
-    {
-        if (!OperatingSystem.IsLinux())
-        {
-            return false;
-        }
-
-        try
-        {
-            var startInfo = new ProcessStartInfo("ydotool")
-            {
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardError = true,
-                RedirectStandardOutput = true
-            };
-
-            foreach (var argument in new[] { "key", "56:0", "100:0", "29:1", "46:1", "46:0", "29:0" })
-            {
-                startInfo.ArgumentList.Add(argument);
-            }
-
-            using var process = Process.Start(startInfo);
-            if (process is null)
-            {
-                _logger.LogWarning("Не вдалося запустити ydotool");
-                return false;
-            }
-
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(YdotoolTimeout);
-
-            var stderrTask = process.StandardError.ReadToEndAsync(timeoutCts.Token);
-            await process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(false);
-            var stderr = await stderrTask.ConfigureAwait(false);
-
-            if (process.ExitCode == 0)
-            {
-                _logger.LogDebug("Ctrl+C симульовано через ydotool");
-                return true;
-            }
-
-            _logger.LogWarning("ydotool завершився з кодом {Code}: {Error}", process.ExitCode, stderr.Trim());
-            return false;
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            _logger.LogWarning("ydotool не встиг завершитися за {Timeout} с", YdotoolTimeout.TotalSeconds);
-            return false;
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
-        {
-            _logger.LogWarning(ex, "Не вдалося викликати ydotool");
-            return false;
         }
     }
 

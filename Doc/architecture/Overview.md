@@ -70,7 +70,7 @@ Rules:
 | Aspect | Linux (Wayland + PipeWire) | Windows 11 |
 |---|---|---|
 | Clipboard | `wl-paste --no-newline` (`wl-clipboard`). X11 is not supported. | TextCopy (Win32 clipboard) |
-| Keyboard simulation | SharpHook `EventSimulator` (uinput); `ydotool` CLI as fallback | SharpHook `EventSimulator` |
+| Keyboard simulation | SharpHook `EventSimulator` (uinput) | SharpHook `EventSimulator` |
 | Audio | `libbass.so` (AUR `libbass`), output through PipeWire | `bass.dll` next to the executable |
 | Configuration | `~/.config/UA_TTS_Client/config.json` | `%APPDATA%\UA_TTS_Client\config.json` |
 | Verification | works on the reference machine | build only; runtime not verified |

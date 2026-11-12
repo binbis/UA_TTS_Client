@@ -64,7 +64,7 @@ There is no lint, format, code generation or CI configuration, and no test proje
 
 ## Environment (reference machine)
 
-Wayland session and PipeWire. The user is in the `input` group, and `libbass` is installed. `ydotool` is unreliable in the current session; SharpHook `EventSimulator` works. Details: `Doc/development/Build_and_Run.md`.
+Wayland session and PipeWire. The user is in the `input` group, and `libbass` is installed. SharpHook `EventSimulator` is the only keyboard simulation path. Details: `Doc/development/Build_and_Run.md`.
 
 ## Documentation policy
 

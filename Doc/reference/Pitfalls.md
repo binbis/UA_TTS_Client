@@ -32,23 +32,22 @@
 17. **Terminals.** `Ctrl+C` in a terminal sends SIGINT. Rule: capture from terminals is not supported; the user copies with `Ctrl+Shift+C` and pastes into the field. (`user/Troubleshooting.md`)
 18. **X11 is not supported.** Without `WAYLAND_DISPLAY` the capture returns empty text and logs a warning. Rule: do not add an X11 fallback back. (`reference/Native_Libraries.md`)
 19. **Old text returned as a capture.** Rule: the capture returns text only when the clipboard has changed since the baseline. Keep this behavior. Consequence: a selection identical to the clipboard text returns nothing. (`reference/Native_Libraries.md`)
-20. **The `ydotool` fallback needs its daemon.** Symptom: the fallback logs a warning and fails. Rule: SharpHook is the primary path; on the reference machine `ydotool` did not deliver events. (`reference/Native_Libraries.md`)
-21. **`EventSimulator.Create` is expensive.** Rule: create it lazily, as the code does. (`reference/Native_Libraries.md`)
+20. **`EventSimulator.Create` is expensive.** Rule: create it lazily, as the code does. (`reference/Native_Libraries.md`)
 
 ## UI and code
 
-22. **`[ObservableProperty]` on a `partial` property.** The form `public partial string Foo { get; set; }` is correct. Do not "fix" it. (`reference/UI_and_DI.md`)
-23. **Every ViewModel is `public partial class`.** Without `partial` the generators produce nothing. (`reference/UI_and_DI.md`)
-24. **`ImplicitUsings` are off.** Symptom: `Task`, `File`, `Path` or `Console` cannot be found. Rule: add the `using` directives. (`development/Build_and_Run.md`)
-25. **`Design.DataContext="{x:Static …}"` in XAML** is reported by Rider's analyzer. Rule: set the design-time DataContext in code-behind. (`reference/UI_and_DI.md`)
-26. **`TextBox.Watermark` is obsolete.** Use `PlaceholderText`. (`reference/UI_and_DI.md`)
-27. **Names are case-sensitive on Linux.** `x:Class`, `x:DataType` and file names must match exactly. (`reference/UI_and_DI.md`)
-28. **`ViewLocator` naming.** A View must be named `<Name>View` in the matching `Views` namespace. `MainWindow` is the special case. (`reference/UI_and_DI.md`)
-29. **Every View and UserControl XAML needs `x:DataType`.** Symptom: the compiled-binding check is lost. Rule: declare `x:DataType="vm:<Name>ViewModel"`. (`reference/UI_and_DI.md`)
+21. **`[ObservableProperty]` on a `partial` property.** The form `public partial string Foo { get; set; }` is correct. Do not "fix" it. (`reference/UI_and_DI.md`)
+22. **Every ViewModel is `public partial class`.** Without `partial` the generators produce nothing. (`reference/UI_and_DI.md`)
+23. **`ImplicitUsings` are off.** Symptom: `Task`, `File`, `Path` or `Console` cannot be found. Rule: add the `using` directives. (`development/Build_and_Run.md`)
+24. **`Design.DataContext="{x:Static …}"` in XAML** is reported by Rider's analyzer. Rule: set the design-time DataContext in code-behind. (`reference/UI_and_DI.md`)
+25. **`TextBox.Watermark` is obsolete.** Use `PlaceholderText`. (`reference/UI_and_DI.md`)
+26. **Names are case-sensitive on Linux.** `x:Class`, `x:DataType` and file names must match exactly. (`reference/UI_and_DI.md`)
+27. **`ViewLocator` naming.** A View must be named `<Name>View` in the matching `Views` namespace. `MainWindow` is the special case. (`reference/UI_and_DI.md`)
+28. **Every View and UserControl XAML needs `x:DataType`.** Symptom: the compiled-binding check is lost. Rule: declare `x:DataType="vm:<Name>ViewModel"`. (`reference/UI_and_DI.md`)
 
 ## Configuration and repository
 
-30. **Enums in `config.json` are strings.** Write `"Paragraphs"`, not a number. (`user/Configuration.md`)
-31. **A broken `config.json`.** The client starts with the defaults and logs a warning. The next save overwrites the broken file. (`user/Configuration.md`)
-32. **`Server_py/venv/` is not tracked.** It is ignored by the rule at `.gitignore` line 49. Do not commit it. (`development/Build_and_Run.md`)
-33. **User data files.** `Server_py/dictionary.json` and `Server_py/voices/` are project data. Do not change or commit them without a request. (`development/Build_and_Run.md`)
+29. **Enums in `config.json` are strings.** Write `"Paragraphs"`, not a number. (`user/Configuration.md`)
+30. **A broken `config.json`.** The client starts with the defaults and logs a warning. The next save overwrites the broken file. (`user/Configuration.md`)
+31. **`Server_py/venv/` is not tracked.** It is ignored by the rule at `.gitignore` line 49. Do not commit it. (`development/Build_and_Run.md`)
+32. **User data files.** `Server_py/dictionary.json` and `Server_py/voices/` are project data. Do not change or commit them without a request. (`development/Build_and_Run.md`)

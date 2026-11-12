@@ -3,7 +3,7 @@
 > **Purpose:** how to build and run the client and the server, what the project facts are, how changes are verified without a test project, and the environment of the reference machine.
 > **Audience:** developers and AI agents.
 > **Source of truth:** `UA_TTS_Client.csproj`, `UA_TTS_Client.sln`, `Server_py/run_server.sh`, `.gitignore`.
-> **Verified:** 2026-11-03.
+> **Verified:** 2026-11-12.
 
 ## Commands
 
@@ -50,7 +50,7 @@ There is no CI pipeline, no lint or format configuration, no code generation ste
 The reference machine is the one on which the verified facts were obtained:
 
 - EndeavourOS (Arch Linux), Wayland session (`XDG_SESSION_TYPE=wayland`), PipeWire.
-- `wl-clipboard` (`wl-copy`, `wl-paste`) and `ydotool` are installed. The `ydotool` daemon is enabled, but in the current session its events did not reach windows. SharpHook works.
+- `wl-clipboard` (`wl-copy`, `wl-paste`) is installed. Keyboard simulation goes only through SharpHook `EventSimulator` (verified live without `ydotool`).
 - The user is in the `input` group, so `/dev/uinput` is accessible.
 - `libbass.so` is installed (AUR `libbass`).
 - .NET SDK 10.0.113.

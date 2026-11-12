@@ -3,7 +3,7 @@
 > **Purpose:** install and start the TTS server and the desktop client.
 > **Audience:** users, and developers who run the application for the first time.
 > **Source of truth:** `Server_py/requirements.txt`, `Server_py/run_server.sh`, `UA_TTS_Client.csproj`.
-> **Verified:** 2026-11-03. Linux was run on the reference machine. Windows was not run.
+> **Verified:** 2026-11-12. Linux was run on the reference machine. Windows was not run.
 
 ## Requirements
 
@@ -63,12 +63,6 @@ sudo pacman -S wl-clipboard            # wl-paste, for reading the clipboard
 sudo usermod -aG input "$USER"         # uinput access for keyboard simulation; log out and back in
 dotnet build
 dotnet run                             # or open UA_TTS_Client.sln in Rider
-```
-
-Optional fallback: the `ydotool` daemon. The client uses `ydotool` only when SharpHook keyboard simulation fails:
-
-```bash
-systemctl --user enable --now ydotool
 ```
 
 ## Client on Windows
