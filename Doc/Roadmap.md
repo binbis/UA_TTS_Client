@@ -26,3 +26,8 @@
 4. **Naming.** `WaylandClipboardAutomationService` also runs on Windows. A rename is optional.
 5. **Verbalizer errors.** The known reading errors are listed in `server/Server.md`: ranges with «з», compound ordinals, `4а`, `Гб`, phone numbers with a leading zero. Fix each one by a rule in the text preparation, or by a dictionary entry for a word (not for currency or magnitude abbreviations, see the table above).
 6. **Hotkey configuration.** Make the hotkey configurable when the hotkey editor is needed. The hook logic must read the key from the settings.
+7. **Follow the spoken fragment in Quick TTS.** The mini player shows only the first 60 characters of the current fragment (`FragmentPreviewLength`), so it is hard to tell which part of a long text is being spoken. UI work only (the `FragmentStarted` event already carries the full fragment on the UI thread):
+    - show the full current fragment text instead of the 60-character preview;
+    - highlight the spoken fragment: a plain `TextBox` cannot color a span, so this needs a read-only mirror (`TextBlock` with runs) or a fragment list; either way `TextFragment` must carry the offset, because the chunker normalizes whitespace and offsets do not map 1:1 onto the edit box;
+    - auto-scroll to the current fragment when it starts (fragment list with selection + `ScrollIntoView`), i.e. automatic following.
+    Decide the presentation before implementing; editing the text mid-queue must detach the highlight (the queue is a snapshot). (`ViewModels/Components/PlaybackControlViewModel.cs`, `Views/Tabs/QuickTtsView.axaml`, `Core/Models/TextFragment.cs`)
