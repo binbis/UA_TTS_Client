@@ -116,25 +116,40 @@ stressify = Stressifier()
 dict_rules = []
 latin_dict_rules = []
 
+# --- DICTIONARY LOAD STATE (surfaced via GET /api/health) ---
+# None means the dictionary was loaded; otherwise the load error text.
+dictionary_error = None
+
 # --- TEXT REPLACEMENTS BEFORE SYNTHESIS ---
 # Literal (old, new) pairs applied in order at the start of prepare_text.
 # To add a rule, append one tuple here; no other code change is needed.
 TEXT_REPLACEMENTS = [(";", " . ")]
 
 def load_dictionary():
-    global dict_rules, latin_dict_rules
+    global dict_rules, latin_dict_rules, dictionary_error
     dict_path = "dictionary.json"
-    if not os.path.exists(dict_path): return
+    if not os.path.exists(dict_path):
+        dictionary_error = "Файл dictionary.json не знайдено; синтез без словника."
+        print(f" [!] {dictionary_error}")
+        return
 
     try:
         with open(dict_path, "r", encoding="utf-8") as f:
             custom_dict = json.load(f)
-        
+
+        if not isinstance(custom_dict, dict):
+            raise ValueError("Кореневий елемент має бути об'єктом.")
+
         sorted_keys = sorted(custom_dict.keys(), key=len, reverse=True)
         rules = []
         latin_rules = []
+        skipped = 0
         for key in sorted_keys:
             val = custom_dict[key]
+            if not key or not isinstance(val, str) or not val:
+                print(f" [!] Пропущено правило словника: {key!r}")
+                skipped += 1
+                continue
             pattern_str = re.escape(key)
             prefix = r'\b' if (key[0].isalnum() or key[0] == '_') else ''
             suffix = r'\b' if (key[-1].isalnum() or key[-1] == '_') else ''
@@ -145,9 +160,13 @@ def load_dictionary():
                 latin_rules.append(rule)
         dict_rules = rules
         latin_dict_rules = latin_rules
+        dictionary_error = None
         print(f" [i] Словник завантажено: {len(rules)} правил.")
+        if skipped:
+            print(f" [!] Пропущено битих правил словника: {skipped}")
     except Exception as e:
-        print(f" [!] Помилка словника: {e}")
+        dictionary_error = f"Помилка словника: {e}; синтез без словника."
+        print(f" [!] {dictionary_error}")
 
 load_dictionary()
 
@@ -258,6 +277,10 @@ def api_health():
         "device": device,
         "voices": len(voices),
         "model": "patriotyk/styletts2_ukrainian_multispeaker",
+        "dictionary": {
+            "rules": len(dict_rules),
+            "error": dictionary_error,
+        },
     })
 
 @app.route('/api/verbalize', methods=['POST'])

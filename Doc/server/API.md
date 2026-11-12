@@ -50,7 +50,8 @@ Health check.
   "status": "ok",
   "device": "cuda",
   "voices": 31,
-  "model": "patriotyk/styletts2_ukrainian_multispeaker"
+  "model": "patriotyk/styletts2_ukrainian_multispeaker",
+  "dictionary": {"rules": 361, "error": null}
 }
 ```
 
@@ -60,6 +61,8 @@ Health check.
 | `device` | `cuda` or `cpu` |
 | `voices` | number of loaded voices |
 | `model` | model identifier on Hugging Face |
+| `dictionary.rules` | number of loaded dictionary rules |
+| `dictionary.error` | load error text, or `null` when the dictionary is loaded |
 
 ```bash
 curl -sS http://127.0.0.1:5000/api/health

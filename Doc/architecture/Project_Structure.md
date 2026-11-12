@@ -50,7 +50,8 @@ UA_TTS_Client/
 │       ├── VerbalizeRequestDto.cs    text
 │       ├── TextResponseDto.cs        { "text": ... }
 │       ├── ApiErrorResponse.cs       { "error": ... }
-│       └── ServerHealth.cs           Status, Device?, Voices, Model?
+│       ├── DictionaryStatus.cs         dictionary Rules, Error?
+│       └── ServerHealth.cs           Status, Device?, Voices, Model?, Dictionary?
 ├── Infrastructure/                   implementations of the Core interfaces
 │   ├── Api/TtsApiClient.cs           typed HttpClient; errors become TtsApiException
 │   ├── Audio/

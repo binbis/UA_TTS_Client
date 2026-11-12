@@ -24,4 +24,8 @@ public sealed record ServerHealth
     /// <summary>Identifier of the synthesis model.</summary>
     [JsonPropertyName("model")]
     public string? Model { get; init; }
+
+    /// <summary>Dictionary state; <see langword="null"/> when the server does not report it.</summary>
+    [JsonPropertyName("dictionary")]
+    public DictionaryStatus? Dictionary { get; init; }
 }

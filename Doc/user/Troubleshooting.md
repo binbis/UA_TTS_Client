@@ -51,6 +51,12 @@ Window activation is best effort. On Wayland the compositor may refuse focus cha
 
 MP3 is converted on the server with ffmpeg. If ffmpeg does not work, the server returns an error, and the client shows its text. Save as **WAV** instead. WAV needs no conversion.
 
+## Dictionary error
+
+The status bar shows `… · словник: помилка` (dictionary error): the server runs, but synthesis goes without dictionary rules, so some words may sound wrong.
+
+Causes: invalid JSON in `Server_py/dictionary.json` (a trailing comma is typical), a missing file, or entries whose key or value is not a non-empty string (those are skipped one by one). To fix: back up the file, validate the JSON, restore the entries, and restart the server — the dictionary is read once at startup.
+
 ## Limits to know about
 
 - The server address is read at startup. Changing it needs a restart.

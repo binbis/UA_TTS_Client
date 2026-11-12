@@ -7,7 +7,7 @@
 
 ## Window layout
 
-- **Status bar (top):** a dot (green when the server is online, red when it is offline), the status text, and the **«Перевірити»** (Check) button. Status texts: `Онлайн · cuda · 31 голосів` (Online · cuda · 31 voices), `Офлайн` (Offline), `Помилка сервера` (Server error), `Помилка` (Error). Hover over the text to see the details. The server is checked every 15 seconds.
+- **Status bar (top):** a dot (green when the server is online, red when it is offline), the status text, and the **«Перевірити»** (Check) button. Status texts: `Онлайн · cuda · 31 голосів` (Online · cuda · 31 voices), `Онлайн · cuda · 31 голосів · словник: помилка` (dictionary load error, synthesis runs without dictionary rules), `Офлайн` (Offline), `Помилка сервера` (Server error), `Помилка` (Error). Hover over the text to see the details. The server is checked every 15 seconds.
 - **Tabs:** **Quick TTS** (the main work area), **Reader** and **Character Voice** (placeholders, not implemented), **Налаштування** (Settings).
 - **Mini player (bottom):** ▶/⏸ (pause and resume; starts the next batch when one is pending), ■ (stop), the volume slider **«Гучність»** (0.0–1.0, step 0.1), the state text, and the position in the queue.
 

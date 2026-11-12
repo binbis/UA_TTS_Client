@@ -3,7 +3,7 @@
 > **Purpose:** the Python TTS server: components, startup, the synthesis and verbalization pipelines, data files, environment and limits.
 > **Audience:** developers, and users who run the server.
 > **Source of truth:** `Server_py/server.py`, `Server_py/verbalizer.py`, `Server_py/run_server.sh`, `Server_py/requirements.txt`.
-> **Verified:** 2026-11-12 (code reading; the endpoints and the synthesis were run on the development machine, CUDA, 31 voices).
+> **Verified:** 2026-11-12.
 
 ## Components
 
@@ -86,9 +86,10 @@ Console warnings from the verbalization:
 
 ## Dictionary (`dictionary.json`)
 
-- A flat JSON object of `"source text": "replacement"` pairs. In the copy checked on 2026-11-05 the file has 342 entries and loads without errors.
+- A flat JSON object of `"source text": "replacement"` pairs. In the copy checked on 2026-11-12 the file has 361 entries and loads without errors.
 - The file is read **once, at startup**. After any change, restart the server.
-- A JSON syntax error is printed as `[!] Помилка словника` and **no** dictionary rules are applied at all. A trailing comma is a common cause; see `user/Troubleshooting.md`.
+- A missing file, a JSON syntax error or a non-object root sets the load error state: the console prints `[!] …` and **no** dictionary rules are applied at all, but synthesis still works. A trailing comma is a common cause; see `user/Troubleshooting.md`. Entries whose key or value is not a non-empty string are skipped one by one with a `[!] Пропущено правило словника` warning instead of failing the whole file.
+- The load state is reported by `GET /api/health` as `dictionary: {"rules": N, "error": null|"…"}`. The client appends `словник: помилка` to the status-bar text when `error` is set.
 - Keys with an English letter are applied before verbalization, so `"Google": "Гугл"` or `"cookie policy": "кукі полісі"` also work in lines with digits. Keys without English letters are applied after verbalization. The entries `грн`, `млн` and `млрд` are applied after verbalization, so the verbalizer reads them with the number. Moving them before verbalization gives a wrong reading (`40,50 грн` would be read as a decimal).
 
 Examples of entries: `"Google": "Гугл"`, `"Windows": "Віндовс"`, `"cookie policy": "кукі полісі"`.

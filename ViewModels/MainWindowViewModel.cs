@@ -145,6 +145,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 ? $"{health.Voices} голосів"
                 : $"{health.Device} · {health.Voices} голосів";
 
+            if (!string.IsNullOrWhiteSpace(health.Dictionary?.Error))
+            {
+                details += " · словник: помилка";
+            }
+
             ServerDetails = details;
             ServerStatusText = $"Онлайн · {details}";
             ServerStatus = ServerStatus.Online;
