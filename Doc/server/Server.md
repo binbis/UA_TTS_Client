@@ -3,7 +3,7 @@
 > **Purpose:** the Python TTS server: components, startup, the synthesis and verbalization pipelines, data files, environment and limits.
 > **Audience:** developers, and users who run the server.
 > **Source of truth:** `Server_py/server.py`, `Server_py/verbalizer.py`, `Server_py/run_server.sh`, `Server_py/requirements.txt`.
-> **Verified:** 2026-11-05 (code reading; the endpoints and the synthesis were run on the development machine, CUDA, 31 voices).
+> **Verified:** 2026-11-12 (code reading; the endpoints and the synthesis were run on the development machine, CUDA, 31 voices).
 
 ## Components
 
@@ -32,6 +32,7 @@ On the reference machine the start takes about 45 seconds. The first request is 
 1. **Optional translation** (`translate: true`): `GoogleTranslator(source='auto', target='uk')`. This needs internet access. A failure is logged and the original text is used.
 2. **Voice:** the requested voice if it is loaded, otherwise the first loaded voice. If no voice is loaded, the error is `No voices loaded`.
 3. **Text preparation** (`prepare_text`), in this order:
+   - text replacements (`TEXT_REPLACEMENTS` in `server.py`): literal `(old, new)` pairs applied in list order, currently `";"` → `" . "`. To add a rule, append one tuple; no other code change is needed;
    - Latin dictionary rules: the rules whose key contains an English letter are applied first. The user's reading of an English term (for example `"tracking number"`) is kept, so the library does not read it on its own;
    - verbalization (`verbalize`, see below), for lines that contain a digit;
    - dictionary rules, longest keys first, matched case-insensitively. A key that starts or ends with a letter, digit or underscore matches only whole words;

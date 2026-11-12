@@ -116,6 +116,11 @@ stressify = Stressifier()
 dict_rules = []
 latin_dict_rules = []
 
+# --- TEXT REPLACEMENTS BEFORE SYNTHESIS ---
+# Literal (old, new) pairs applied in order at the start of prepare_text.
+# To add a rule, append one tuple here; no other code change is needed.
+TEXT_REPLACEMENTS = [(";", " . ")]
+
 def load_dictionary():
     global dict_rules, latin_dict_rules
     dict_path = "dictionary.json"
@@ -182,6 +187,12 @@ def apply_dictionary_and_translit(text):
         text = re.sub(r'\b' + re.escape(word) + r'\b', transliterated, text, flags=re.IGNORECASE)
     return text
 
+def apply_text_replacements(text):
+    if not text: return text
+    for old, new in TEXT_REPLACEMENTS:
+        text = text.replace(old, new)
+    return text
+
 def apply_latin_dictionary(text):
     if not text: return text
     for pattern, replacement in latin_dict_rules:
@@ -189,6 +200,7 @@ def apply_latin_dictionary(text):
     return text
 
 def prepare_text(text):
+    text = apply_text_replacements(text)
     text = apply_latin_dictionary(text)
     text = verbalize(text)
     return apply_dictionary_and_translit(text)
