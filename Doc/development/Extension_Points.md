@@ -3,7 +3,7 @@
 > **Purpose:** step-by-step recipes for the usual changes. Follow the layer rules in `architecture/Overview.md`.
 > **Audience:** developers and AI agents.
 > **Source of truth:** the code layout in `architecture/Project_Structure.md`.
-> **Verified:** 2026-11-03.
+> **Verified:** 2026-11-12.
 
 ## New service
 
@@ -48,7 +48,7 @@
 ## New export format
 
 1. A value in `Core/Enums/AudioExportFormat.cs`.
-2. The conversion in `AudioExportService.ExportAsync`. Today only MP4 is converted, through `ITtsApiClient.ConvertAsync`. A format that the server converts needs the server to support it (`server/API.md`).
+2. The conversion in `AudioExportService.ExportAsync`. Today only MP3 is converted, through `ITtsApiClient.ConvertAsync`. A format that the server converts needs the server to support it (`server/API.md`).
 3. An option record `ExportFormatOption` in `SettingsViewModel`, and the file type in `Views/Services/AvaloniaFileSaveDialogService.cs` (`CreateFileType`).
 4. Update `user/User_Guide.md`, `user/Configuration.md`, and `server/API.md` if the server changes.
 

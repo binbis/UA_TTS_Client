@@ -10,7 +10,7 @@ using UA_TTS_Client.Core.Models;
 namespace UA_TTS_Client.Core.Interfaces;
 
 /// <summary>
-/// Exports spoken text to an audio file (MP4 or WAV).
+/// Exports spoken text to an audio file (MP3 or WAV).
 /// </summary>
 /// <remarks>
 /// The service does not depend on the UI: the file selection dialog is invoked by the ViewModel,

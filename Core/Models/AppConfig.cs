@@ -48,5 +48,5 @@ public sealed record AppConfig
     public bool PauseAfterEachBatch { get; init; } = true;
 
     /// <summary>Format for saving the spoken text.</summary>
-    public AudioExportFormat ExportFormat { get; init; } = AudioExportFormat.Mp4;
+    public AudioExportFormat ExportFormat { get; init; } = AudioExportFormat.Mp3;
 }

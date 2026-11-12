@@ -4,7 +4,7 @@
 
 ## Project
 
-Avalonia 12 / .NET 10 desktop client (MVVM, CommunityToolkit.Mvvm) for a local Python TTS server (StyleTTS2, Flask) in `Server_py/`. Ukrainian speech with 31 voices, a global `Alt+Q` hotkey, batch playback and MP4/WAV export.
+Avalonia 12 / .NET 10 desktop client (MVVM, CommunityToolkit.Mvvm) for a local Python TTS server (StyleTTS2, Flask) in `Server_py/`. Ukrainian speech with 31 voices, a global `Alt+Q` hotkey, batch playback and MP3/WAV export.
 
 Targets: Linux (EndeavourOS/Arch, Wayland + PipeWire), tested; Windows 11, not yet run.
 
@@ -56,7 +56,7 @@ There is no lint, format, code generation or CI configuration, and no test proje
 
 1. `Bass.Init(0, …)` is the "No sound" device on Linux. Use `Bass.DefaultDevice`.
 2. The first argument of the BASS `SyncProcedure` is the sync handle. Compare `channel` with the stream handle.
-3. `/api/convert` does not accept `m4a` on the reference machine. Use `mp4` or `wav`.
+3. `/api/convert` does not accept `m4a` on the reference machine. Use `mp3` or `wav`.
 4. Terminals copy with `Ctrl+Shift+C`; `Ctrl+C` sends SIGINT there. Capture from terminals is not supported.
 5. `TrackEnded` fires only at the natural end of a track, never on `Stop()`.
 6. `server.py` CORS headers must stay as they are: a browser extension uses the same server.

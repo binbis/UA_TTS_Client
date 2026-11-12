@@ -51,10 +51,10 @@ public sealed class AvaloniaFileSaveDialogService : IFileSaveDialogService
     /// <summary>Creates a file type for the dialog filter.</summary>
     private static FilePickerFileType CreateFileType(string extension) => extension switch
     {
-        "mp4" => new FilePickerFileType("Аудіо MP4")
+        "mp3" => new FilePickerFileType("Аудіо MP3")
         {
-            Patterns = ["*.mp4"],
-            MimeTypes = ["audio/mp4"]
+            Patterns = ["*.mp3"],
+            MimeTypes = ["audio/mpeg"]
         },
         "wav" => new FilePickerFileType("Аудіо WAV")
         {

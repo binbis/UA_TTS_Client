@@ -3,7 +3,7 @@
 > **Purpose:** how to use the client: the window, Quick TTS, the `Alt+Q` hotkey, batch playback, export and settings.
 > **Audience:** users.
 > **Source of truth:** `Views/*.axaml` and `ViewModels/*`. The labels and messages are quoted from the code.
-> **Verified:** 2026-11-03.
+> **Verified:** 2026-11-12.
 
 ## Window layout
 
@@ -49,14 +49,14 @@ A repeated `Alt+Q` while the capture is running is ignored. A new `Alt+Q` during
 
 **Terminals:** `Ctrl+C` sends SIGINT in a terminal. Copy with `Ctrl+Shift+C`, then paste into the Quick TTS field with `Ctrl+V`.
 
-## Export (MP4 or WAV)
+## Export (MP3 or WAV)
 
 1. Type the text into Quick TTS and click **«Зберегти аудіо…»** (Save audio…).
 2. Choose the file in the system dialog. Cancelling changes nothing.
-3. Playback stops. The progress is shown: `Експорт: підготовка…`, `Експорт: синтез N із M…`, `Експорт: склеювання…`, `Експорт: конвертація в MP4…`, `Експорт: запис файлу…`.
+3. Playback stops. The progress is shown: `Експорт: підготовка…`, `Експорт: синтез N із M…`, `Експорт: склеювання…`, `Експорт: конвертація в MP3…`, `Експорт: запис файлу…`.
 4. When the export finishes, the line reads `Збережено: <path>`. **«Скасувати експорт»** (Cancel export) stops the export, and no file is created.
 
-The format comes from the settings: **MP4** (AAC audio without video; the default) or **WAV** (24 kHz, mono, 16-bit). MP4 needs a working ffmpeg on the server. If the conversion fails, save the file as WAV: WAV needs no conversion.
+The format comes from the settings: **MP3** (the default) or **WAV** (24 kHz, mono, 16-bit). MP3 needs a working ffmpeg on the server. If the conversion fails, save the file as WAV: WAV needs no conversion.
 
 ## Settings tab (Налаштування)
 
@@ -71,7 +71,7 @@ Changes take effect immediately. **«Зберегти»** (Save) writes them to 
 | Фрагментація тексту (Text chunking): Режим поділу (Split mode) | `chunkingMode` | «Абзаци» (Paragraphs) | «Абзаци», «Речення» (Sentences), «До 250 символів (розумне пакування)» (Up to 250 characters, smart packing) |
 | Фрагментів у пакеті (Fragments per batch) | `batchSize` | 5 | 1–10 |
 | Пауза після кожного пакета (кнопка «Наступний пакет») (Pause after each batch) | `pauseAfterEachBatch` | on | on / off |
-| Експорт аудіо (Audio export): Формат збереження (Save format) | `exportFormat` | «MP4 (аудіо, типово)» | «MP4 (аудіо, типово)», «WAV (без стиснення)» |
+| Експорт аудіо (Audio export): Формат збереження (Save format) | `exportFormat` | «MP3 (аудіо, типово)» | «MP3 (аудіо, типово)», «WAV (без стиснення)» |
 | Гаряча клавіша (Hotkey) | `hotkey` | `Alt+Q` | informational only; cannot be changed yet |
 | Озвучувати автоматично після Alt+Q (Speak automatically after Alt+Q) | `autoSynthesizeOnHotkey` | on | on / off |
 | Активувати вікно й переходити на Quick TTS після Alt+Q (Activate the window and switch to Quick TTS after Alt+Q) | `activateOnHotkey` | off | on / off |

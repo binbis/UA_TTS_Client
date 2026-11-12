@@ -63,7 +63,7 @@ public interface ITtsApiClient
     /// Converts WAV to the specified format (<c>POST /api/convert</c>).
     /// </summary>
     /// <param name="wavData">Contents of the WAV file.</param>
-    /// <param name="format">Target format, for example <c>mp4</c>.</param>
+    /// <param name="format">Target format, for example <c>mp3</c>.</param>
     /// <param name="cancellationToken">Cancellation token for the operation.</param>
     /// <returns>Contents of the converted file.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="wavData"/> is <see langword="null"/>.</exception>

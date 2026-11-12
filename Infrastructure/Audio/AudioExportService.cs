@@ -14,11 +14,11 @@ namespace UA_TTS_Client.Infrastructure.Audio;
 
 /// <summary>
 /// Exports spoken text to a file: sequential synthesis → WAV concatenation →
-/// conversion (MP4) → atomic write.
+/// conversion (MP3) → atomic write.
 /// </summary>
 public sealed class AudioExportService : IAudioExportService
 {
-    private const string Mp4Format = "mp4";
+    private const string Mp3Format = "mp3";
 
     private readonly ITtsApiClient _apiClient;
     private readonly ITextChunker _textChunker;
@@ -85,10 +85,10 @@ public sealed class AudioExportService : IAudioExportService
         var combined = WavAudioConcatenator.Concat(wavParts);
 
         var output = combined;
-        if (request.Format == AudioExportFormat.Mp4)
+        if (request.Format == AudioExportFormat.Mp3)
         {
             progress?.Report(new AudioExportProgress(AudioExportStage.Converting, fragments.Count, fragments.Count));
-            output = await _apiClient.ConvertAsync(combined, Mp4Format, cancellationToken).ConfigureAwait(false);
+            output = await _apiClient.ConvertAsync(combined, Mp3Format, cancellationToken).ConfigureAwait(false);
         }
 
         progress?.Report(new AudioExportProgress(AudioExportStage.Writing, fragments.Count, fragments.Count));

@@ -257,7 +257,7 @@ public partial class QuickTtsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Saves the entire current text to an audio file (MP4 or WAV).
+    /// Saves the entire current text to an audio file (MP3 or WAV).
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <remarks>
@@ -275,7 +275,7 @@ public partial class QuickTtsViewModel : ViewModelBase, IDisposable
         }
 
         var format = _settings.ExportFormat;
-        var extension = format == AudioExportFormat.Wav ? "wav" : "mp4";
+        var extension = format == AudioExportFormat.Wav ? "wav" : "mp3";
 
         ErrorMessage = null;
         StatusMessage = null;
@@ -376,7 +376,7 @@ public partial class QuickTtsViewModel : ViewModelBase, IDisposable
             AudioExportStage.Synthesizing =>
                 $"Експорт: синтез {Math.Min(progress.CompletedFragments + 1, progress.TotalFragments)} із {progress.TotalFragments}…",
             AudioExportStage.Concatenating => "Експорт: склеювання…",
-            AudioExportStage.Converting => "Експорт: конвертація в MP4…",
+            AudioExportStage.Converting => "Експорт: конвертація в MP3…",
             AudioExportStage.Writing => "Експорт: запис файлу…",
             _ => "Експорт…"
         };

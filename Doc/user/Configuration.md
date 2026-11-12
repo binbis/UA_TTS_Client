@@ -3,7 +3,7 @@
 > **Purpose:** the settings file: its location, format, fields and default values.
 > **Audience:** users and developers.
 > **Source of truth:** `Core/Models/AppConfig.cs`, `Infrastructure/Storage/JsonSettingsService.cs`, `ViewModels/Tabs/SettingsViewModel.cs`.
-> **Verified:** 2026-11-03.
+> **Verified:** 2026-11-12.
 
 ## Location
 
@@ -17,9 +17,9 @@ The folder is taken from `Environment.GetFolderPath(Environment.SpecialFolder.Ap
 ## Format
 
 - JSON with camelCase property names, indented.
-- Enums are stored as strings, for example `"chunkingMode": "Paragraphs"` and `"exportFormat": "Mp4"`.
+- Enums are stored as strings, for example `"chunkingMode": "Paragraphs"` and `"exportFormat": "Mp3"`.
 - A field that is missing gets its default value. Older files keep working.
-- An empty or unreadable file makes the client start with the defaults and write a warning to the log. The next save overwrites the file.
+- An empty or unreadable file makes the client start with the defaults and write a warning to the log. The next save overwrites the file. A stored `"Mp4"` value (from before the MP3 change) is unknown and has the same effect: the whole file falls back to the defaults.
 - Saving is atomic: the data is written to a temporary file in the same folder, which then replaces the original.
 - The client writes the file only when you click **«Зберегти»** (Save) in the Settings tab.
 
@@ -37,7 +37,7 @@ The folder is taken from `Environment.GetFolderPath(Environment.SpecialFolder.Ap
 | `chunkingMode` | enum | `Paragraphs` | `Paragraphs`, `Sentences` or `MaxLength` (the UI label is «До 250 символів (розумне пакування)»). |
 | `batchSize` | int | `5` | Fragments per batch, 1–10. Values outside the range are clamped when playback starts. |
 | `pauseAfterEachBatch` | bool | `true` | Stop after each batch. `false` plays all batches one after another. |
-| `exportFormat` | enum | `Mp4` | `Mp4` or `Wav`. |
+| `exportFormat` | enum | `Mp3` | `Mp3` or `Wav`. |
 
 The maximum fragment length, 250 characters, is not stored in the file. It is the constant `TextChunkingOptions.DefaultMaxChunkLength`.
 
@@ -55,6 +55,6 @@ The maximum fragment length, 250 characters, is not stored in the file. It is th
   "chunkingMode": "Paragraphs",
   "batchSize": 5,
   "pauseAfterEachBatch": true,
-  "exportFormat": "Mp4"
+  "exportFormat": "Mp3"
 }
 ```

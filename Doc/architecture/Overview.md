@@ -3,7 +3,7 @@
 > **Purpose:** what the system is, its components, layers, threads, platforms and the key design choices.
 > **Audience:** developers and AI agents.
 > **Source of truth:** the code: `Core/`, `Infrastructure/`, `ViewModels/`, `Views/`, `App.axaml.cs`, `Server_py/server.py`.
-> **Verified:** 2026-11-03.
+> **Verified:** 2026-11-12.
 
 ## What it is
 
@@ -47,7 +47,7 @@ Rules:
 | `SentenceAwareTextChunker` | splits text into fragments (see `architecture/Text_Chunking.md`) |
 | `FragmentPlaybackService` | synthesizes fragments one step ahead and plays them in batches |
 | `BassAudioPlayerService` | BASS playback from memory; pause, resume, stop, volume; natural-end event |
-| `AudioExportService` | synthesizes all fragments, concatenates WAV, converts to MP4, writes atomically |
+| `AudioExportService` | synthesizes all fragments, concatenates WAV, converts to MP3, writes atomically |
 | `WavAudioConcatenator` | validates 24 kHz mono 16-bit WAV fragments and concatenates them |
 | `SharpHookGlobalHotkeyService` | global `Alt+Q`, raised after both keys are released |
 | `WaylandClipboardAutomationService` | simulates `Ctrl+C` and reads the clipboard (`wl-paste` on Linux, TextCopy on Windows) |
@@ -85,7 +85,7 @@ These describe the current behavior and the reasons for it.
 - **Batches.** Fragments play in batches of N (default 5). By default playback pauses after each batch and waits for the user.
 - **X11 is not supported.** On Linux the clipboard is read only through `wl-paste`. The X11 fallback was removed. TextCopy is used on Windows only.
 - **Export covers the whole text,** not only the parts that were played. Playback stops before the export starts, so the export does not compete with the queue for the GPU.
-- **MP4 is produced by the server.** The client sends the concatenated WAV to `POST /api/convert`. WAV needs no server call. MP4 contains audio only (AAC).
+- **MP3 is produced by the server.** The client sends the concatenated WAV to `POST /api/convert`. WAV needs no server call.
 - **No test project.** Verification is done with manual scenarios (`development/Manual_Test_Scenarios.md`) and temporary harnesses outside the repository.
 - **Reader and Character Voice are placeholders.** They are not part of the current scope (`Roadmap.md`).
 

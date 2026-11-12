@@ -3,7 +3,7 @@
 > **Purpose:** typical problems with their causes and fixes, and the limits of the current version.
 > **Audience:** users.
 > **Source of truth:** `reference/Native_Libraries.md`, `server/Server.md`, `architecture/Flows.md`, and the code paths named below.
-> **Verified:** 2026-11-03.
+> **Verified:** 2026-11-12.
 
 ## The server is offline («Офлайн»)
 
@@ -47,9 +47,9 @@ The server reads `Server_py/dictionary.json` once at startup. If the JSON is inv
 
 Window activation is best effort. On Wayland the compositor may refuse focus changes. Capture and speech still work.
 
-## MP4 export fails
+## MP3 export fails
 
-MP4 is converted on the server with ffmpeg. If ffmpeg does not work, the server returns an error, and the client shows its text. Save as **WAV** instead. WAV needs no conversion.
+MP3 is converted on the server with ffmpeg. If ffmpeg does not work, the server returns an error, and the client shows its text. Save as **WAV** instead. WAV needs no conversion.
 
 ## Limits to know about
 

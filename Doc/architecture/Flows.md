@@ -3,7 +3,7 @@
 > **Purpose:** the order of operations for startup, the hotkey, synthesis and playback, export and settings. Read this before changing any of these flows: the order matters.
 > **Audience:** developers and AI agents.
 > **Source of truth:** `ViewModels/MainWindowViewModel.cs`, `ViewModels/Tabs/QuickTtsViewModel.cs`, `ViewModels/Components/PlaybackControlViewModel.cs`, `Infrastructure/Playback/FragmentPlaybackService.cs`, `Infrastructure/Audio/AudioExportService.cs`, `Infrastructure/Automation/*.cs`, `App.axaml.cs`.
-> **Verified:** 2026-11-03.
+> **Verified:** 2026-11-12.
 
 ## 1. Startup
 
@@ -62,19 +62,19 @@ If initialization throws, the server status becomes an error with the text «П�
 
 **Track end.** `IAudioPlayerService.TrackEnded` is raised only at the natural end of a track. `Stop()` and replacing the stream do not raise it.
 
-## 4. Export (MP4 or WAV)
+## 4. Export (MP3 or WAV)
 
 `QuickTtsViewModel.ExportAsync` runs in this order:
 
-1. The format comes from `settings.ExportFormat`. The system save dialog (`IFileSaveDialogService.PickSavePathAsync`) is shown with the suggested name `UA_TTS_yyyy-MM-dd_HH-mm` and the extension `mp4` or `wav`. Cancelling changes nothing.
+1. The format comes from `settings.ExportFormat`. The system save dialog (`IFileSaveDialogService.PickSavePathAsync`) is shown with the suggested name `UA_TTS_yyyy-MM-dd_HH-mm` and the extension `mp3` or `wav`. Cancelling changes nothing.
 2. Playback is stopped (`PlaybackControlViewModel.StopCommand`). This keeps the export from competing with the queue for the GPU.
 3. `IAudioExportService.ExportAsync(request, progress, ct)`:
    1. `ITextChunker.Split` with the current chunking mode. No fragments → `ArgumentException`.
    2. Each fragment is synthesized sequentially (`Volume = 1.0`, `Translate = false`). Stage: `Synthesizing`.
    3. `WavAudioConcatenator.Concat` checks every fragment (RIFF/WAVE, `fmt ` is PCM, mono, 24 kHz, 16 bit, `data` present) and writes one WAV with a new header. Stage: `Concatenating`.
-   4. MP4 only: `ITtsApiClient.ConvertAsync(wav, "mp4")` → `POST /api/convert`. Stage: `Converting`.
+   4. MP3 only: `ITtsApiClient.ConvertAsync(wav, "mp3")` → `POST /api/convert`. Stage: `Converting`.
    5. Atomic write: a hidden temporary file (`.<name>.<guid>.tmp`) is written in the target folder, then moved over the destination with `File.Move(..., overwrite: true)`. Stage: `Writing`. A cancel or an error deletes the temporary file.
-4. Progress texts: «Експорт: підготовка…», «Експорт: синтез N із M…», «Експорт: склеювання…», «Експорт: конвертація в MP4…», «Експорт: запис файлу…». Success: «Збережено: <path>». Cancel: «Експорт скасовано.».
+4. Progress texts: «Експорт: підготовка…», «Експорт: синтез N із M…», «Експорт: склеювання…», «Експорт: конвертація в MP3…», «Експорт: запис файлу…». Success: «Збережено: <path>». Cancel: «Експорт скасовано.».
 5. During the export, capture, synthesis and export buttons are disabled and `Alt+Q` capture is ignored, so the text cannot change in the middle of the operation.
 
 ## 5. Settings

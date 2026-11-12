@@ -35,7 +35,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         new(TextChunkingMode.Paragraphs, "Абзаци");
 
     private static readonly ExportFormatOption DefaultExportFormat =
-        new(AudioExportFormat.Mp4, "MP4 (аудіо, типово)");
+        new(AudioExportFormat.Mp3, "MP3 (аудіо, типово)");
 
     private readonly ISettingsService _settingsService;
     private readonly ITtsApiClient _apiClient;
@@ -138,7 +138,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     public TextChunkingMode ChunkingMode => SelectedChunkingMode?.Mode ?? TextChunkingMode.Paragraphs;
 
     /// <summary>Current save format (with a default value).</summary>
-    public AudioExportFormat ExportFormat => SelectedExportFormat?.Format ?? AudioExportFormat.Mp4;
+    public AudioExportFormat ExportFormat => SelectedExportFormat?.Format ?? AudioExportFormat.Mp3;
 
     /// <summary>Message about a successful action.</summary>
     [ObservableProperty]

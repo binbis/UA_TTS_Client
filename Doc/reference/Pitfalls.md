@@ -3,14 +3,14 @@
 > **Purpose:** the mistakes that were already made or are easy to make in this project, each with its symptom and the rule that prevents it.
 > **Audience:** developers and AI agents.
 > **Source of truth:** the code and the verified runs described in the owner documents linked below.
-> **Verified:** 2026-11-05.
+> **Verified:** 2026-11-12.
 
 ## Server
 
 1. **The server is started from the repository root.** Symptom: 0 voices and an empty dictionary, with no error. Rule: start it from `Server_py/`. The launcher `Server_py/run_server.sh` does this itself. (`server/Server.md`)
 2. **`dictionary.json` has a syntax error.** Symptom: `[!] Помилка словника` in the server console and no dictionary rules at all. Rule: validate the JSON after every edit, and restart the server after any change. (`server/Server.md`)
 3. **Parts are cut at 500 tokens.** Symptom: the end of a very long part is missing from the audio, and the console shows `[!] Фрагмент обрізано до 500 токенів`. Rule: do not assume that the full text was spoken. (`server/Server.md`)
-4. **`/api/convert` accepts WAV input only, and `m4a` does not work.** Rule: request `mp4` or `wav`. Never `m4a` on the reference machine. (`server/API.md`)
+4. **`/api/convert` accepts WAV input only, and `m4a` does not work.** Rule: request `mp3` or `wav`. Never `m4a` on the reference machine. (`server/API.md`)
 5. **An older server has no `/api/health`.** Symptom: 404. Rule: keep the client fallback to `GET /api/voices`. (`server/API.md`)
 6. **CORS headers.** Rule: do not remove or change the headers set in `server.py`. A browser extension uses the same server. (`server/API.md`)
 7. **Error bodies come in several formats.** Rule: the client reads JSON `{"error"}` and plain text, and rejects HTML. Do not narrow that to JSON only. (`server/API.md`)

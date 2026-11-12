@@ -22,7 +22,7 @@ public sealed record AudioExportRequest
     public TextChunkingOptions Chunking { get; init; } = new();
 
     /// <summary>Save format.</summary>
-    public AudioExportFormat Format { get; init; } = AudioExportFormat.Mp4;
+    public AudioExportFormat Format { get; init; } = AudioExportFormat.Mp3;
 
     /// <summary>Path of the file to be created (overwritten atomically).</summary>
     public required string DestinationPath { get; init; }

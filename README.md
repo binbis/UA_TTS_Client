@@ -1,6 +1,6 @@
 # UA_TTS_Client
 
-Desktop client for a **local** Ukrainian text-to-speech server (StyleTTS2). Select text in any application and press `Alt+Q`: the text is captured, split into fragments and read aloud in batches. You can also paste text into the Quick TTS tab and save the whole text as an MP4 or WAV file.
+Desktop client for a **local** Ukrainian text-to-speech server (StyleTTS2). Select text in any application and press `Alt+Q`: the text is captured, split into fragments and read aloud in batches. You can also paste text into the Quick TTS tab and save the whole text as an MP3 or WAV file.
 
 | Part | Stack | Location |
 |---|---|---|
@@ -32,7 +32,7 @@ Platforms: Linux (EndeavourOS/Arch, Wayland + PipeWire) is tested on the referen
 - Global hotkey `Alt+Q`: captures the selection and starts the speech.
 - Text is split into fragments by paragraph, by sentence, or up to 250 characters. Fragments play in batches of 1–10.
 - Pause after each batch (the default), or continuous playback.
-- Export of the whole text to MP4 (audio only, the default) or WAV.
+- Export of the whole text to MP3 (the default) or WAV.
 - 31 Ukrainian voices, with speed and volume controls.
 
 ## Documentation
@@ -44,6 +44,6 @@ Platforms: Linux (EndeavourOS/Arch, Wayland + PipeWire) is tested on the referen
 ## Known limitations
 
 - Window activation after `Alt+Q` depends on the compositor. On Wayland it may be refused.
-- MP4 export needs a working ffmpeg on the server. WAV export always works.
+- MP3 export needs a working ffmpeg on the server. WAV export always works.
 - Terminals copy with `Ctrl+Shift+C`. Capture from a terminal is not supported.
 - The Windows runtime has not been verified. See [Troubleshooting](Doc/user/Troubleshooting.md).

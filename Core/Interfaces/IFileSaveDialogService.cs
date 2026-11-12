@@ -19,7 +19,7 @@ public interface IFileSaveDialogService
     /// Shows the file save dialog.
     /// </summary>
     /// <param name="suggestedFileName">File name without the extension.</param>
-    /// <param name="extension">Extension without the dot: <c>mp4</c> or <c>wav</c>.</param>
+    /// <param name="extension">Extension without the dot: <c>mp3</c> or <c>wav</c>.</param>
     /// <param name="cancellationToken">Cancellation token for the operation.</param>
     /// <returns>The local path, or <see langword="null"/> if the user canceled the dialog.</returns>
     /// <exception cref="ArgumentException">One of the string arguments is empty.</exception>

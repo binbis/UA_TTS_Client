@@ -3,7 +3,7 @@
 > **Purpose:** where each file and type lives, which contracts exist and which classes implement them.
 > **Audience:** developers and AI agents.
 > **Source of truth:** the repository tree (`git ls-files`) and the code itself.
-> **Verified:** 2026-11-03.
+> **Verified:** 2026-11-12.
 
 ## Tree
 
@@ -20,7 +20,7 @@ UA_TTS_Client/
 ├── .gitignore
 ├── Core/                             domain: no UI, no libraries
 │   ├── Enums/
-│   │   ├── AudioExportFormat.cs      Mp4, Wav
+│   │   ├── AudioExportFormat.cs      Mp3, Wav
 │   │   ├── AudioExportStage.cs       Synthesizing, Concatenating, Converting, Writing
 │   │   ├── PlaybackState.cs          Idle, Playing, Paused, Stopped, Error
 │   │   ├── ServerStatus.cs           Unknown, Online, Offline, Error

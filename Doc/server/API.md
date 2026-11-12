@@ -4,7 +4,7 @@
 > **Audience:** developers and AI agents who change the client or the server.
 > **Source of truth:** `Server_py/server.py`. If this document and the code disagree, the code is right; update this document.
 > **Client wrapper:** `Infrastructure/Api/TtsApiClient.cs` (`ITtsApiClient`).
-> **Verified:** 2026-11-05 against a live server (CUDA, 31 voices). The `curl` examples below were run; the `parse_file` example was run with a `.txt` file instead of the `.pdf`.
+> **Verified:** 2026-11-12 (code reading; the live-server runs behind the `curl` examples are from 2026-11-05).
 
 ## General
 
@@ -163,7 +163,7 @@ curl -sS -X POST http://127.0.0.1:5000/api/convert \
 
 **Verified formats on the reference machine:** `mp3` (`audio/mp3`), `wav` and `mp4` (`audio/mp4`) work. `m4a` does **not**: the server returns `500` with an ffmpeg encoding error. `mp4` is audio only (AAC in an MP4 container).
 
-The client calls this endpoint for MP4 export (`ITtsApiClient.ConvertAsync`): it sends the concatenated WAV with `format=mp4`. WAV export does not call the server; the client concatenates the fragments itself (`WavAudioConcatenator`).
+The client calls this endpoint for MP3 export (`ITtsApiClient.ConvertAsync`): it sends the concatenated WAV with `format=mp3`. WAV export does not call the server; the client concatenates the fragments itself (`WavAudioConcatenator`).
 
 ---
 
@@ -207,7 +207,7 @@ The client method is `ITtsApiClient.ParseFileAsync(Stream, string fileName, Canc
 | Timeout: 5 minutes | `App.axaml.cs` and the `TtsApiClient` constructor |
 | DTO property names match the server fields | `Core/Models/TtsRequestDto.cs` and the other DTOs |
 | `/api/synthesize` requests are sequential: one per fragment, for both the queue and the export | `FragmentPlaybackService`, `AudioExportService` |
-| `/api/convert` is called once per MP4 export, with the concatenated WAV; never for WAV | `AudioExportService`, `TtsApiClient.ConvertAsync` |
+| `/api/convert` is called once per MP3 export, with the concatenated WAV; never for WAV | `AudioExportService`, `TtsApiClient.ConvertAsync` |
 
 ## Quick server check
 

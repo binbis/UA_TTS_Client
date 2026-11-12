@@ -3,7 +3,7 @@
 > **Purpose:** the checklist of manual verification for the client. The project has no test project by decision (`Roadmap.md`), so these scenarios are the regression check after a behavior change.
 > **Audience:** developers and AI agents who verify a change.
 > **Source of truth:** the behavior described in `architecture/Flows.md` and `user/User_Guide.md`.
-> **Verified:** 2026-11-03. The scenarios were confirmed by the user on the reference machine when they were first written.
+> **Verified:** 2026-11-12. The scenarios were confirmed by the user on the reference machine when they were first written.
 
 ## How to use this checklist
 
@@ -33,14 +33,14 @@
 | 15 | No X11 tools on `PATH`, Wayland session | Capture through `wl-paste` works; no fallback to X11 is attempted |
 | 16 | Old `config.json` without the new fields | Loads; the new fields have their default values |
 | 17 | Restart | New settings are saved and applied |
-| 18 | MP4 export (default) | After choosing a path, an `.mp4` is created that plays in a media player; the sound is the whole text |
+| 18 | MP3 export (default) | After choosing a path, an `.mp3` is created that plays in a media player; the sound is the whole text |
 | 19 | WAV export | A valid WAV is created (24 kHz, mono, 16-bit); the duration is close to the sum of the fragments |
 | 20 | Export cancelled | No temporary or target file remains; status «Експорт скасовано» |
 | 21 | Export during playback | Playback stops, the export starts, and the file is in place when it finishes |
-| 22 | Export of a text with one fragment | MP4 and WAV are created correctly, with no empty headers |
-| 23 | MP4 conversion fails (for example, no ffmpeg on the server) | The server error is shown; WAV export still works |
+| 22 | Export of a text with one fragment | MP3 and WAV are created correctly, with no empty headers |
+| 23 | MP3 conversion fails (for example, no ffmpeg on the server) | The server error is shown; WAV export still works |
 | 24 | «Озвучити» (Speak) with the text `У 2026 році ми пройшли 5 км. Курс 40,50 грн, знижка 50%.` | The numbers are spoken as words, for example «дві тисячі двадцять шостому році», «п'ять кілометрів», «сорок гривень п'ятдесят копійок», «п'ятдесят відсотків». No number is skipped |
-| 25 | MP4 export of the text from scenario 24 | The sound of the file contains the same number words |
+| 25 | MP3 export of the text from scenario 24 | The sound of the file contains the same number words |
 
 ## Checks before a release
 

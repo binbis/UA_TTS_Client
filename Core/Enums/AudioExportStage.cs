@@ -13,7 +13,7 @@ public enum AudioExportStage
     /// <summary>Concatenation of WAV fragments into a single stream.</summary>
     Concatenating,
 
-    /// <summary>Conversion of WAV to the selected format (MP4).</summary>
+    /// <summary>Conversion of WAV to the selected format (MP3).</summary>
     Converting,
 
     /// <summary>Writing the result to disk.</summary>
