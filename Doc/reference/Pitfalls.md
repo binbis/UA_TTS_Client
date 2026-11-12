@@ -9,7 +9,7 @@
 
 1. **The server is started from the repository root.** Symptom: 0 voices and an empty dictionary, with no error. Rule: start it from `Server_py/`. The launcher `Server_py/run_server.sh` does this itself. (`server/Server.md`)
 2. **`dictionary.json` has a load error.** Symptom: `[!] …` in the server console and no dictionary rules at all; `GET /api/health` reports `dictionary.error`, and the client status bar shows «словник: помилка». Rule: validate the JSON after every edit, and restart the server after any change (it reads the file once at startup). (`server/Server.md`)
-3. **Parts are cut at 500 tokens.** Symptom: the end of a very long part is missing from the audio, and the console shows `[!] Фрагмент обрізано до 500 токенів`. Rule: do not assume that the full text was spoken. (`server/Server.md`)
+3. **Long parts are silently truncated.** Symptom: the end of a very long part is missing from the audio. The server now splits such parts as text; only a boundary-free piece is still cut at 500 tokens, and the console shows `[!] Фрагмент обрізано …` in that case. Rule: a truncation warning means a pathological input (for example one giant word); normal long texts are spoken in full. (`server/Server.md`)
 4. **`/api/convert` accepts WAV input only, and `m4a` does not work.** Rule: request `mp3` or `wav`. Never `m4a` on the reference machine. (`server/API.md`)
 5. **An older server has no `/api/health`.** Symptom: 404. Rule: keep the client fallback to `GET /api/voices`. (`server/API.md`)
 6. **CORS headers.** Rule: do not remove or change the headers set in `server.py`. A browser extension uses the same server. (`server/API.md`)

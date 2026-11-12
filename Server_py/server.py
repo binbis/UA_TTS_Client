@@ -226,6 +226,10 @@ def prepare_text(text):
 
 # --- Helper functions ---
 
+# The model call handles at most this many tokens; longer parts are
+# split as text (never mid-word) until every piece fits.
+MAX_TOKENS = 500
+
 def split_to_parts(text):
     split_symbols = '.?!:;\n'
     parts = ['']
@@ -236,6 +240,48 @@ def split_to_parts(text):
             index += 1
             parts.append('')
     return [p.strip() for p in parts if p.strip()]
+
+def split_long_text(text):
+    """Splits text in two at the best boundary near the middle.
+
+    Boundary priority: a sentence end, then clause punctuation, then a word
+    space; the closest candidate to the middle wins. Both halves are
+    non-empty and strictly shorter than the input. Returns [text] unchanged
+    when no boundary exists (the caller then falls back to a hard cut).
+    """
+    text = text.strip()
+    if len(text) < 2:
+        return [text]
+
+    middle = len(text) // 2
+    best = -1
+    best_rank = -1
+    for i, symbol in enumerate(text[:-1]):
+        if text[i + 1] not in ' \t\n':
+            continue
+        if symbol in '.!?…':
+            rank = 2
+        elif symbol in ';:,—–-':
+            rank = 1
+        else:
+            continue
+        best_distance = abs(best - middle) if best >= 0 else None
+        if best < 0 or abs(i - middle) < best_distance or (
+                abs(i - middle) == best_distance and rank > best_rank):
+            best, best_rank = i, rank
+
+    if best < 0:
+        space = text.rfind(' ', 0, middle + 1)
+        if space <= 0:
+            space = text.find(' ', middle + 1)
+        if space <= 0:
+            return [text]
+        best = space
+
+    head, tail = text[:best + 1].strip(), text[best + 1:].strip()
+    if not head or not tail:
+        return [text]
+    return [head, tail]
 
 def clean_text(text):
     text = normalize('NFKC', text)
@@ -327,11 +373,13 @@ def api_synthesize():
         audio_segments = []
 
         with torch.no_grad():
-            for part in parts:
+            queue = list(parts)
+            while queue:
+                part = queue.pop(0)
                 cleaned = clean_text(part)
                 stressed = stressify(cleaned)
                 phonemes = ipa(stressed)
-                
+
                 if not phonemes: continue
 
                 dropped = sorted({c for c in phonemes if c not in model.tokenizer.vocab_dict})
@@ -339,9 +387,14 @@ def api_synthesize():
                     print(f" [!] Модель пропускає символи {''.join(dropped)} у фрагменті: {part}")
 
                 tokens = model.tokenizer.encode(phonemes)
-                if len(tokens) > 500:
-                    print(f" [!] Фрагмент обрізано до 500 токенів: {part}")
-                    tokens = tokens[:500]
+                if len(tokens) > MAX_TOKENS:
+                    subs = split_long_text(part)
+                    if len(subs) > 1:
+                        print(f" [i] Довгий фрагмент поділено ({len(tokens)} токенів).")
+                        queue = subs + queue
+                        continue
+                    print(f" [!] Фрагмент обрізано до {MAX_TOKENS} токенів: {part}")
+                    tokens = tokens[:MAX_TOKENS]
 
                 wav_tensor = model(tokens, speed=speed, s_prev=style)
                 audio_segments.append(wav_tensor)

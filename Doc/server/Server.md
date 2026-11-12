@@ -42,7 +42,7 @@ On the reference machine the start takes about 45 seconds. The first request is 
    - `clean_text`: Unicode NFKC normalization; `+` becomes the combining acute accent (stress mark); dash variants become `-`;
    - stress: `ukrainian_word_stress.Stressifier`;
    - phonemes: `ipa_uk.ipa`. A part without phonemes is skipped;
-   - tokens: `model.tokenizer.encode`. The tokenizer drops every character that is not in the model vocabulary; the console lists such characters (`[!] Модель пропускає символи …`). Tokens are cut to 500, with a console warning (`[!] Фрагмент обрізано до 500 токенів`);
+   - tokens: `model.tokenizer.encode`. The tokenizer drops every character that is not in the model vocabulary; the console lists such characters (`[!] Модель пропускає символи …`). A part over `MAX_TOKENS` (500) is split as text (`split_long_text`: sentence end, then clause punctuation, then word space, closest to the middle) until every piece fits; the console logs `[i] Довгий фрагмент поділено`. Only a piece with no boundary at all falls back to a hard cut at 500 tokens, with a console warning (`[!] Фрагмент обрізано …`);
    - audio: `model(tokens, speed=speed, s_prev=voice_style)`.
 6. **Assembly:** the parts are concatenated. If `volume != 1.0`, the samples are multiplied by it. The samples are clipped to [-1, 1] and converted to int16.
 7. **Output:** WAV, 24 kHz, mono, 16-bit, returned as `audio/wav`.
@@ -121,7 +121,7 @@ Examples of entries: `"Google": "Гугл"`, `"Windows": "Віндовс"`, `"co
 - This is the Flask development server. It has no authentication and is not meant for production or for exposure to the internet.
 - CORS: every response carries `Access-Control-Allow-Origin: *`. Keep it: a browser extension uses the same server.
 - Request size limit: 500 MB.
-- A part is cut at 500 tokens. The console warns about it, but the end of the part is still lost.
+- A part over 500 tokens is split as text until every piece fits; only a boundary-free piece is cut at 500 tokens, with a console warning. The full text is spoken in all normal cases.
 - Characters that are not in the model vocabulary are dropped by the tokenizer, and the console lists them (`[!] Модель пропускає символи`). For example, `№` in a line without digits. A line with digits is converted by the verbalizer first, so such characters are rare there.
 - `translate` requires internet access and calls the Google translation service.
 - The model is loaded at every start. Expect about 45 seconds before the first request is served.

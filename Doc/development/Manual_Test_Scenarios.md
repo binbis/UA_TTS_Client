@@ -42,6 +42,7 @@
 | 24 | «Озвучити» (Speak) with the text `У 2026 році ми пройшли 5 км. Курс 40,50 грн, знижка 50%.` | The numbers are spoken as words, for example «дві тисячі двадцять шостому році», «п'ять кілометрів», «сорок гривень п'ятдесят копійок», «п'ятдесят відсотків». No number is skipped |
 | 25 | MP3 export of the text from scenario 24 | The sound of the file contains the same number words |
 | 26 | Broken `dictionary.json` (back it up first, add a trailing comma, restart the server) | The server console shows the dictionary error, `/api/health` reports `dictionary.error`, and the status bar shows `… · словник: помилка`; synthesis still works. Restore the backup and restart: the warning is gone |
+| 27 | Long text without sentence breaks (about 600 words, no `.?!:;`) | The whole text is spoken; the server console shows `[i] Довгий фрагмент поділено` and no truncation warning |
 
 ## Checks before a release
 

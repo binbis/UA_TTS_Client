@@ -61,7 +61,7 @@ Causes: invalid JSON in `Server_py/dictionary.json` (a trailing comma is typical
 
 - The server address is read at startup. Changing it needs a restart.
 - During export, the whole WAV is kept in memory. Very long texts need more memory.
-- The server cuts each internal part at 500 tokens without a warning. The end of a very long sentence can be lost (`server/Server.md`).
+- Very long parts are split by the server until they fit; only a piece with no word boundary at all is cut at 500 tokens (`server/Server.md`).
 - By default playback pauses after each batch. This is intentional. Turn off **«Пауза після кожного пакета»** to play all batches without pauses.
 - The Reader and Character Voice tabs are placeholders.
 - The hotkey cannot be changed yet.

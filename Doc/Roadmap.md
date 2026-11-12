@@ -22,9 +22,8 @@
 
 1. **Windows 11 runtime.** Not verified: the TextCopy clipboard path, `bass.dll` next to the executable, the CUDA build of torch on Windows.
 2. **Long texts in export.** The whole WAV is kept in memory (about 48 KB of audio per second). Streaming to a temporary file is a possible optimization.
-3. **Server truncation.** The server cuts each part at 500 tokens and writes a console warning. Splitting the part further is still open (`server/Server.md`).
-4. **Identical clipboard text.** A selection that equals the current clipboard text is not detected, so the capture returns nothing (`user/Troubleshooting.md`). Options: clear the clipboard before the copy, which replaces the user's clipboard content, or copy a marker first. Decide before implementing.
-5. **Naming.** `WaylandClipboardAutomationService` also runs on Windows. A rename is optional.
-6. **ydotool fallback.** Kept and documented as optional. Re-test `Alt+Q` in a live session before relying on it.
-7. **Verbalizer errors.** The known reading errors are listed in `server/Server.md`: ranges with «з», compound ordinals, `4а`, `Гб`, phone numbers with a leading zero. Fix each one by a rule in the text preparation, or by a dictionary entry for a word (not for currency or magnitude abbreviations, see the table above).
-8. **Hotkey configuration.** Make the hotkey configurable when the hotkey editor is needed. The hook logic must read the key from the settings.
+3. **Identical clipboard text.** A selection that equals the current clipboard text is not detected, so the capture returns nothing (`user/Troubleshooting.md`). Options: clear the clipboard before the copy, which replaces the user's clipboard content, or copy a marker first. Decide before implementing.
+4. **Naming.** `WaylandClipboardAutomationService` also runs on Windows. A rename is optional.
+5. **ydotool fallback.** Kept and documented as optional. Re-test `Alt+Q` in a live session before relying on it.
+6. **Verbalizer errors.** The known reading errors are listed in `server/Server.md`: ranges with «з», compound ordinals, `4а`, `Гб`, phone numbers with a leading zero. Fix each one by a rule in the text preparation, or by a dictionary entry for a word (not for currency or magnitude abbreviations, see the table above).
+7. **Hotkey configuration.** Make the hotkey configurable when the hotkey editor is needed. The hook logic must read the key from the settings.
