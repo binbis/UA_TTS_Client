@@ -51,6 +51,7 @@ public static class DesignData
             new PreviewSettingsService(),
             new PreviewTtsApiClient(),
             Playback,
+            new PreviewServerProcessService(),
             PreviewConfig,
             NullLogger<SettingsViewModel>.Instance)
         {
@@ -158,6 +159,32 @@ file sealed class PreviewFragmentPlaybackService : IFragmentPlaybackService
     public void Stop()
     {
     }
+}
+
+/// <summary>Fake server process controller for previews.</summary>
+file sealed class PreviewServerProcessService : IServerProcessService
+{
+    public ServerProcessState State => ServerProcessState.NotRunning;
+
+    public bool IsStartedByClient => false;
+
+    public string LogFilePath => "/home/user/.local/share/ua-tts/logs/server.log";
+
+    public event EventHandler? StateChanged
+    {
+        add { }
+        remove { }
+    }
+
+    public string GetDefaultExecutablePath() => "/home/user/UA_TTS/Server/UA_TTS_Server";
+
+    public Task StartAsync(string? executablePath, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    public Task StopAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task<IReadOnlyList<string>> ReadLogTailAsync(int lineCount, CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<string>>([]);
 }
 
 /// <summary>Fake text chunker for previews.</summary>

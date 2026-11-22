@@ -87,3 +87,16 @@ If initialization throws, the server status becomes an error with the text «П�
 
 - `MainWindow.axaml` binds the `TabControl` selection to `SelectedTabIndex`. Quick TTS is index 0.
 - `ActivateRequested` is handled in `App.axaml.cs` (see section 2).
+
+## 7. Packaged server control (manual only)
+
+The packaged server (`UA_TTS_Server` next to the client publish, or a path set in the settings) is started and stopped by hand from the Settings tab. There is no auto-start and no start on `Alt+Q`. On client exit the server keeps running; the next client session adopts it through the health check.
+
+1. **Start** (`SettingsViewModel.StartServerCommand` → `IServerProcessService.StartAsync`):
+   - if a server already answers on the configured address, it is adopted (`IsStartedByClient = false`) and no second instance is started;
+   - otherwise the executable is launched without a console window (`CreateNoWindow`, stdout/stderr drained and discarded — the server mirrors everything into its own log file);
+   - the service polls `GET /api/health` every 2 seconds (up to 10 minutes): the first start downloads the model, so minutes are normal. If the process exits first, the start fails with a pointer to the log file;
+   - on success the voice list is refreshed.
+2. **Stop** (`StopServerCommand` → `StopAsync`): only a process started by the client is killed (whole tree). A hand-started server is never killed; the attempt shows an error. The status text shows «Сервер запущено вручну» in that case.
+3. **Log** (`OpenLogCommand`): opens the server log file (`<local app data>/ua-tts/logs/server.log`) with the default application.
+4. The server path setting (`ServerExecutablePath`, empty = default) is saved in `config.json` with the other settings. In development (`dotnet run` from the repository root) the service also finds `Server_py/dist/UA_TTS_Server/`.

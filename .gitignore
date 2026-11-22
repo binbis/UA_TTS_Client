@@ -47,6 +47,11 @@ UpgradeLog.xml
 # Python
 Server_py/__pycache__/
 Server_py/venv/
+Server_py/.build-venv/
+Server_py/build/
+Server_py/dist/
+publish/
+tools/bass.dll
 
 # Logs and temporary files
 *.log

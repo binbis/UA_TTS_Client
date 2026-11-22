@@ -49,4 +49,10 @@ public sealed record AppConfig
 
     /// <summary>Format for saving the spoken text.</summary>
     public AudioExportFormat ExportFormat { get; init; } = AudioExportFormat.Mp3;
+
+    /// <summary>
+    /// Path to the packaged server executable (<c>UA_TTS_Server</c>).
+    /// <see langword="null"/> means the default location: <c>Server/UA_TTS_Server(.exe)</c> next to the client.
+    /// </summary>
+    public string? ServerExecutablePath { get; init; }
 }

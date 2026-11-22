@@ -6,6 +6,7 @@ using UA_TTS_Client.ViewModels.Components;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -39,6 +40,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
     private readonly ISettingsService _settingsService;
     private readonly ITtsApiClient _apiClient;
+    private readonly IServerProcessService _serverProcess;
     private readonly PlaybackControlViewModel _playback;
     private readonly ILogger<SettingsViewModel> _logger;
 
@@ -51,6 +53,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     /// <param name="settingsService">Service that saves the configuration.</param>
     /// <param name="apiClient">TTS server client (used for the voice list).</param>
     /// <param name="playback">Mini player that the volume is synchronized with.</param>
+    /// <param name="serverProcess">Service that starts and stops the packaged server.</param>
     /// <param name="initialConfig">Configuration loaded at application startup.</param>
     /// <param name="logger">Logger.</param>
     /// <exception cref="ArgumentNullException">One of the arguments is <see langword="null"/>.</exception>
@@ -58,17 +61,21 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         ISettingsService settingsService,
         ITtsApiClient apiClient,
         PlaybackControlViewModel playback,
+        IServerProcessService serverProcess,
         AppConfig initialConfig,
         ILogger<SettingsViewModel> logger)
     {
         _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _playback = playback ?? throw new ArgumentNullException(nameof(playback));
+        _serverProcess = serverProcess ?? throw new ArgumentNullException(nameof(serverProcess));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         ArgumentNullException.ThrowIfNull(initialConfig);
 
         ApplyConfig(initialConfig);
         _playback.PropertyChanged += OnPlaybackPropertyChanged;
+        _serverProcess.StateChanged += OnServerProcessStateChanged;
+        UpdateServerProcessStatusText();
     }
 
     /// <summary>TTS server address.</summary>
@@ -140,6 +147,18 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     /// <summary>Current save format (with a default value).</summary>
     public AudioExportFormat ExportFormat => SelectedExportFormat?.Format ?? AudioExportFormat.Mp3;
 
+    /// <summary>Path to the packaged server executable (empty = default location next to the client).</summary>
+    [ObservableProperty]
+    public partial string ServerExecutablePath { get; set; } = string.Empty;
+
+    /// <summary>Human-readable state of the server process (started/stopped from here).</summary>
+    [ObservableProperty]
+    public partial string ServerProcessStatusText { get; set; } = "Сервер не запущено";
+
+    /// <summary>Flag while the server is starting or stopping.</summary>
+    [ObservableProperty]
+    public partial bool IsServerControlBusy { get; set; }
+
     /// <summary>Message about a successful action.</summary>
     [ObservableProperty]
     public partial string? StatusMessage { get; set; }
@@ -205,6 +224,99 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Starts the packaged server (by hand only, no auto-start) and refreshes the voice list.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    [RelayCommand]
+    private async Task StartServerAsync(CancellationToken cancellationToken)
+    {
+        if (IsServerControlBusy)
+        {
+            return;
+        }
+
+        IsServerControlBusy = true;
+        ErrorMessage = null;
+        StatusMessage = null;
+        try
+        {
+            var path = string.IsNullOrWhiteSpace(ServerExecutablePath) ? null : ServerExecutablePath.Trim();
+            await _serverProcess.StartAsync(path, cancellationToken);
+            StatusMessage = "Сервер запущено.";
+            await RefreshVoicesAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Запуск сервера скасовано.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Не вдалося запустити сервер");
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsServerControlBusy = false;
+        }
+    }
+
+    /// <summary>Stops the server process started by the client (a hand-started server is kept).</summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    [RelayCommand]
+    private async Task StopServerAsync(CancellationToken cancellationToken)
+    {
+        if (IsServerControlBusy)
+        {
+            return;
+        }
+
+        IsServerControlBusy = true;
+        ErrorMessage = null;
+        StatusMessage = null;
+        try
+        {
+            await _serverProcess.StopAsync(cancellationToken);
+            StatusMessage = "Сервер зупинено.";
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Зупинка сервера скасована.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Не вдалося зупинити сервер");
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsServerControlBusy = false;
+        }
+    }
+
+    /// <summary>Opens the server log file with the default application.</summary>
+    [RelayCommand]
+    private void OpenLog()
+    {
+        ErrorMessage = null;
+        var logPath = _serverProcess.LogFilePath;
+        if (!File.Exists(logPath))
+        {
+            ErrorMessage = $"Файл логу ще не створено: {logPath}";
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(logPath) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Не вдалося відкрити файл логу");
+            ErrorMessage = $"Не вдалося відкрити лог: {logPath}";
+        }
+    }
+
+    /// <summary>
     /// Saves the settings to disk.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
@@ -238,7 +350,10 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             ChunkingMode = this.ChunkingMode,
             BatchSize = batchSize,
             PauseAfterEachBatch = this.PauseAfterEachBatch,
-            ExportFormat = this.ExportFormat
+            ExportFormat = this.ExportFormat,
+            ServerExecutablePath = string.IsNullOrWhiteSpace(ServerExecutablePath)
+                ? null
+                : ServerExecutablePath.Trim()
         };
 
         IsBusy = true;
@@ -285,6 +400,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         PauseAfterEachBatch = config.PauseAfterEachBatch;
         SelectedExportFormat = ExportFormats.FirstOrDefault(option => option.Format == config.ExportFormat)
             ?? DefaultExportFormat;
+        ServerExecutablePath = config.ServerExecutablePath ?? string.Empty;
     }
 
     /// <summary>Rounds the value to a step of 0.1.</summary>
@@ -336,6 +452,23 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>Updates the server process status text when the service state changes.</summary>
+    private void OnServerProcessStateChanged(object? sender, EventArgs e) => UpdateServerProcessStatusText();
+
+    private void UpdateServerProcessStatusText()
+    {
+        ServerProcessStatusText = _serverProcess.State switch
+        {
+            Core.Enums.ServerProcessState.Starting =>
+                "Запуск сервера… Перший запуск може тривати хвилини (завантаження моделі).",
+            Core.Enums.ServerProcessState.Running => _serverProcess.IsStartedByClient
+                ? "Сервер запущено"
+                : "Сервер запущено вручну",
+            Core.Enums.ServerProcessState.Failed => "Помилка запуску сервера. Деталі — у лозі.",
+            _ => "Сервер не запущено"
+        };
+    }
+
     /// <summary>Unsubscribes from the mini player events.</summary>
     public void Dispose()
     {
@@ -346,5 +479,6 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
         _disposed = true;
         _playback.PropertyChanged -= OnPlaybackPropertyChanged;
+        _serverProcess.StateChanged -= OnServerProcessStateChanged;
     }
 }

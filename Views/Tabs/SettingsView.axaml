@@ -18,6 +18,24 @@
                        TextWrapping="Wrap"
                        Text="Нову адресу буде застосовано після перезапуску застосунку." />
 
+            <TextBlock Text="Шлях до сервера" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <TextBox Text="{Binding ServerExecutablePath}"
+                     PlaceholderText="за замовчуванням: Server/UA_TTS_Server поруч із клієнтом" />
+            <TextBlock Classes="hint"
+                       FontSize="12"
+                       TextWrapping="Wrap"
+                       Text="Порожньо — тека Server поруч із клієнтом. Запуск вручну, без автозапуску." />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Запустити сервер" Command="{Binding StartServerCommand}" />
+                <Button Content="Зупинити сервер" Command="{Binding StopServerCommand}" />
+                <Button Content="Відкрити лог" Command="{Binding OpenLogCommand}" />
+                <ProgressBar Width="120"
+                             IsIndeterminate="True"
+                             VerticalAlignment="Center"
+                             IsVisible="{Binding IsServerControlBusy}" />
+            </StackPanel>
+            <TextBlock Text="{Binding ServerProcessStatusText}" />
+
             <TextBlock Text="Голос" FontWeight="SemiBold" Margin="0,8,0,0" />
             <ComboBox ItemsSource="{Binding Voices}"
                       SelectedItem="{Binding SelectedVoice}"

@@ -172,7 +172,7 @@ public sealed class WaylandClipboardAutomationService : IClipboardAutomationServ
                 startInfo.ArgumentList.Add(argument);
             }
 
-            using var process = Process.Start(startInfo);
+            using var process = System.Diagnostics.Process.Start(startInfo);
             if (process is null)
             {
                 return null;

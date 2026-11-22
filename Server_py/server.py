@@ -1,10 +1,149 @@
+import argparse
 import os
 import sys
 import builtins
 import warnings
 import json
 import re
-from deep_translator import GoogleTranslator
+import io
+import glob
+import logging
+import multiprocessing
+from pathlib import Path
+
+
+# --- Portable paths (source tree and PyInstaller-frozen executable) ---
+# Voices and the dictionary are looked up next to the executable (frozen)
+# or next to this file (source tree), never relative to the working directory.
+def _detect_base_dir():
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
+BASE_DIR = _detect_base_dir()
+
+
+def _default_data_dir():
+    """Writable per-user data directory (log file, Hugging Face cache)."""
+    if sys.platform == "win32":
+        base = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
+        return Path(base) / "UA_TTS"
+    xdg = os.environ.get("XDG_DATA_HOME")
+    base = Path(xdg) if xdg else Path.home() / ".local" / "share"
+    return base / "ua-tts"
+
+
+DATA_DIR = _default_data_dir()
+_DEFAULT_LOG_FILE = DATA_DIR / "logs" / "server.log"
+_DEFAULT_HF_HOME = DATA_DIR / "hf"
+
+
+def _parse_args():
+    parser = argparse.ArgumentParser(description="UA TTS Server (StyleTTS2, Flask).")
+    parser.add_argument("--log-file", default=str(_DEFAULT_LOG_FILE),
+                        help="path to the log file (default: %(default)s)")
+    parser.add_argument("--log-level", default="INFO",
+                        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+                        help="log level for standard library loggers (default: %(default)s)")
+    parser.add_argument("--port", type=int, default=5000, help="port to listen on (default: %(default)s)")
+    parser.add_argument("--check", action="store_true",
+                        help="check that critical imports work, then exit without loading the model")
+    return parser.parse_args()
+
+
+ARGS = _parse_args()
+
+# The model cache lives in the user data directory, so the first start
+# downloads it there and later starts work offline. An already set HF_HOME
+# is respected. This must be set before transformers/huggingface_hub import.
+os.environ.setdefault("HF_HOME", str(_DEFAULT_HF_HOME))
+
+# On Windows the console may use a legacy code page; force UTF-8 so that
+# Ukrainian log lines are not shown as mojibake.
+if sys.platform == "win32":
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+# The root logger is configured only after the Tee replacement below, so
+# Flask/werkzeug lines ("Running on ...") also land in the log file.
+# (basicConfig captures sys.stderr at call time.)
+
+# --- Logging: every print goes to the console and to the log file ---
+_LOG_PATH = Path(ARGS.log_file)
+try:
+    _LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if _LOG_PATH.is_file() and _LOG_PATH.stat().st_size > 10 * 1024 * 1024:
+        os.replace(_LOG_PATH, _LOG_PATH.with_suffix(".log.1"))
+    _LOG_FILE = io.open(_LOG_PATH, "a", encoding="utf-8", errors="replace", buffering=1)
+except Exception:
+    _LOG_FILE = None
+
+
+class _Tee:
+    """Writes to several streams at once (console + log file)."""
+
+    def __init__(self, *streams):
+        self._streams = streams
+
+    def write(self, data):
+        for stream in self._streams:
+            if stream is None:
+                continue
+            try:
+                stream.write(data)
+                stream.flush()
+            except Exception:
+                pass
+        return len(data)
+
+    def flush(self):
+        for stream in self._streams:
+            if stream is None:
+                continue
+            try:
+                stream.flush()
+            except Exception:
+                pass
+
+    def isatty(self):
+        return any(getattr(s, "isatty", lambda: False)() for s in self._streams if s is not None)
+
+
+_CONSOLE_OUT = sys.stdout
+_CONSOLE_ERR = sys.stderr
+sys.stdout = _Tee(_CONSOLE_OUT, _LOG_FILE)
+sys.stderr = _Tee(_CONSOLE_ERR, _LOG_FILE)
+
+logging.basicConfig(level=getattr(logging, ARGS.log_level, logging.INFO))
+
+print(f" [i] Лог сервера: {_LOG_PATH}")
+
+
+# --- Bundled ffmpeg (placed next to the frozen executable) ---
+def _find_bundled_ffmpeg():
+    preferred = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
+    roots = [BASE_DIR]
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        roots.append(Path(meipass))
+    for root in roots:
+        folder = root / "ffmpeg"
+        exact = folder / preferred
+        if exact.is_file():
+            return exact
+        # imageio-ffmpeg names its binary e.g. ffmpeg-linux-x86_64-v9.0.2.
+        if folder.is_dir():
+            for candidate in sorted(folder.glob("ffmpeg*")):
+                if candidate.is_file():
+                    return candidate
+    return None
+
+
+_BUNDLED_FFMPEG = _find_bundled_ffmpeg()
 
 # --- FIX 1: Encoding fix for Windows ---
 _real_open = builtins.open
@@ -27,8 +166,30 @@ builtins.open = _utf8_open
 warnings.filterwarnings("ignore", category=SyntaxWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
-import io
-import glob
+
+def _run_check():
+    """Import check for CI smoke tests: no model is loaded, no download."""
+    import importlib
+    modules = [
+        "torch",
+        "flask",
+        "styletts2_inference",
+        "ukrainian_word_stress",
+        "ipa_uk",
+        "verbalizer",
+    ]
+    for name in modules:
+        importlib.import_module(name)
+    print(f" [i] Перевірка імпортів успішна: {', '.join(modules)}")
+    return 0
+
+
+if ARGS.check:
+    sys.exit(_run_check())
+
+
+from deep_translator import GoogleTranslator
+
 import torch
 import scipy.io.wavfile
 import numpy as np
@@ -53,12 +214,16 @@ except ImportError:
     load_odf = None
 # ---------------------------
 
-try:
-    import static_ffmpeg
-    static_ffmpeg.add_paths()
-    print(" [i] FFmpeg шляхи додано через static_ffmpeg")
-except ImportError:
-    pass
+if _BUNDLED_FFMPEG is not None:
+    os.environ["PATH"] = str(_BUNDLED_FFMPEG.parent) + os.pathsep + os.environ.get("PATH", "")
+    print(f" [i] FFmpeg: пакетний {_BUNDLED_FFMPEG}")
+else:
+    try:
+        import static_ffmpeg
+        static_ffmpeg.add_paths()
+        print(" [i] FFmpeg шляхи додано через static_ffmpeg")
+    except ImportError:
+        pass
 
 from styletts2_inference.models import StyleTTS2
 from ukrainian_word_stress import Stressifier, StressSymbol
@@ -66,10 +231,17 @@ from ipa_uk import ipa
 from verbalizer import verbalize
 
 try:
+    if _BUNDLED_FFMPEG is not None:
+        warnings.filterwarnings("ignore", message="Couldn't find ffmpeg.*")
     from pydub import AudioSegment
     from pydub.utils import which
-    if which("ffmpeg") is None:
-        print(" [!] УВАГА: Pydub не бачить ffmpeg.exe")
+    if _BUNDLED_FFMPEG is not None:
+        AudioSegment.converter = str(_BUNDLED_FFMPEG)
+    # With a bundled ffmpeg the converter is set explicitly; pydub's own
+    # "Couldn't find ffmpeg" warning (PATH has no file literally named
+    # "ffmpeg") is noise then.
+    if _BUNDLED_FFMPEG is None and which("ffmpeg") is None:
+        print(" [!] УВАГА: Pydub не бачить ffmpeg")
 except ImportError:
     pass
 
@@ -99,8 +271,8 @@ model = StyleTTS2(hf_path='patriotyk/styletts2_ukrainian_multispeaker', device=d
 
 voices = {}
 print("Сканування голосів...")
-voice_files = glob.glob(os.path.join("voices", "*.pt"))
-if not voice_files: voice_files = glob.glob("*.pt")
+voice_files = glob.glob(os.path.join(BASE_DIR, "voices", "*.pt"))
+if not voice_files: voice_files = glob.glob(os.path.join(BASE_DIR, "*.pt"))
 
 for file_path in voice_files:
     voice_name = os.path.splitext(os.path.basename(file_path))[0]
@@ -127,7 +299,7 @@ TEXT_REPLACEMENTS = [(";", " . ")]
 
 def load_dictionary():
     global dict_rules, latin_dict_rules, dictionary_error
-    dict_path = "dictionary.json"
+    dict_path = os.path.join(BASE_DIR, "dictionary.json")
     if not os.path.exists(dict_path):
         dictionary_error = "Файл dictionary.json не знайдено; синтез без словника."
         print(f" [!] {dictionary_error}")
@@ -169,6 +341,12 @@ def load_dictionary():
         print(f" [!] {dictionary_error}")
 
 load_dictionary()
+
+SERVER_VERSION = "1.0.0"
+print(
+    f"UA TTS Server v{SERVER_VERSION} | Python {sys.version.split()[0]} | "
+    f"пристрій: {device} | голосів: {len(voices)} | лог: {_LOG_PATH}"
+)
 
 def transliterate_english_to_ukrainian(text):
     mappings_multi = [
@@ -459,4 +637,6 @@ def api_parse_file():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(port=5000, debug=False)
+    if getattr(sys, "frozen", False):
+        multiprocessing.freeze_support()
+    app.run(host="127.0.0.1", port=ARGS.port, debug=False)

@@ -14,6 +14,7 @@ using UA_TTS_Client.Infrastructure.Api;
 using UA_TTS_Client.Infrastructure.Audio;
 using UA_TTS_Client.Infrastructure.Automation;
 using UA_TTS_Client.Infrastructure.Playback;
+using UA_TTS_Client.Infrastructure.Process;
 using UA_TTS_Client.Infrastructure.Storage;
 using UA_TTS_Client.Infrastructure.Text;
 using UA_TTS_Client.ViewModels;
@@ -98,6 +99,7 @@ public partial class App : Application
         services.AddSingleton<IFragmentPlaybackService, FragmentPlaybackService>();
         services.AddSingleton<IAudioExportService, AudioExportService>();
         services.AddSingleton<IFileSaveDialogService, AvaloniaFileSaveDialogService>();
+        services.AddSingleton<IServerProcessService, ServerProcessService>();
 
         var baseAddress = Uri.TryCreate(startupConfig.ServerUrl, UriKind.Absolute, out var parsed)
             ? parsed

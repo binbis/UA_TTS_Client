@@ -2,8 +2,8 @@
 
 > **Purpose:** the Python TTS server: components, startup, the synthesis and verbalization pipelines, data files, environment and limits.
 > **Audience:** developers, and users who run the server.
-> **Source of truth:** `Server_py/server.py`, `Server_py/verbalizer.py`, `Server_py/run_server.sh`, `Server_py/requirements.txt`.
-> **Verified:** 2026-11-12.
+> **Source of truth:** `Server_py/server.py`, `Server_py/verbalizer.py`, `Server_py/run_server.sh`, `Server_py/requirements.txt`, `Server_py/packaging/`, `.github/workflows/build-server.yml`.
+> **Verified:** 2026-11-22.
 
 ## Components
 
@@ -15,17 +15,28 @@
 | `dictionary.json` | pronunciation replacements, read once at startup |
 | `run_server.sh` | Linux launcher: changes into `Server_py/` and runs `venv/bin/python server.py` |
 | `requirements.txt` | Python dependencies (see Environment) |
+| `packaging/UA_TTS_Server.spec` | PyInstaller `onedir` spec: builds the ready executable (see `packaging/README.md`) |
+| `packaging/README.md` | How to build the server package by hand (same commands as CI) |
+| `.github/workflows/build-server.yml` | CI: builds the Linux and Windows server packages, zips them, attaches to a `server-v*` release |
 
 ## Startup
 
 1. Choose the device: `cuda` if available, otherwise `cpu`.
-2. Load the model `StyleTTS2(hf_path='patriotyk/styletts2_ukrainian_multispeaker')`.
-3. Load every `voices/*.pt` with `torch.load(map_location=device)`. A voice that fails to load is reported and skipped. If the folder has no `.pt` files, the server looks in the current folder.
+2. Load the model `StyleTTS2(hf_path='patriotyk/styletts2_ukrainian_multispeaker')`. The model is downloaded on the first start to the cache in the user data directory (`HF_HOME`): `~/.local/share/ua-tts/hf` on Linux, `%LocalAppData%\UA_TTS\hf` on Windows. An already set `HF_HOME` is respected. Later starts work offline.
+3. Load every `voices/*.pt` with `torch.load(map_location=device)`. A voice that fails to load is reported and skipped. If the folder has no `.pt` files, the server looks in the base directory.
 4. Create the stress model (`Stressifier`).
 5. Load `dictionary.json` and compile its rules. The rules whose key contains an English letter are kept in a separate list (see the synthesis pipeline).
-6. Start Flask on port 5000 (`app.run(port=5000, debug=False)`). The default host is `127.0.0.1`.
+6. Log the ready line: server version, Python version, device, number of voices and the log file path.
+7. Start Flask on port 5000 (`app.run(host="127.0.0.1", port=ARGS.port, debug=False)`). The port can be changed with `--port`.
 
-On the reference machine the start takes about 45 seconds. The first request is served only after that.
+On the reference machine the start takes about 45 seconds. The first request is served only after that. The very first start also downloads the model (about 911 MB), so it takes longer.
+
+## Paths, logging and command line
+
+- **Base directory.** `voices/` and `dictionary.json` are looked up next to `server.py` in the source tree, and next to the executable in a frozen (PyInstaller) build — never relative to the working directory. The server can be started from any folder.
+- **Logging.** Every `print` goes to the console and to the log file (default: `logs/server.log` under the user data directory). On startup a log file larger than 10 MB is rotated to `server.log.1`. On Windows the console is forced to UTF-8. The log level for standard library loggers (Flask/werkzeug) is set with `--log-level DEBUG|INFO|WARNING|ERROR`.
+- **Options.** `--log-file PATH`, `--log-level`, `--port PORT`, `--check`. `--check` imports the critical modules (`torch`, `flask`, `styletts2_inference`, `ukrainian_word_stress`, `ipa_uk`, `verbalizer`) and exits with code 0 without loading the model; CI uses it as the smoke test.
+- **ffmpeg.** A bundled `ffmpeg` binary next to the executable (from `imageio-ffmpeg`, placed by the PyInstaller spec) is preferred and used by `pydub`; nothing is downloaded at runtime. In the source tree the server falls back to `static-ffmpeg` as before.
 
 ## Synthesis pipeline (`POST /api/synthesize`)
 
@@ -109,12 +120,13 @@ Examples of entries: `"Google": "Гугл"`, `"Windows": "Віндовс"`, `"co
 
 ## Environment
 
-- Tested with Python 3.14 on the reference machine. The documented minimum is 3.10; other versions are not verified.
+- Tested with Python 3.14 on the reference machine. The documented minimum is 3.10; other versions are not verified. The PyInstaller package is built with Python 3.12, so that the Torch CUDA wheels are available.
 - Dependencies: `Server_py/requirements.txt`. Some packages are installed from GitHub (`git+https`), so Git must be available.
+- The packaged server (`Server_py/packaging/UA_TTS_Server.spec`, onedir) needs no Python on the user side: the interpreter and all dependencies, including the Torch CUDA libraries, are inside `_internal/`. `voices/*.pt` and `dictionary.json` stay next to the executable as user data. The Linux package was built and verified on the reference machine (Python 3.14 venv, Torch 2.14.1+cu130): `--check`, `/api/health`, one synthesis and MP3 conversion with the bundled ffmpeg all pass without a system Python in `PATH`. The Windows package is built by CI and is not verified yet (see `Doc/Roadmap.md`).
 - `ukrainian-tn==0.7.0` (verbalization) is a Rust library with `abi3` wheels: one wheel per platform covers Python 3.9 and newer. A Windows wheel exists, but the library has not been run on Windows yet. It runs on the CPU.
 - `torch` is not listed in `requirements.txt`. It is installed as a dependency of `styletts2-inference`, which requires `torch` and `torchaudio`. The reference machine has `torch 2.14.1+cu130`. CUDA notes are in `user/Installation.md`.
 - `numpy<2` is pinned.
-- ffmpeg is provided by `static-ffmpeg`. If the package is installed, `static_ffmpeg.add_paths()` runs at startup. `pydub` uses ffmpeg for conversion.
+- ffmpeg is provided by `static-ffmpeg` in the source tree. If the package is installed, `static_ffmpeg.add_paths()` runs at startup. `pydub` uses ffmpeg for conversion. In the packaged server the ffmpeg binary is bundled (from `imageio-ffmpeg`) and preferred, so conversion works offline.
 
 ## Limits and behavior to know
 
@@ -130,6 +142,7 @@ Examples of entries: `"Google": "Гугл"`, `"Windows": "Віндовс"`, `"co
 
 ## Running
 
-- Linux: `./Server_py/run_server.sh` from the repository root, or from `Server_py/`.
-- Windows: see `user/Installation.md`.
-- The server must run from `Server_py/`. Started from the repository root, it reports no error but loads 0 voices and an empty dictionary.
+- From the source tree, Linux: `./Server_py/run_server.sh` from the repository root, or from `Server_py/`.
+- From the source tree, Windows: see `user/Installation.md`.
+- From the package: double-click `UA_TTS_Server` / `UA_TTS_Server.exe` or start it from a terminal. The working directory does not matter: voices and the dictionary are read next to the executable.
+- The server can be started from any folder: `BASE_DIR` in `server.py` resolves to the executable folder (frozen) or to the `server.py` folder (source tree). The old rule "run only from `Server_py/`" no longer applies.
