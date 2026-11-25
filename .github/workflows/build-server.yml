@@ -20,10 +20,10 @@ jobs:
       run:
         working-directory: Server_py
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -53,10 +53,14 @@ jobs:
           cd ..
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: UA_TTS_Server-linux-x86_64
-          path: UA_TTS_Server-linux-x86_64.zip
+          # The zip step runs with working-directory Server_py, so the zip
+          # is created there. upload-artifact does not inherit that
+          # working-directory and looks from the repo root by default.
+          path: Server_py/UA_TTS_Server-linux-x86_64.zip
+          if-no-files-found: error
 
   windows:
     name: Server (Windows)
@@ -66,10 +70,10 @@ jobs:
       run:
         working-directory: Server_py
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -96,10 +100,12 @@ jobs:
         run: Compress-Archive -Path dist\UA_TTS_Server -DestinationPath UA_TTS_Server-windows-x64.zip
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: UA_TTS_Server-windows-x64
-          path: UA_TTS_Server-windows-x64.zip
+          # See the Linux job: the zip is created inside Server_py/.
+          path: Server_py/UA_TTS_Server-windows-x64.zip
+          if-no-files-found: error
 
   release:
     name: Attach to release
@@ -107,12 +113,12 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/server-v')
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           merge-multiple: true
 
       - name: Create release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             UA_TTS_Server-linux-x86_64.zip
