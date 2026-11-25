@@ -37,6 +37,7 @@
 | `Doc/development/Build_and_Run.md` | Commands, project facts, verification approach, reference environment |
 | `Doc/development/Extension_Points.md` | Recipes: new service, setting, tab, endpoint, export format, chunking mode |
 | `Doc/development/Manual_Test_Scenarios.md` | Manual verification checklist (no test project) |
+| `Server_py/packaging/README.md` | How to build the server package by hand (Linux and Windows, same as CI) |
 
 ## Single source of truth
 
