@@ -46,6 +46,11 @@ hiddenimports = [
     "static_ffmpeg",
     "verbalizer",
     "styletts2_inference.models",
+    # Imported at runtime from inside accentor-lite.pt (word_tokenizer.py)
+    # via torch.package unpickling; static analysis cannot see it. Locally
+    # six used to arrive via spaces -> gradio -> pandas -> dateutil, which
+    # is not guaranteed (Python 3.12 resolved differently in CI).
+    "six",
 ]
 
 datas = []

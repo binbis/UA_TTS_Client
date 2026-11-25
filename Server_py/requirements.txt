@@ -5,6 +5,7 @@ einops
 einops_exts
 munch
 pyyaml
+six
 transformers
 git+https://github.com/patriotyk/ukrainian-word-stress.git
 git+https://github.com/patriotyk/ipa-uk.git
