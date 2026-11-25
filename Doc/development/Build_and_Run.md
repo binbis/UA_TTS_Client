@@ -3,7 +3,7 @@
 > **Purpose:** how to build and run the client and the server, what the project facts are, how changes are verified without a test project, and the environment of the reference machine.
 > **Audience:** developers and AI agents.
 > **Source of truth:** `UA_TTS_Client.csproj`, `UA_TTS_Client.sln`, `Server_py/run_server.sh`, `.gitignore`.
-> **Verified:** 2026-11-12.
+> **Verified:** 2026-11-25.
 
 ## Commands
 
@@ -14,7 +14,15 @@ dotnet run             # opens the window; the server must be running
 
 # Server (the script changes into Server_py/ itself)
 ./Server_py/run_server.sh
+
+# Packaged distribution (client + server folder, see scripts/publish.sh)
+./scripts/publish.sh
 ```
+
+The server package is built by GitHub Actions (`.github/workflows/build-server.yml`):
+a manual run or a `server-v*` tag builds the Linux and Windows packages and
+uploads them as artifacts (tags also attach them to a GitHub Release). The
+same build can be run by hand with `Server_py/packaging/README.md`.
 
 Open `UA_TTS_Client.sln` in Rider to work in the IDE. Installation steps are in `user/Installation.md`.
 
@@ -36,7 +44,7 @@ Open `UA_TTS_Client.sln` in Rider to work in the IDE. Installation steps are in 
 
 The project is a single `.csproj`; there are no class libraries. Layers are separated by folders (`architecture/Overview.md`).
 
-There is no CI pipeline, no lint or format configuration, no code generation step and no test project.
+CI builds only the server package (see above); there is no lint or format configuration, no code generation step and no test project.
 
 ## Verification approach
 

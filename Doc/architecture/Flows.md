@@ -3,7 +3,7 @@
 > **Purpose:** the order of operations for startup, the hotkey, synthesis and playback, export and settings. Read this before changing any of these flows: the order matters.
 > **Audience:** developers and AI agents.
 > **Source of truth:** `ViewModels/MainWindowViewModel.cs`, `ViewModels/Tabs/QuickTtsViewModel.cs`, `ViewModels/Components/PlaybackControlViewModel.cs`, `Infrastructure/Playback/FragmentPlaybackService.cs`, `Infrastructure/Audio/AudioExportService.cs`, `Infrastructure/Automation/*.cs`, `App.axaml.cs`.
-> **Verified:** 2026-11-12.
+> **Verified:** 2026-11-25.
 
 ## 1. Startup
 

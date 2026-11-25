@@ -3,7 +3,7 @@
 > **Purpose:** the checklist of manual verification for the client. The project has no test project by decision (`Roadmap.md`), so these scenarios are the regression check after a behavior change.
 > **Audience:** developers and AI agents who verify a change.
 > **Source of truth:** the behavior described in `architecture/Flows.md` and `user/User_Guide.md`.
-> **Verified:** 2026-11-12. The scenarios were confirmed by the user on the reference machine when they were first written.
+> **Verified:** 2026-11-25. The scenarios were confirmed by the user on the reference machine (Linux) when they were first written; the server-control scenarios (28–31) and the hotkey/synthesis/export scenarios were also confirmed on Windows 11 with the packaged server.
 
 ## How to use this checklist
 

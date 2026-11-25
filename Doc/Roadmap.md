@@ -3,7 +3,7 @@
 > **Purpose:** open items, out-of-scope decisions and known future work. This is the only place for the backlog. Plans for individual tasks are not stored in the repository.
 > **Audience:** developers and AI agents who choose the next task.
 > **Source of truth:** this file for the backlog. Facts about current behavior live in the owner documents (see `Doc/README.md`).
-> **Verified:** 2026-11-12.
+> **Verified:** 2026-11-25. Windows runtime and the packaged server were verified on a real Windows 11 machine (see `user/Installation.md`).
 
 ## Out of scope (decided)
 
@@ -20,7 +20,6 @@
 
 ## Open items
 
-1. **Windows 11 runtime.** Not verified: the TextCopy clipboard path, `bass.dll` next to the executable, the CUDA build of torch on Windows.
 2. **Long texts in export.** The whole WAV is kept in memory (about 48 KB of audio per second). Streaming to a temporary file is a possible optimization.
 3. **Identical clipboard text.** A selection that equals the current clipboard text is not detected, so the capture returns nothing (`user/Troubleshooting.md`). Options: clear the clipboard before the copy, which replaces the user's clipboard content, or copy a marker first. Decide before implementing.
 4. **Naming.** `WaylandClipboardAutomationService` also runs on Windows. A rename is optional.
@@ -31,4 +30,3 @@
     - highlight the spoken fragment: a plain `TextBox` cannot color a span, so this needs a read-only mirror (`TextBlock` with runs) or a fragment list; either way `TextFragment` must carry the offset, because the chunker normalizes whitespace and offsets do not map 1:1 onto the edit box;
     - auto-scroll to the current fragment when it starts (fragment list with selection + `ScrollIntoView`), i.e. automatic following.
     Decide the presentation before implementing; editing the text mid-queue must detach the highlight (the queue is a snapshot). (`ViewModels/Components/PlaybackControlViewModel.cs`, `Views/Tabs/QuickTtsView.axaml`, `Core/Models/TextFragment.cs`)
-8. **Packaged server (remaining stages).** Stages 1–4, 6–7 of `PLAN_SERVER_PACKAGE.md` are done: the server resolves paths next to itself/the executable, logs to a file, has `--check`, and is built by PyInstaller (onedir) and GitHub Actions (Linux + Windows); the client starts/stops the packaged server by hand from the Settings tab; `scripts/publish.sh` assembles the client+server layout (Linux verified end-to-end). Still open: run the CI Windows artifact on a clean Windows 11 machine (stage 5 — the Windows wheels for `ukrainian-tn`, torch CUDA and `imageio-ffmpeg` are confirmed, the exe itself has not been run), then finish stage 8 (eat the remaining doc updates and delete the temporary plan).

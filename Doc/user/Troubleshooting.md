@@ -3,11 +3,11 @@
 > **Purpose:** typical problems with their causes and fixes, and the limits of the current version.
 > **Audience:** users.
 > **Source of truth:** `reference/Native_Libraries.md`, `server/Server.md`, `architecture/Flows.md`, and the code paths named below.
-> **Verified:** 2026-11-12.
+> **Verified:** 2026-11-25.
 
 ## The server is offline («Офлайн»)
 
-- The server is not running, or it was started from a different folder. Start it from `Server_py/`: `./Server_py/run_server.sh` on Linux.
+- The server is not running. From the source tree start it with `./Server_py/run_server.sh` on Linux (or start the packaged server: double-click `UA_TTS_Server`, or use «Запустити сервер» in the client's Settings).
 - The first start takes about 45 seconds while the model loads.
 - Check the server: `curl -sS http://127.0.0.1:5000/api/health`.
 - The address is wrong. Fix `serverUrl` in Settings and restart the client.
@@ -28,6 +28,11 @@ The server reads `Server_py/dictionary.json` once at startup. If the JSON is inv
 - Check that the BASS library is installed: `/usr/lib/libbass.so` must exist (AUR package `libbass`).
 - The client plays through the default output device. With PipeWire, `pactl list sink-inputs` shows the client's stream while it plays.
 - Check that the right output is the default device in PipeWire.
+
+## No sound on Windows
+
+- The BASS library is missing or wrong. The 64-bit `bass.dll` (from `bass24.zip` at un4seen.com, the `x64/bass.dll` entry) must lie next to `UA_TTS_Client.exe`. Without it, playback fails with «Черга відтворення зупинилась з помилкою» and the client log shows `DllNotFoundException` at `Bass.Init`.
+- The client log (next to the executable: `logs/client.log`) shows the exact error.
 
 ## Alt+Q captures nothing
 
@@ -65,8 +70,8 @@ Causes: invalid JSON in `Server_py/dictionary.json` (a trailing comma is typical
 - By default playback pauses after each batch. This is intentional. Turn off **«Пауза після кожного пакета»** to play all batches without pauses.
 - The Reader and Character Voice tabs are placeholders.
 - The hotkey cannot be changed yet.
-- Windows 11 has not been run.
 
 ## Logs
 
-The client writes its log to the console (the output of `dotnet run`). The server writes its log to its own console.
+- The client writes its log to the console (the output of `dotnet run`) and to `logs/client.log` next to the client executable (with rotation at 10 MB).
+- The packaged server writes its log to `UA_TTS_Server/logs/server.log` next to its executable. From the source tree the log is in the user data directory (`~/.local/share/ua-tts/logs/server.log` on Linux, `%LocalAppData%\ua-tts\logs\server.log` on Windows).

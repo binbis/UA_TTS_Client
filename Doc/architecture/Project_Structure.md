@@ -3,7 +3,7 @@
 > **Purpose:** where each file and type lives, which contracts exist and which classes implement them.
 > **Audience:** developers and AI agents.
 > **Source of truth:** the repository tree (`git ls-files`) and the code itself.
-> **Verified:** 2026-11-12.
+> **Verified:** 2026-11-25.
 
 ## Tree
 
@@ -24,6 +24,7 @@ UA_TTS_Client/
 │   │   ├── AudioExportStage.cs       Synthesizing, Concatenating, Converting, Writing
 │   │   ├── PlaybackState.cs          Idle, Playing, Paused, Stopped, Error
 │   │   ├── ServerStatus.cs           Unknown, Online, Offline, Error
+│   │   ├── ServerProcessState.cs       NotRunning, Starting, Running, Failed
 │   │   └── TextChunkingMode.cs       Paragraphs, Sentences, MaxLength
 │   ├── Exceptions/
 │   │   └── TtsApiException.cs        StatusCode (int?), IsConnectionError
@@ -37,6 +38,7 @@ UA_TTS_Client/
 │   │   ├── IFragmentPlaybackService.cs      queue of fragments
 │   │   ├── IAudioExportService.cs    ExportAsync
 │   │   └── IFileSaveDialogService.cs        save dialog
+│   │   ├── IServerProcessService.cs    start/stop of the packaged server
 │   └── Models/
 │       ├── AppConfig.cs              settings record (see user/Configuration.md)
 │       ├── SpeechQueueOptions.cs     Voice, Speed, BatchSize (1–10), PauseAfterEachBatch
@@ -62,6 +64,8 @@ UA_TTS_Client/
 │   │   ├── SharpHookGlobalHotkeyService.cs       Alt+Q
 │   │   └── WaylandClipboardAutomationService.cs  Ctrl+C simulation and clipboard (the name is historical: it also runs on Windows)
 │   ├── Playback/FragmentPlaybackService.cs       synthesis one step ahead, batches, pause and stop
+│   ├── Process/ServerProcessService.cs             start/stop of the packaged server (see architecture/Flows.md §7)
+│   ├── Logging/FileLoggerProvider.cs               client log file next to the executable
 │   ├── Storage/JsonSettingsService.cs            config.json, atomic save
 │   └── Text/SentenceAwareTextChunker.cs          fragmentation (see architecture/Text_Chunking.md)
 ├── ViewModels/

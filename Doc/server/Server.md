@@ -3,7 +3,7 @@
 > **Purpose:** the Python TTS server: components, startup, the synthesis and verbalization pipelines, data files, environment and limits.
 > **Audience:** developers, and users who run the server.
 > **Source of truth:** `Server_py/server.py`, `Server_py/verbalizer.py`, `Server_py/run_server.sh`, `Server_py/requirements.txt`, `Server_py/packaging/`, `.github/workflows/build-server.yml`.
-> **Verified:** 2026-11-22.
+> **Verified:** 2026-11-25. Server and client behavior was checked against the code; the packaged servers (Linux and Windows) were run end-to-end.
 
 ## Components
 
@@ -122,8 +122,8 @@ Examples of entries: `"Google": "Гугл"`, `"Windows": "Віндовс"`, `"co
 
 - Tested with Python 3.14 on the reference machine. The documented minimum is 3.10; other versions are not verified. The PyInstaller package is built with Python 3.12, so that the Torch CUDA wheels are available.
 - Dependencies: `Server_py/requirements.txt`. Some packages are installed from GitHub (`git+https`), so Git must be available.
-- The packaged server (`Server_py/packaging/UA_TTS_Server.spec`, onedir) needs no Python on the user side: the interpreter and all dependencies, including the Torch CUDA libraries, are inside `_internal/`. `voices/*.pt` and `dictionary.json` stay next to the executable as user data. The Linux package was built and verified on the reference machine (Python 3.14 venv, Torch 2.14.1+cu130): `--check`, `/api/health`, one synthesis and MP3 conversion with the bundled ffmpeg all pass without a system Python in `PATH`. The Windows package is built by CI and is not verified yet (see `Doc/Roadmap.md`).
-- `ukrainian-tn==0.7.0` (verbalization) is a Rust library with `abi3` wheels: one wheel per platform covers Python 3.9 and newer. A Windows wheel exists, but the library has not been run on Windows yet. It runs on the CPU.
+- The packaged server (`Server_py/packaging/UA_TTS_Server.spec`, onedir) needs no Python on the user side: the interpreter and all dependencies, including the Torch CUDA libraries, are inside `_internal/`. `voices/*.pt` and `dictionary.json` stay next to the executable as user data. The Linux package was built and verified on the reference machine (Python 3.14 venv, Torch 2.14.1+cu130): `--check`, `/api/health`, one synthesis and MP3 conversion with the bundled ffmpeg all pass without a system Python in `PATH`. The Windows package was built by CI and verified on a real Windows 11 machine: `--check`, health, synthesis and MP3 conversion with the bundled ffmpeg, without a system Python.
+- `ukrainian-tn==0.7.0` (verbalization) is a Rust library with `abi3` wheels: one wheel per platform covers Python 3.9 and newer. A Windows wheel exists and the library was run on Windows as part of the packaged server. It runs on the CPU.
 - `torch` is not listed in `requirements.txt`. It is installed as a dependency of `styletts2-inference`, which requires `torch` and `torchaudio`. The reference machine has `torch 2.14.1+cu130`. CUDA notes are in `user/Installation.md`.
 - `numpy<2` is pinned.
 - ffmpeg is provided by `static-ffmpeg` in the source tree. If the package is installed, `static_ffmpeg.add_paths()` runs at startup. `pydub` uses ffmpeg for conversion. In the packaged server the ffmpeg binary is bundled (from `imageio-ffmpeg`) and preferred, so conversion works offline.

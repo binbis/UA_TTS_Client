@@ -3,7 +3,7 @@
 > **Purpose:** the prompt template for code-generation tasks, and the normative coding standards of this project.
 > **Audience:** developers and AI agents who write or review code.
 > **Source of truth:** this file for coding standards. Facts about the project are in the owner documents listed in `Doc/README.md`.
-> **Verified:** 2026-11-03 against the code.
+> **Verified:** 2026-11-25 against the code (Windows runtime verified)..
 
 ## How to use the prompt
 
@@ -12,7 +12,7 @@
 3. Expect the answer to contain only the changed or new files, or the changed fragments that must be replaced.
 
 **Project:** UA_TTS_Client, an Avalonia 12 / .NET 10 desktop client (MVVM) for a local Ukrainian TTS server (`Server_py/`, Flask and StyleTTS2).
-**Targets:** Linux (EndeavourOS/Arch, Wayland + PipeWire), tested on the reference machine; Windows 11, not yet run.
+**Targets:** Linux (EndeavourOS/Arch, Wayland + PipeWire), tested on the reference machine; Windows 11, tested on a real Windows 11 machine.
 
 Context: [WHERE WE ARE AND WHERE WE START FROM, BACKGROUND]
 

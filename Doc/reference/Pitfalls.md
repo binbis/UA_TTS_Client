@@ -3,11 +3,11 @@
 > **Purpose:** the mistakes that were already made or are easy to make in this project, each with its symptom and the rule that prevents it.
 > **Audience:** developers and AI agents.
 > **Source of truth:** the code and the verified runs described in the owner documents linked below.
-> **Verified:** 2026-11-12.
+> **Verified:** 2026-11-25.
 
 ## Server
 
-1. **The server is started from the repository root.** Symptom: 0 voices and an empty dictionary, with no error. Rule: start it from `Server_py/`. The launcher `Server_py/run_server.sh` does this itself. (`server/Server.md`)
+1. **`voices/` and `dictionary.json` are resolved from the working directory (old versions).** Symptom: 0 voices and an empty dictionary, with no error. Rule: `server.py` resolves `BASE_DIR` itself (next to the executable when frozen, next to `server.py` in the source tree), so the working directory does not matter anymore. (`server/Server.md`)
 2. **`dictionary.json` has a load error.** Symptom: `[!] …` in the server console and no dictionary rules at all; `GET /api/health` reports `dictionary.error`, and the client status bar shows «словник: помилка». Rule: validate the JSON after every edit, and restart the server after any change (it reads the file once at startup). (`server/Server.md`)
 3. **Long parts are silently truncated.** Symptom: the end of a very long part is missing from the audio. The server now splits such parts as text; only a boundary-free piece is still cut at 500 tokens, and the console shows `[!] Фрагмент обрізано …` in that case. Rule: a truncation warning means a pathological input (for example one giant word); normal long texts are spoken in full. (`server/Server.md`)
 4. **`/api/convert` accepts WAV input only, and `m4a` does not work.** Rule: request `mp3` or `wav`. Never `m4a` on the reference machine. (`server/API.md`)
@@ -24,6 +24,7 @@
 12. **The lifetime of the audio buffer.** `CreateStream(byte[])` does not copy the data. Symptom: silence or garbage. Rule: keep the array referenced until playback ends. (`reference/Native_Libraries.md`)
 13. **`TrackEnded` fires only at the natural end.** `Stop()` does not raise it. Rule: do not use it to detect cancellation. (`architecture/Flows.md`)
 14. **A pause requested right after a fragment starts.** Symptom: the pause is lost. Rule: apply it after `PlayAsync` has started; the queue does this already. (`architecture/Flows.md`)
+15. **`bass.dll` is missing on Windows.** Symptom: synthesis succeeds on the server, but the playback queue stops with «Черга відтворення зупинилась з помилкою»; the client log shows `DllNotFoundException` at `Bass.Init`. Rule: put the 64-bit `bass.dll` (the `x64/bass.dll` entry from `bass24.zip` at un4seen.com, not the 32-bit top-level one) next to the client executable. (`user/Installation.md`)
 
 ## Hotkey and clipboard
 

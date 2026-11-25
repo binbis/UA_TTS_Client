@@ -3,7 +3,7 @@
 > **Purpose:** the real APIs and the verified behavior of ManagedBass, SharpHook, TextCopy and wl-clipboard as this project uses them. Read it before writing code against these packages: they have very little documentation.
 > **Audience:** developers and AI agents.
 > **Source of truth:** `Infrastructure/Audio/BassAudioPlayerService.cs`, `Infrastructure/Automation/*.cs`, and runs on the reference machine.
-> **Verified:** 2026-11-12.
+> **Verified:** 2026-11-25.
 
 ## ManagedBass 4.0.2 (BASS 2.4.18.3)
 
@@ -84,7 +84,7 @@ Terminal limitation: terminals copy with `Ctrl+Shift+C`. In a terminal, `Ctrl+C`
 
 ## TextCopy 6.2.1
 
-Used only on Windows, through `ClipboardService.GetTextAsync`. Any exception other than cancellation returns an empty string. It has not been run on Windows.
+Used only on Windows, through `ClipboardService.GetTextAsync`. Any exception other than cancellation returns an empty string. Verified on Windows 11: `Alt+Q` capture works through this path.
 
 ## wl-clipboard (`wl-paste`)
 

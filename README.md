@@ -7,7 +7,7 @@ Desktop client for a **local** Ukrainian text-to-speech server (StyleTTS2). Sele
 | TTS server | Python, Flask, StyleTTS2, CUDA | `Server_py/` |
 | Desktop client | .NET 10, Avalonia 12, MVVM, ManagedBass | repository root |
 
-Platforms: Linux (EndeavourOS/Arch, Wayland + PipeWire) is tested on the reference machine. Windows 11 is supported by the code, but it has not been run.
+Platforms: Linux (EndeavourOS/Arch, Wayland + PipeWire) and Windows 11 are tested.
 
 ## Quick start
 
@@ -46,4 +46,4 @@ Platforms: Linux (EndeavourOS/Arch, Wayland + PipeWire) is tested on the referen
 - Window activation after `Alt+Q` depends on the compositor. On Wayland it may be refused.
 - MP3 export needs a working ffmpeg on the server. WAV export always works.
 - Terminals copy with `Ctrl+Shift+C`. Capture from a terminal is not supported.
-- The Windows runtime has not been verified. See [Troubleshooting](Doc/user/Troubleshooting.md).
+- The server package is large (~5.7 GB, mostly CUDA Torch). The first start downloads the ~1 GB speech model.

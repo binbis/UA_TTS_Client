@@ -3,7 +3,7 @@
 > **Purpose:** install and start the TTS server and the desktop client.
 > **Audience:** users, and developers who run the application for the first time.
 > **Source of truth:** `Server_py/requirements.txt`, `Server_py/run_server.sh`, `UA_TTS_Client.csproj`.
-> **Verified:** 2026-11-12. Linux was run on the reference machine. Windows was not run.
+> **Verified:** 2026-11-25. Linux was run on the reference machine; Windows 11 was run on a real Windows machine (packaged server and client: hotkey, synthesis, playback, export).
 
 ## Requirements
 
@@ -20,7 +20,7 @@ Notes:
 
 - The `bass` package in the `extra` repository is the game *Beneath A Steel Sky*, not the audio library. Install `libbass` from AUR.
 - The `ManagedBass` NuGet package contains only the managed wrapper. The native library must be installed separately.
-- `torch` is not pinned in `requirements.txt`. It is installed as a dependency of `styletts2-inference`. On Linux, the PyPI build pulls in the CUDA runtime packages; the reference machine has `torch 2.14.1+cu130`. On Windows the PyPI build is usually CPU-only. Install the CUDA build of PyTorch from the PyTorch website before installing the requirements. This has not been verified on Windows.
+- `torch` is not pinned in `requirements.txt`. It is installed as a dependency of `styletts2-inference`. On Linux, the PyPI build pulls in the CUDA runtime packages; the reference machine has `torch 2.14.1+cu130`. On Windows the PyPI build is usually CPU-only. Install the CUDA build of PyTorch from the PyTorch website before installing the requirements. With the packaged server the CUDA build of Torch comes inside the package; synthesis on Windows was verified with it.
 
 ## Server on Linux
 
@@ -71,7 +71,7 @@ dotnet run                             # or open UA_TTS_Client.sln in Rider
 2. Put `bass.dll` next to the built executable.
 3. Run `dotnet build` and `dotnet run`, or open `UA_TTS_Client.sln` in Rider.
 
-The Windows build has not been run on a real system. The platform differences are listed in `architecture/Overview.md`.
+The Windows build was run on a real Windows 11 machine. The platform differences are listed in `architecture/Overview.md`.
 
 ## Start order
 

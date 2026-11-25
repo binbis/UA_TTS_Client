@@ -3,7 +3,7 @@
 > **Purpose:** what the system is, its components, layers, threads, platforms and the key design choices.
 > **Audience:** developers and AI agents.
 > **Source of truth:** the code: `Core/`, `Infrastructure/`, `ViewModels/`, `Views/`, `App.axaml.cs`, `Server_py/server.py`.
-> **Verified:** 2026-11-12.
+> **Verified:** 2026-11-25.
 
 ## What it is
 
@@ -73,7 +73,7 @@ Rules:
 | Keyboard simulation | SharpHook `EventSimulator` (uinput) | SharpHook `EventSimulator` |
 | Audio | `libbass.so` (AUR `libbass`), output through PipeWire | `bass.dll` next to the executable |
 | Configuration | `~/.config/UA_TTS_Client/config.json` | `%APPDATA%\UA_TTS_Client\config.json` |
-| Verification | works on the reference machine | build only; runtime not verified |
+| Verification | works on the reference machine | works on a real Windows 11 machine |
 
 ## Key design choices
 

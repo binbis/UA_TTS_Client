@@ -6,7 +6,7 @@
 
 Avalonia 12 / .NET 10 desktop client (MVVM, CommunityToolkit.Mvvm) for a local Python TTS server (StyleTTS2, Flask) in `Server_py/`. Ukrainian speech with 31 voices, a global `Alt+Q` hotkey, batch playback and MP3/WAV export.
 
-Targets: Linux (EndeavourOS/Arch, Wayland + PipeWire), tested; Windows 11, not yet run.
+Targets: Linux (EndeavourOS/Arch, Wayland + PipeWire) and Windows 11, both tested.
 
 ## Documentation map
 
