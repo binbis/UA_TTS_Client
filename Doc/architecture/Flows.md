@@ -98,6 +98,6 @@ The packaged server (`UA_TTS_Server` next to the client publish, or a path set i
    - otherwise the executable is launched without a console window (`CreateNoWindow`, stdout/stderr drained and discarded — the server mirrors everything into its own log file);
    - the service polls `GET /api/health` every 2 seconds (up to 10 minutes): the first start downloads the model, so minutes are normal. If the process exits first, the start fails with a pointer to the log file;
    - on success the voice list is refreshed.
-2. **Stop** (`StopServerCommand` → `StopAsync`): only a process started by the client is killed (whole tree). A hand-started server is never killed; the attempt shows an error. The status text shows «Сервер запущено вручну» in that case.
+2. **Stop** (`StopServerCommand` → `StopAsync`): kills the process started by the client (whole tree; on Windows with a `taskkill /T /F` fallback), plus any leftover instance of the packaged server (same executable name — a hand-started or adopted server). The button is an explicit manual request, so stopping a hand-started server is intended behavior.
 3. **Log** (`OpenLogCommand`): opens the server log file (`UA_TTS_Server/logs/server.log` next to the client) with the default application. The client itself writes `logs/client.log` next to its own executable.
 4. The server path setting (`ServerExecutablePath`, empty = default) is saved in `config.json` with the other settings. In development (`dotnet run` from the repository root) the service also finds `Server_py/dist/UA_TTS_Server/`.

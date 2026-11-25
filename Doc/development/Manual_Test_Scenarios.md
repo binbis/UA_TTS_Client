@@ -45,7 +45,7 @@
 | 27 | Long text without sentence breaks (about 600 words, no `.?!:;`) | The whole text is spoken; the server console shows `[i] Довгий фрагмент поділено` and no truncation warning |
 | 28 | Start the packaged server from Settings («Запустити сервер», server folder next to the client or a path in «Шлях до сервера») | No console window appears; after the model loads (~45 s, minutes on the first run) the status is «Сервер запущено», voices appear, synthesis works; the server log exists at `<local app data>/ua-tts/logs/server.log` |
 | 29 | Stop the server from Settings («Зупинити сервер») | The process is gone (health check fails, status «Офлайн»); restarting the client does not revive it |
-| 30 | Server started by hand (double-click the exe), then «Запустити сервер» in the client | The client adopts it (status «Сервер запущено вручну»), no second process; «Зупинити сервер» shows an error and the hand-started server keeps running |
+| 30 | Server started by hand (double-click the exe), then «Запустити сервер» in the client | The client adopts it (status «Сервер запущено вручну»), no second process; «Зупинити сервер» terminates it (including on Windows, where `taskkill /T /F` is the fallback) |
 | 31 | Wrong path in «Шлях до сервера», then «Запустити сервер» | An error names the missing file; nothing starts |
 
 ## Checks before a release

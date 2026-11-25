@@ -47,10 +47,11 @@ public interface IServerProcessService
     Task StartAsync(string? executablePath, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Stops the server process started by this client. A server started by hand is never killed.
+    /// Stops the server: kills the process started by this client and any leftover
+    /// instance of the packaged server (same executable name). The button is an explicit
+    /// manual request, so a hand-started server is stopped too.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <exception cref="InvalidOperationException">The running server was started by hand, not by the client.</exception>
     Task StopAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Reads the last lines of the server log file (empty if the file does not exist yet).</summary>

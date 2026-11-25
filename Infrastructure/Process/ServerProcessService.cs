@@ -171,28 +171,36 @@ public sealed class ServerProcessService : IServerProcessService, IDisposable
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_process is null || _process.HasExited)
-            {
-                if (State == ServerProcessState.Running && !IsStartedByClient)
-                {
-                    throw new InvalidOperationException(
-                        "Сервер запущено вручну, клієнт його не зупиняє. Зупиніть його окремо.");
-                }
-
-                SetState(ServerProcessState.NotRunning);
-                return;
-            }
-
-            if (!IsStartedByClient)
-            {
-                throw new InvalidOperationException(
-                    "Сервер запущено вручну, клієнт його не зупиняє. Зупиніть його окремо.");
-            }
-
             _logger.LogInformation("Зупинка сервера");
-            KillProcessTree();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var killed = false;
+            if (_process is { HasExited: false })
+            {
+                KillProcessTree();
+                killed = true;
+            }
+            else
+            {
+                _process?.Dispose();
+                _process = null;
+            }
+
+            // Leftover instances of the packaged server (started by hand, adopted
+            // by this client, or left by another session) share its executable
+            // name. This button is an explicit manual request, so stop them too.
+            killed |= KillLeftoverServerProcesses();
+
             IsStartedByClient = false;
             SetState(ServerProcessState.NotRunning);
+            if (killed)
+            {
+                _logger.LogInformation("Сервер зупинено");
+            }
+            else
+            {
+                _logger.LogInformation("Зупинення сервера: процес не знайдено");
+            }
         }
         finally
         {
@@ -279,22 +287,81 @@ public sealed class ServerProcessService : IServerProcessService, IDisposable
             return;
         }
 
+        KillAndWait(process);
+        process.Dispose();
+    }
+
+    /// <summary>
+    /// Kills every still-running process with the packaged server's executable name.
+    /// </summary>
+    /// <returns>Whether at least one process was killed.</returns>
+    private bool KillLeftoverServerProcesses()
+    {
+        var killed = false;
+        var processName = Path.GetFileNameWithoutExtension(ExecutableName);
+        foreach (var leftover in DiagnosticProcess.GetProcessesByName(processName))
+        {
+            using (leftover)
+            {
+                if (leftover.HasExited)
+                {
+                    continue;
+                }
+
+                _logger.LogInformation("Зупинка процесу сервера (PID {Id})", leftover.Id);
+                KillAndWait(leftover);
+                killed = true;
+            }
+        }
+
+        return killed;
+    }
+
+    /// <summary>
+    /// Kills a process (whole tree) and waits for it. On Windows falls back to
+    /// <c>taskkill /T /F</c>, which reliably reaches the child processes that
+    /// <see cref="DiagnosticProcess.Kill(bool)"/> sometimes misses.
+    /// </summary>
+    private void KillAndWait(DiagnosticProcess process)
+    {
         try
         {
             if (!process.HasExited)
             {
                 process.Kill(entireProcessTree: true);
-                process.WaitForExit((int)ProcessExitTimeout.TotalMilliseconds);
+                if (!process.WaitForExit((int)ProcessExitTimeout.TotalMilliseconds))
+                {
+                    TryTaskKill(process.Id);
+                    process.WaitForExit((int)ProcessExitTimeout.TotalMilliseconds);
+                }
             }
         }
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Процес сервера вже завершився під час зупинки");
         }
-        finally
+        catch (System.ComponentModel.Win32Exception ex)
         {
-            process.Dispose();
+            _logger.LogWarning(ex, "Не вдалося зупинити процес сервера (PID {Id})", process.Id);
         }
+    }
+
+    private void TryTaskKill(int processId)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "taskkill",
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+        startInfo.ArgumentList.Add("/PID");
+        startInfo.ArgumentList.Add(processId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        startInfo.ArgumentList.Add("/T");
+        startInfo.ArgumentList.Add("/F");
+        using var taskkill = DiagnosticProcess.Start(startInfo);
+        taskkill?.WaitForExit((int)ProcessExitTimeout.TotalMilliseconds);
     }
 
     private void SetState(ServerProcessState state)
