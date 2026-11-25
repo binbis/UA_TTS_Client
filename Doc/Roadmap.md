@@ -20,12 +20,12 @@
 
 ## Open items
 
-2. **Long texts in export.** The whole WAV is kept in memory (about 48 KB of audio per second). Streaming to a temporary file is a possible optimization.
-3. **Identical clipboard text.** A selection that equals the current clipboard text is not detected, so the capture returns nothing (`user/Troubleshooting.md`). Options: clear the clipboard before the copy, which replaces the user's clipboard content, or copy a marker first. Decide before implementing.
-4. **Naming.** `WaylandClipboardAutomationService` also runs on Windows. A rename is optional.
-5. **Verbalizer errors.** The known reading errors are listed in `server/Server.md`: ranges with «з», compound ordinals, `4а`, `Гб`, phone numbers with a leading zero. Fix each one by a rule in the text preparation, or by a dictionary entry for a word (not for currency or magnitude abbreviations, see the table above).
-6. **Hotkey configuration.** Make the hotkey configurable when the hotkey editor is needed. The hook logic must read the key from the settings.
-7. **Follow the spoken fragment in Quick TTS.** The mini player shows only the first 60 characters of the current fragment (`FragmentPreviewLength`), so it is hard to tell which part of a long text is being spoken. UI work only (the `FragmentStarted` event already carries the full fragment on the UI thread):
+1. **Long texts in export.** The whole WAV is kept in memory (about 48 KB of audio per second). Streaming to a temporary file is a possible optimization.
+2. **Identical clipboard text.** A selection that equals the current clipboard text is not detected, so the capture returns nothing (`user/Troubleshooting.md`). Options: clear the clipboard before the copy, which replaces the user's clipboard content, or copy a marker first. Decide before implementing.
+3. **Naming.** `WaylandClipboardAutomationService` also runs on Windows. A rename is optional.
+4. **Verbalizer errors.** The known reading errors are listed in `server/Server.md`: ranges with «з», compound ordinals, `4а`, `Гб`, phone numbers with a leading zero. Fix each one by a rule in the text preparation, or by a dictionary entry for a word (not for currency or magnitude abbreviations, see the table above).
+5. **Hotkey configuration.** Make the hotkey configurable when the hotkey editor is needed. The hook logic must read the key from the settings.
+6. **Follow the spoken fragment in Quick TTS.** The mini player shows only the first 60 characters of the current fragment (`FragmentPreviewLength`), so it is hard to tell which part of a long text is being spoken. UI work only (the `FragmentStarted` event already carries the full fragment on the UI thread):
     - show the full current fragment text instead of the 60-character preview;
     - highlight the spoken fragment: a plain `TextBox` cannot color a span, so this needs a read-only mirror (`TextBlock` with runs) or a fragment list; either way `TextFragment` must carry the offset, because the chunker normalizes whitespace and offsets do not map 1:1 onto the edit box;
     - auto-scroll to the current fragment when it starts (fragment list with selection + `ScrollIntoView`), i.e. automatic following.
