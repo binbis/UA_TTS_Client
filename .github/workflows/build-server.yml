@@ -1,8 +1,10 @@
 name: Build TTS server
 
 on:
+  # Manual runs from the Actions tab.
   workflow_dispatch:
   push:
+    # Tags additionally attach the zips to a GitHub Release (see the release job).
     tags:
       - "server-v*"
 
