@@ -20,8 +20,8 @@ dotnet run             # opens the window; the server must be running
 ```
 
 The server package is built by GitHub Actions (`.github/workflows/build-server.yml`):
-a manual run or a `server-v*` tag builds the Linux and Windows packages and
-uploads them as artifacts (tags also attach them to a GitHub Release). The
+a manual run builds the Linux and Windows packages and uploads them as
+artifacts (downloadable from the workflow run page; no release is created). The
 same build can be run by hand with `Server_py/packaging/README.md`.
 
 Open `UA_TTS_Client.sln` in Rider to work in the IDE. Installation steps are in `user/Installation.md`.
