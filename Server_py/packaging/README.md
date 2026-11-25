@@ -6,9 +6,8 @@ The user needs no Python. The Python interpreter and all dependencies,
 including the Torch CUDA libraries, are inside `_internal/`.
 
 > The model (~911 MB) is **not** in the package. On the first start the
-> server downloads it to the user data directory
-> (`~/.local/share/ua-tts/hf` on Linux, `%LocalAppData%\ua-tts\hf` on
-> Windows). Later starts work offline.
+> server downloads it to `hf/` inside the package folder. Later starts work
+> offline. The log is written to `logs/server.log` in the same folder.
 
 ## Layout of the distributed folder
 
@@ -17,12 +16,15 @@ UA_TTS_Server/               # next to the client publish
 ├── UA_TTS_Server            # Linux ELF / Windows exe (double-click to run)
 ├── _internal/               # Python + torch + ffmpeg, everything frozen
 ├── voices/*.pt              # user data: add voices here, restart the server
-└── dictionary.json          # user data: pronunciation rules, restart to reload
+├── dictionary.json          # user data: pronunciation rules, restart to reload
+├── hf/                      # created on the first start: the downloaded model
+└── logs/server.log          # created on the first start: server log
 ```
 
-Place `UA_TTS_Server/` next to the client publish (`<appdir>/Server/`).
+Place `UA_TTS_Server/` next to the client publish (the client finds the
+server at `<appdir>/UA_TTS_Server/UA_TTS_Server(.exe)` by default).
 The folder must be in a writable location (not Program Files): the server
-writes the model cache, logs and any new voices there.
+writes the model cache (`hf/`), logs (`logs/`) and any new voices there.
 
 ## Build (same commands as GitHub Actions)
 

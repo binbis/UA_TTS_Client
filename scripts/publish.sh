@@ -2,13 +2,13 @@
 # Publishes the desktop client (self-contained) for Linux and Windows and
 # assembles the final distribution layout:
 #
-#   publish/linux/                 publish/win/
-#   ├── UA_TTS_Client              ├── UA_TTS_Client.exe
-#   └── Server/ (optional)         ├── bass.dll (optional, see below)
-#                                  └── Server/ (optional)
+#   publish/linux/                   publish/win/
+#   ├── UA_TTS_Client                ├── UA_TTS_Client.exe
+#   └── UA_TTS_Server/ (optional)    ├── bass.dll (optional, see below)
+#                                    └── UA_TTS_Server/ (optional)
 #
-# The Server/ folder is the PyInstaller package (Server_py/dist/UA_TTS_Server
-# or the CI zip, unpacked). Pass it via the environment:
+# The server folder is the PyInstaller package (Server_py/dist/UA_TTS_Server
+# or the CI artifact, unpacked). Pass it via the environment:
 #   SERVER_DIR_LINUX=/path/to/UA_TTS_Server SERVER_DIR_WIN=/path/to/UA_TTS_Server scripts/publish.sh
 #
 # bass.dll (BASS 2.4 x64, from https://www.un4seen.com/files/bass24.zip,
@@ -30,16 +30,16 @@ else
 fi
 
 if [ -n "${SERVER_DIR_LINUX:-}" ] && [ -d "$SERVER_DIR_LINUX" ]; then
-    cp -r "$SERVER_DIR_LINUX" publish/linux/Server
+    cp -r "$SERVER_DIR_LINUX" publish/linux/UA_TTS_Server
     echo "Server (Linux) copied from $SERVER_DIR_LINUX"
 fi
 if [ -n "${SERVER_DIR_WIN:-}" ] && [ -d "$SERVER_DIR_WIN" ]; then
-    cp -r "$SERVER_DIR_WIN" publish/win/Server
+    cp -r "$SERVER_DIR_WIN" publish/win/UA_TTS_Server
     echo "Server (Windows) copied from $SERVER_DIR_WIN"
 fi
 
 echo
 echo "Done. Layout:"
-echo "  publish/linux/  (client + optional Server/)"
-echo "  publish/win/    (client + bass.dll + optional Server/)"
+echo "  publish/linux/  (client + optional UA_TTS_Server/)"
+echo "  publish/win/    (client + bass.dll + optional UA_TTS_Server/)"
 echo "Server zips come from GitHub Actions (workflow build-server.yml)."

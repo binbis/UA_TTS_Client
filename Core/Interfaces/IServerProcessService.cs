@@ -26,11 +26,10 @@ public interface IServerProcessService
     /// <summary>Whether the running server was started by this client (and may be stopped by it).</summary>
     bool IsStartedByClient { get; }
 
-    /// <summary>Full path of the server log file (<c>.../logs/server.log</c>).</summary>
+    /// <summary>Full path of the server log file (<c>UA_TTS_Server/logs/server.log</c> next to the client).</summary>
     string LogFilePath { get; }
 
-    /// <summary>Default executable path: <c>Server/UA_TTS_Server(.exe)</c> or
-    /// <c>UA_TTS_Server/UA_TTS_Server(.exe)</c> next to the client.</summary>
+    /// <summary>Default executable path: <c>UA_TTS_Server/UA_TTS_Server(.exe)</c> next to the client.</summary>
     string GetDefaultExecutablePath();
 
     /// <summary>Raised when <see cref="State"/> changes.</summary>

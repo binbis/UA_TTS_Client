@@ -25,11 +25,16 @@ BASE_DIR = _detect_base_dir()
 
 
 def _default_data_dir():
-    """Writable per-user data directory (log file, Hugging Face cache).
+    """Writable data directory (log file, Hugging Face cache).
 
-    The folder name is lowercase "ua-tts" on every platform; it must match
-    the path the client uses for the server log file.
+    For the packaged (frozen) server this is the package folder next to
+    the executable (<UA_TTS_Server>/), so the whole package is
+    self-contained and portable. In the source tree it stays in the
+    per-user application data folder. On Windows the name is lowercase
+    "ua-tts" to match the path the client uses for the server log file.
     """
+    if getattr(sys, "frozen", False):
+        return BASE_DIR
     if sys.platform == "win32":
         base = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
         return Path(base) / "ua-tts"

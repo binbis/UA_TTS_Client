@@ -62,14 +62,17 @@ public sealed class ServerProcessService : IServerProcessService, IDisposable
     public bool IsStartedByClient { get; private set; }
 
     /// <inheritdoc />
-    public string LogFilePath { get; } = GetDefaultLogFilePath();
+    public string LogFilePath => _logFilePath;
+
+    private string _logFilePath =
+        Path.Combine(AppContext.BaseDirectory, "UA_TTS_Server", "logs", "server.log");
 
     /// <inheritdoc />
     public event EventHandler? StateChanged;
 
     /// <inheritdoc />
     public string GetDefaultExecutablePath() =>
-        Path.Combine(AppContext.BaseDirectory, "Server", ExecutableName);
+        Path.Combine(AppContext.BaseDirectory, "UA_TTS_Server", ExecutableName);
 
     /// <inheritdoc />
     public async Task StartAsync(string? executablePath, CancellationToken cancellationToken = default)
@@ -99,8 +102,12 @@ public sealed class ServerProcessService : IServerProcessService, IDisposable
                 SetState(ServerProcessState.Failed);
                 throw new FileNotFoundException(
                     $"Не знайдено виконуваний файл сервера: {resolvedPath}. " +
-                    "Розпакуйте пакет сервера поруч із клієнтом (тека Server) або вкажіть шлях у налаштуваннях.");
+                    "Розпакуйте пакет сервера поруч із клієнтом (тека UA_TTS_Server) або вкажіть шлях у налаштуваннях.");
             }
+
+            // The server writes its log next to its own executable.
+            _logFilePath = Path.Combine(
+                Path.GetDirectoryName(resolvedPath) ?? AppContext.BaseDirectory, "logs", "server.log");
 
             _logger.LogInformation("Запуск сервера: {Path}", resolvedPath);
             var startInfo = new ProcessStartInfo
@@ -251,17 +258,10 @@ public sealed class ServerProcessService : IServerProcessService, IDisposable
             return executablePath.Trim();
         }
 
-        var defaultPath = Path.Combine(AppContext.BaseDirectory, "Server", ExecutableName);
+        var defaultPath = Path.Combine(AppContext.BaseDirectory, "UA_TTS_Server", ExecutableName);
         if (File.Exists(defaultPath))
         {
             return defaultPath;
-        }
-
-        // The downloaded package unpacks to a UA_TTS_Server folder next to the client.
-        var packagePath = Path.Combine(AppContext.BaseDirectory, "UA_TTS_Server", ExecutableName);
-        if (File.Exists(packagePath))
-        {
-            return packagePath;
         }
 
         // Development convenience: dotnet run from the repository root, package built by PyInstaller.
@@ -303,13 +303,4 @@ public sealed class ServerProcessService : IServerProcessService, IDisposable
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>
-    /// Log path matching the server default: <c>&lt;local app data&gt;/ua-tts/logs/server.log</c>
-    /// (<c>~/.local/share/...</c> on Linux, <c>%LocalAppData%\ua-tts\logs\server.log</c> on Windows).
-    /// </summary>
-    private static string GetDefaultLogFilePath()
-    {
-        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        return Path.Combine(localAppData, "ua-tts", "logs", "server.log");
-    }
 }

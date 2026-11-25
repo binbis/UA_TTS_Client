@@ -8,15 +8,14 @@ using Microsoft.Extensions.Logging;
 namespace UA_TTS_Client.Infrastructure.Logging;
 
 /// <summary>
-/// Writes application log lines to a file, next to the settings folder.
+/// Writes application log lines to a file next to the client executable.
 /// </summary>
 /// <remarks>
-/// Default path: <c>&lt;local app data&gt;/UA_TTS_Client/logs/client.log</c>
-/// (<c>~/.local/share/UA_TTS_Client/logs/client.log</c> on Linux,
-/// <c>%LocalAppData%\UA_TTS_Client\logs\client.log</c> on Windows), mirroring the server log.
-/// The file is opened in append mode with a shared lock; log lines are flushed immediately
-/// so a crash cannot lose the tail. A file larger than 10 MB is rotated to <c>client.log.1</c>
-/// once at provider creation.
+/// Default path: <c>&lt;client folder&gt;/logs/client.log</c>, mirroring the server log
+/// (which lives in <c>UA_TTS_Server/logs/server.log</c> next to the client).
+/// The folder must be writable. The file is opened in append mode with a shared lock;
+/// log lines are flushed immediately so a crash cannot lose the tail. A file larger
+/// than 10 MB is rotated to <c>client.log.1</c> once at provider creation.
 /// </remarks>
 public sealed class FileLoggerProvider : ILoggerProvider
 {
@@ -66,12 +65,9 @@ public sealed class FileLoggerProvider : ILoggerProvider
     {
     }
 
-    /// <summary>Returns the default log file path for the current platform.</summary>
-    public static string GetDefaultLogFilePath()
-    {
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        return Path.Combine(appData, "UA_TTS_Client", "logs", "client.log");
-    }
+    /// <summary>Returns the default log file path: <c>&lt;client folder&gt;/logs/client.log</c>.</summary>
+    public static string GetDefaultLogFilePath() =>
+        Path.Combine(AppContext.BaseDirectory, "logs", "client.log");
 
     private void Write(LogLevel logLevel, string categoryName, string message)
     {

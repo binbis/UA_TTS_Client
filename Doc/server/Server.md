@@ -22,7 +22,7 @@
 ## Startup
 
 1. Choose the device: `cuda` if available, otherwise `cpu`.
-2. Load the model `StyleTTS2(hf_path='patriotyk/styletts2_ukrainian_multispeaker')`. The model is downloaded on the first start to the cache in the user data directory (`HF_HOME`): `~/.local/share/ua-tts/hf` on Linux, `%LocalAppData%\ua-tts\hf` on Windows. An already set `HF_HOME` is respected. Later starts work offline.
+2. Load the model `StyleTTS2(hf_path='patriotyk/styletts2_ukrainian_multispeaker')`. The model is downloaded on the first start to the cache (`HF_HOME`). In the packaged server the cache and the log live inside the package folder next to the executable (`<UA_TTS_Server>/hf` and `<UA_TTS_Server>/logs/`), so the whole folder is portable. In the source tree the cache is in the user data directory (`~/.local/share/ua-tts/hf` on Linux, `%LocalAppData%\ua-tts\hf` on Windows). An already set `HF_HOME` is respected. Later starts work offline.
 3. Load every `voices/*.pt` with `torch.load(map_location=device)`. A voice that fails to load is reported and skipped. If the folder has no `.pt` files, the server looks in the base directory.
 4. Create the stress model (`Stressifier`).
 5. Load `dictionary.json` and compile its rules. The rules whose key contains an English letter are kept in a separate list (see the synthesis pipeline).

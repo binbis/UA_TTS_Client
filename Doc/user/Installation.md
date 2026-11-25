@@ -77,7 +77,7 @@ The Windows build has not been run on a real system. The platform differences ar
 
 Start the server first, then the client. If the server is offline when the client starts, the status bar shows «Офлайн» (Offline). The client keeps running and checks the server every 15 seconds.
 
-Or install the packaged distribution: run `scripts/publish.sh` (client) and put the server package from GitHub Actions (workflow `build-server.yml`, artifacts `UA_TTS_Server-linux-x86_64` / `UA_TTS_Server-windows-x64`) next to the client. The downloaded folder is named `UA_TTS_Server`; the client finds it by that name, or rename it to `Server` — both work. The server then needs no Python: start it by double-clicking the executable, or from the client's Settings tab («Запустити сервер»). The first start downloads the speech model (~1 GB) into the user data directory; later starts work offline. On Windows, put the 64-bit `bass.dll` (from `bass24.zip` at un4seen.com, the `x64/bass.dll` entry) next to the client executable.
+Or install the packaged distribution: run `scripts/publish.sh` (client) and put the server package from GitHub Actions (workflow `build-server.yml`, artifacts `UA_TTS_Server-linux-x86_64` / `UA_TTS_Server-windows-x64`) next to the client. The downloaded folder is named `UA_TTS_Server`; place it next to the client — the client finds the server there. The server then needs no Python: start it by double-clicking the executable, or from the client's Settings tab («Запустити сервер»). The first start downloads the speech model (~1 GB) into the user data directory; later starts work offline. On Windows, put the 64-bit `bass.dll` (from `bass24.zip` at un4seen.com, the `x64/bass.dll` entry) next to the client executable.
 
 ## Settings file
 
