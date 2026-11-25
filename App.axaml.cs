@@ -13,6 +13,7 @@ using UA_TTS_Client.Core.Models;
 using UA_TTS_Client.Infrastructure.Api;
 using UA_TTS_Client.Infrastructure.Audio;
 using UA_TTS_Client.Infrastructure.Automation;
+using UA_TTS_Client.Infrastructure.Logging;
 using UA_TTS_Client.Infrastructure.Playback;
 using UA_TTS_Client.Infrastructure.Process;
 using UA_TTS_Client.Infrastructure.Storage;
@@ -85,6 +86,7 @@ public partial class App : Application
                 options.SingleLine = true;
                 options.TimestampFormat = "HH:mm:ss ";
             })
+            .AddProvider(new FileLoggerProvider())
             .SetMinimumLevel(LogLevel.Information)
             .AddFilter("System.Net.Http.HttpClient", LogLevel.Warning));
 

@@ -93,6 +93,7 @@ If initialization throws, the server status becomes an error with the text «П�
 The packaged server (`UA_TTS_Server` next to the client publish, or a path set in the settings) is started and stopped by hand from the Settings tab. There is no auto-start and no start on `Alt+Q`. On client exit the server keeps running; the next client session adopts it through the health check.
 
 1. **Start** (`SettingsViewModel.StartServerCommand` → `IServerProcessService.StartAsync`):
+   - the executable is resolved from an explicit path (settings), else `<appdir>/Server/UA_TTS_Server(.exe)`, else `<appdir>/UA_TTS_Server/UA_TTS_Server(.exe)` (the unpacked package folder), else the dev build folder `Server_py/dist/UA_TTS_Server/`;
    - if a server already answers on the configured address, it is adopted (`IsStartedByClient = false`) and no second instance is started;
    - otherwise the executable is launched without a console window (`CreateNoWindow`, stdout/stderr drained and discarded — the server mirrors everything into its own log file);
    - the service polls `GET /api/health` every 2 seconds (up to 10 minutes): the first start downloads the model, so minutes are normal. If the process exits first, the start fails with a pointer to the log file;

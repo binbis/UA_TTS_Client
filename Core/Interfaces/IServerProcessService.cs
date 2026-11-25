@@ -29,7 +29,8 @@ public interface IServerProcessService
     /// <summary>Full path of the server log file (<c>.../logs/server.log</c>).</summary>
     string LogFilePath { get; }
 
-    /// <summary>Default executable path: <c>Server/UA_TTS_Server(.exe)</c> next to the client.</summary>
+    /// <summary>Default executable path: <c>Server/UA_TTS_Server(.exe)</c> or
+    /// <c>UA_TTS_Server/UA_TTS_Server(.exe)</c> next to the client.</summary>
     string GetDefaultExecutablePath();
 
     /// <summary>Raised when <see cref="State"/> changes.</summary>

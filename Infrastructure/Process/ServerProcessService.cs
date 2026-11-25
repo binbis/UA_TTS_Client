@@ -257,6 +257,13 @@ public sealed class ServerProcessService : IServerProcessService, IDisposable
             return defaultPath;
         }
 
+        // The downloaded package unpacks to a UA_TTS_Server folder next to the client.
+        var packagePath = Path.Combine(AppContext.BaseDirectory, "UA_TTS_Server", ExecutableName);
+        if (File.Exists(packagePath))
+        {
+            return packagePath;
+        }
+
         // Development convenience: dotnet run from the repository root, package built by PyInstaller.
         var devPath = Path.Combine(
             Directory.GetCurrentDirectory(), "Server_py", "dist", "UA_TTS_Server", ExecutableName);
@@ -298,7 +305,7 @@ public sealed class ServerProcessService : IServerProcessService, IDisposable
 
     /// <summary>
     /// Log path matching the server default: <c>&lt;local app data&gt;/ua-tts/logs/server.log</c>
-    /// (<c>~/.local/share/...</c> on Linux, <c>%LocalAppData%\UA_TTS\logs\server.log</c> on Windows).
+    /// (<c>~/.local/share/...</c> on Linux, <c>%LocalAppData%\ua-tts\logs\server.log</c> on Windows).
     /// </summary>
     private static string GetDefaultLogFilePath()
     {

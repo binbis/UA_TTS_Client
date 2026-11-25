@@ -25,10 +25,14 @@ BASE_DIR = _detect_base_dir()
 
 
 def _default_data_dir():
-    """Writable per-user data directory (log file, Hugging Face cache)."""
+    """Writable per-user data directory (log file, Hugging Face cache).
+
+    The folder name is lowercase "ua-tts" on every platform; it must match
+    the path the client uses for the server log file.
+    """
     if sys.platform == "win32":
         base = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
-        return Path(base) / "UA_TTS"
+        return Path(base) / "ua-tts"
     xdg = os.environ.get("XDG_DATA_HOME")
     base = Path(xdg) if xdg else Path.home() / ".local" / "share"
     return base / "ua-tts"

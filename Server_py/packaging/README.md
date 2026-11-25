@@ -7,7 +7,7 @@ including the Torch CUDA libraries, are inside `_internal/`.
 
 > The model (~911 MB) is **not** in the package. On the first start the
 > server downloads it to the user data directory
-> (`~/.local/share/ua-tts/hf` on Linux, `%LocalAppData%\UA_TTS\hf` on
+> (`~/.local/share/ua-tts/hf` on Linux, `%LocalAppData%\ua-tts\hf` on
 > Windows). Later starts work offline.
 
 ## Layout of the distributed folder
